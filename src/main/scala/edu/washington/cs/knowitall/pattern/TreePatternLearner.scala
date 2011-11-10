@@ -8,11 +8,12 @@ import java.io.PrintWriter
 import scala.io.Source
 
 import TreePatternLearner.findPattern
-import edu.washington.cs.knowitall.util.DefaultObjects
-import tool.parse.graph._
+
+import tool.parse._
+import tool.stem._
 import tool.parse.pattern._
-import tool.parse.StanfordParser
-import tool.stem.MorphaStemmer
+import tool.parse.graph._
+import util.DefaultObjects
 
 object TreePatternLearner {
   def main(args: Array[String]) {
@@ -152,7 +153,7 @@ object TreePatternLearner {
 }
 
 object TreePatternConsole {
-  import TreePatternLearner._
+import TreePatternLearner._
   
   def main(args: Array[String]) {
     val source =
