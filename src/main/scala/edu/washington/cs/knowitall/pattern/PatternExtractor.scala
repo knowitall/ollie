@@ -7,7 +7,7 @@ import tool.parse.graph._
 import tool.parse.pattern._
 
 object PatternExtractor {
-  def toExtraction(groups: collection.Map[String, DependencyNode]) = {
+  def toExtraction(groups: collection.Map[String, DependencyNode]): (DependencyNode, DependencyNode, DependencyNode) = {
     val rel = groups.find { case (s, dn) => s.equals("rel") }
     val arg1 = groups.find { case (s, dn) => s.equals("arg1") }
     val arg2 = groups.find { case (s, dn) => s.equals("arg2") }
@@ -16,6 +16,23 @@ object PatternExtractor {
       case (Some((_,rel)), Some((_,arg1)), Some((_,arg2))) => (arg1, rel, arg2)
       case _ => throw new IllegalArgumentException("missing group, expected {rel, arg1, arg2}: " + groups)
     }
+  }
+
+  def scoreExtraction(extr: (DependencyNode, DependencyNode, DependencyNode)): Int = {
+    // helper methods
+    def isProper(node: DependencyNode) = node.pos.equals("NNP") || node.pos.equals("NNPS")
+    def isPrep(node: DependencyNode) = node.pos.equals("PRP") || node.pos.equals("PRPS")
+
+    val arg1 = extr._1
+    val arg2 = extr._3
+
+    // pimped boolean
+    class toInt(b: Boolean) {
+      def toInt = if (b) 1 else 0
+    }
+    implicit def convertBooleanToInt(b: Boolean) = new toInt(b)
+
+    2 + isProper(arg1).toInt + isProper(arg2).toInt + -isPrep(arg1).toInt + -isPrep(arg2).toInt
   }
   
   def main(args: Array[String]) {
@@ -39,9 +56,14 @@ object PatternExtractor {
         for (line <- sentenceSource.getLines) {
           val Array(text, deps) = line.split("\t")
           for (p <- patterns) {
-            val graph = new DependencyGraph(text, Dependencies.deserialize(deps))
-            for (m <- p(graph)) {
-              System.out.println(toExtraction(m.groups)+"\t"+p+"\t"+text)
+            val graph = new DependencyGraph(text, Dependencies.deserialize(deps)).collapseNounGroups.collapseNNPOf
+            val matches = p(graph)
+            val extractions = matches.map { m => 
+              val extr = toExtraction(m.groups) 
+              (scoreExtraction(extr), extr)
+            }
+            for ((score, extr) <- extractions) {
+              System.out.println(score+"\t"+extr+"\t"+p+"\t"+text)
             }
           }
         }
