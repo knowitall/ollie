@@ -53,9 +53,10 @@ object FindTargetExtractions {
         if (arg1Lemma.length < 64 && arg2Lemma.length < 64 && relationLemma.length < 64 && 
           targets.contains(normalizedRelationString) &&
           arg1Postag.split("\\s+").forall(proper.contains(_)) && 
-          arg2Postag.split("\\s+").forall(proper.contains(_))) {
+          arg2Postag.split("\\s+").forall(proper.contains(_)) &&
+          !relationLemma.contains(" not ") && !relationLemma.contains(" no ") && !relationLemma.contains("n't")) {
           for (i <- 0 until count.toInt) {
-            System.out.println(Iterable(relationLemma, arg1cleanLemma.mkString(" "), arg2cleanLemma.mkString(" "), (arg1cleanLemma ++ relcleanLemma ++ arg2cleanLemma).mkString(" "), arg1String, relationString, arg2String, arg1Postag, relationPostag, arg2Postag).mkString("\t"))
+            System.out.println(Iterable(normalizedRelationString, arg1cleanLemma.mkString(" "), arg2cleanLemma.mkString(" "), (arg1cleanLemma ++ relcleanLemma ++ arg2cleanLemma).mkString(" "), arg1String, relationString, arg2String, arg1Postag, relationPostag, arg2Postag).mkString("\t"))
           }
         }
       }
