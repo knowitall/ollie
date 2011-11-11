@@ -20,6 +20,6 @@ object TreePatternLearnerSpec extends Specification {
     val graph = new DependencyGraph(deps.map(_.lemmatize(MorphaStemmer.instance))).collapseNounGroups.collapseNNPOf
     val patterns = TreePatternLearner.findPatternsForLDA(lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, graph)
     patterns.size must_== 1
-    patterns.first._1 == "{arg1} <nsubjpass< {rel} >prep_to> {arg2}"
+    patterns.head._1 == "{arg1} <nsubjpass< {rel} >prep_to> {arg2}"
   } 
 }
