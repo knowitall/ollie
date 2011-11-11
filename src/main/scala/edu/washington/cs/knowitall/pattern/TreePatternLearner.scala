@@ -34,7 +34,7 @@ object TreePatternLearner {
     val Array(arg1, rel, arg2) = relation
       .map(part => part.split("""\s+""")
         .map(w => MorphaStemmer.instance.stem(w)))
-    val lemmas = Set(arg1 ++ rel ++ arg2 :_*);
+    val lemmas = Set(arg1 ++ rel ++ arg2: _*);
 
     val tokenizer = DefaultObjects.getDefaultTokenizer
 
@@ -52,8 +52,8 @@ object TreePatternLearner {
           val graph = new DependencyGraph(line, dependencies).collapseNounGroups.collapseNNPOf
           val patterns = findPattern(lemmas, Map(arg1.mkString(" ") -> "arg1", arg2.mkString(" ") -> "arg2"), graph)
             .filter(_.matchers.find(_
-                    .isInstanceOf[CaptureNodeMatcher]).map(_
-                        .asInstanceOf[CaptureNodeMatcher].alias == "arg1").getOrElse(false))
+              .isInstanceOf[CaptureNodeMatcher]).map(_
+              .asInstanceOf[CaptureNodeMatcher].alias == "arg1").getOrElse(false))
           for (pattern <- patterns) {
             map.addBinding(toString(pattern, arg1.mkString(" "), arg2.mkString(" ")), line)
           }
@@ -66,68 +66,69 @@ object TreePatternLearner {
 
     dest.close
   }
-  
+
   def findBipath(lemmas: Set[String], graph: DependencyGraph) = {
     // build a set of all the possible combinations that don't use a
     // node with the same text twice
     def combinations(nodes: Set[DependencyNode]) = {
-      def rec(nodes: Seq[(String,Set[DependencyNode])], combs: Set[DependencyNode] ): Set[Set[DependencyNode]] = nodes match {
+      def rec(nodes: Seq[(String, Set[DependencyNode])], combs: Set[DependencyNode]): Set[Set[DependencyNode]] = nodes match {
         case Seq((text, set), rest @ _*) => set.flatMap(item => rec(rest, combs + item))
         case Seq() => Set(combs)
       }
-      
+
       if (nodes.map(_.text).size == nodes.size) {
         // there are no duplicate nodes
         Set(nodes)
-      }
-      else {
+      } else {
         // build combinations
         rec(nodes.groupBy(_.text).toSeq, Set())
       }
     }
-    
+
     val allNodes = lemmas.flatMap { lemma =>
       // find all exact matches
       val exacts = graph.vertices.filter(node => node.text == lemma)
-      
+
       // or one partial match
       if (exacts.isEmpty) graph.vertices.find(node => node.text.contains(lemma)) map { List(_) } getOrElse List.empty
       else exacts
     }
-    
-    combinations(allNodes).flatMap{ nodes =>
+
+    combinations(allNodes).flatMap { nodes =>
       val paths = graph.edgeBipaths(nodes)
-    
+
       // restrict to paths that go up and then down
       paths.filter(bipath => bipath.path.length > 0 && bipath.path.dropWhile(_.isInstanceOf[UpEdge]).dropWhile(_.isInstanceOf[DownEdge]).isEmpty)
     }
   }
 
-  def findPattern(lemmas: Set[String], 
-    replacements: Map[String, String], 
+  def findPattern(lemmas: Set[String],
+    replacements: Map[String, String],
     graph: DependencyGraph) = {
 
     // find paths containing lemma
     val bipaths = findBipath(lemmas, graph)
-    
+
     // make sure each path contains exactly one of each 
     // of the replacement targets
     val filtered = bipaths
-      .filter(bip => 
-        replacements.keys.forall (key => 
+      .filter(bip =>
+        replacements.keys.forall(key =>
           bip.nodes.count(node => node.text.contains(key)) == 1))
-          
+
     filtered.map { bip =>
       // get the indices where we need to make a replacement
       // and pair them with the replacement itself
-      val rep = replacements.map { case (target, replacement) => 
-        val index = 2*bip.nodes.indexWhere( _.text.contains(target))
-        (index, new CaptureNodeMatcher(replacement)) 
+      val rep = replacements.map {
+        case (target, replacement) =>
+          val index = 2 * bip.nodes.indexWhere(_.text.contains(target))
+          (index, new CaptureNodeMatcher(replacement))
       }
 
       // make the replacements
-      rep.foldRight(new Pattern(bip)) { case(rep, pat) =>
-        pat.replaceMatcherAt(rep._1, rep._2)
+      rep.foldRight(new Pattern(bip)) {
+        case (rep, pat) =>
+          pat.replaceMatcherAt(rep._1, rep._2)
       }
     }
   }
@@ -135,20 +136,19 @@ object TreePatternLearner {
   def findPatternsForLDA(lemmas: Set[String], replacements: Map[String, String], rel: String, graph: DependencyGraph) = {
     // arg1 comes before other replacements
     val patterns = findPattern(lemmas, replacements, graph)
-        
+
     val filtered = patterns.filter(_
-        .matchers.find(_
-          .isInstanceOf[CaptureNodeMatcher]).map(_
-          .asInstanceOf[CaptureNodeMatcher].alias == "arg1").getOrElse(false)).toList
-          
-          
+      .matchers.find(_
+        .isInstanceOf[CaptureNodeMatcher]).map(_
+        .asInstanceOf[CaptureNodeMatcher].alias == "arg1").getOrElse(false)).toList
+
     // find the best part to replace with rel
-    filtered.map { pattern => 
-      val relindex = pattern.matchers.indexWhere (_ match {
+    filtered.map { pattern =>
+      val relindex = pattern.matchers.indexWhere(_ match {
         case nm: DefaultNodeMatcher => rel.contains(nm.label)
         case _ => false
       })
-      
+
       // replace rel
       val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher("rel"))
 
@@ -159,10 +159,10 @@ object TreePatternLearner {
           case _ => List.empty
         }
       }
-      
+
       val (slotLabels, _) = slots.unzip
 
-      val patternWithReplacedSlots = slots.zipWithIndex.map { 
+      val patternWithReplacedSlots = slots.zipWithIndex.map {
         case ((label, matcherIndex), slotIndex) => ("slot" + slotIndex, matcherIndex)
       }.foldRight(p) {
         case ((replacement, index), p) =>
@@ -176,25 +176,32 @@ object TreePatternLearner {
 
 object BuildTreePatterns {
   import TreePatternLearner._
-  
+
+  val CHUNK_SIZE = 10000
+
   def main(args: Array[String]) {
     // file with dependencies
     val source =
-      if (args.length > 0) Source.fromFile(args(0)).getLines
-      else Source.stdin.getLines
+      if (args.length > 0) Source.fromFile(args(0))
+      else Source.stdin
+    
+    for (lines <- source.getLines.grouped(CHUNK_SIZE)) {
+      val lock: AnyRef = new Object()
+      lines.par.foreach { line =>
+        val Array(arg1, rel, arg2, lemmaString, deps) = line.split("\t")
+        val lemmas = lemmaString.split("\\s+").toSet
 
-    for (line <- source) {
-      val Array(arg1, rel, arg2, lemmaString, deps) = line.split("\t")
-      val lemmas = lemmaString.split("\\s+").toSet
-      
-      val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
-      val graph = new DependencyGraph(line, dependencies).collapseNounGroups.collapseNNPOf
-      
-      val patterns = findPatternsForLDA(lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, graph)
-      for (pattern <- patterns) {
-        val (pat, slots) = pattern
-        if (slots.length == 0) {
-          println((List(rel, arg1, arg2, lemmas.mkString(" "), pat) ::: slots).mkString("\t"))
+        val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
+        val graph = new DependencyGraph(line, dependencies).collapseNounGroups.collapseNNPOf
+
+        val patterns = findPatternsForLDA(lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, graph)
+        for (pattern <- patterns) {
+          val (pat, slots) = pattern
+          if (slots.length == 0) {
+            lock.synchronized {
+              println((List(rel, arg1, arg2, lemmas.mkString(" "), pat) ::: slots).mkString("\t"))
+            }
+          }
         }
       }
     }
