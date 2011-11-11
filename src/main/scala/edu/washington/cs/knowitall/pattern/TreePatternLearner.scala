@@ -1,5 +1,4 @@
 package edu.washington.cs.knowitall
-package parse
 package pattern
 
 import java.io.File
@@ -48,7 +47,7 @@ object TreePatternLearner {
         val tokens = tokenizer.tokenize(line)
         val sentenceLemmas = tokens.map(tok => MorphaStemmer.instance.stem(tok))
         val nodes = sentenceLemmas.zipWithIndex.map { case (lemma, index) => new DependencyNode(lemma, lemma, index) }
-        val dependencies = parser.dependencies(tokens.mkString(" ")).map(dep => dep.normalize(MorphaStemmer.instance))
+        val dependencies = parser.dependencies(tokens.mkString(" ")).map(dep => dep.lemmatize(MorphaStemmer.instance))
         if (lemmas forall { l => sentenceLemmas.contains(l) }) {
           val graph = new DependencyGraph(line, dependencies).collapseNounGroups.collapseNNPOf
           val patterns = findPattern(lemmas, Map(arg1.mkString(" ") -> "arg1", arg2.mkString(" ") -> "arg2"), graph)
@@ -87,15 +86,15 @@ object TreePatternLearner {
       }
     }
     
-    val allNodes = lemmas.flatMap(
-        lemma => {
-          // find all exact matches
-          val exacts = graph.vertices.filter(node => node.text == lemma)
-          
-          // or one partial match
-          if (exacts.isEmpty) graph.vertices.find(node => node.text.contains(lemma)) map { List(_) } getOrElse List.empty
-          else exacts
-        })
+    val allNodes = lemmas.flatMap { lemma =>
+      // find all exact matches
+      val exacts = graph.vertices.filter(node => node.text == lemma)
+      
+      // or one partial match
+      if (exacts.isEmpty) graph.vertices.find(node => node.text.contains(lemma)) map { List(_) } getOrElse List.empty
+      else exacts
+    }
+    
     combinations(allNodes).flatMap{ nodes =>
       val paths = graph.edgeBipaths(nodes)
     
@@ -110,13 +109,15 @@ object TreePatternLearner {
 
     // find paths containing lemma
     val bipaths = findBipath(lemmas, graph)
-      // make sure each path contains exactly one of each 
-      // of the replacement targets
+    
+    // make sure each path contains exactly one of each 
+    // of the replacement targets
+    val filtered = bipaths
       .filter(bip => 
         replacements.keys.forall (key => 
           bip.nodes.count(node => node.text.contains(key)) == 1))
-      
-    bipaths.map { bip =>
+          
+    filtered.map { bip =>
       // get the indices where we need to make a replacement
       // and pair them with the replacement itself
       val rep = replacements.map { case (target, replacement) => 
@@ -134,13 +135,15 @@ object TreePatternLearner {
   def findPatternsForLDA(lemmas: Set[String], replacements: Map[String, String], rel: String, graph: DependencyGraph) = {
     // arg1 comes before other replacements
     val patterns = findPattern(lemmas, replacements, graph)
-      .filter(_
+        
+    val filtered = patterns.filter(_
         .matchers.find(_
           .isInstanceOf[CaptureNodeMatcher]).map(_
           .asInstanceOf[CaptureNodeMatcher].alias == "arg1").getOrElse(false)).toList
-
+          
+          
     // find the best part to replace with rel
-    patterns.map { pattern => 
+    filtered.map { pattern => 
       val relindex = pattern.matchers.indexWhere (_ match {
         case nm: DefaultNodeMatcher => rel.contains(nm.label)
         case _ => false
@@ -184,7 +187,7 @@ object BuildTreePatterns {
       val Array(arg1, rel, arg2, lemmaString, deps) = line.split("\t")
       val lemmas = lemmaString.split("\\s+").toSet
       
-      val dependencies = Dependencies.deserialize(deps).map(_.normalize(MorphaStemmer.instance))
+      val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
       val graph = new DependencyGraph(line, dependencies).collapseNounGroups.collapseNNPOf
       
       val patterns = findPatternsForLDA(lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, graph)

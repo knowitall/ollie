@@ -1,176 +1,188 @@
 <?xml version="1.0"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-<modelVersion>4.0.0</modelVersion>
-<artifactId>pattern</artifactId>
-<name>pattern</name>
-<version>1.0.0-SNAPSHOT</version>
-<parent>
-  <groupId>edu.washington.cs.knowitall</groupId>
-  <artifactId>knowitall</artifactId>
-  <version>1.1.3-SNAPSHOT</version>
-</parent>
-<properties>
-  <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-</properties>
-<repositories>
-  <repository>
-    <id>knowitall-public</id>
-    <url>http://knowitall.cs.washington.edu/maven2</url>
-  </repository>
-  <repository>
-    <id>knowitall-snapshot</id>
-    <url>http://knowitall.cs.washington.edu/maven2-snapshot</url>
-  </repository>
-</repositories>
-<pluginRepositories>
-  <pluginRepository>
-    <id>scala-tools.org</id>
-    <name>Scala-tools Maven2 Repository</name>
-    <url>http://scala-tools.org/repo-releases</url>
-  </pluginRepository>
-</pluginRepositories>
-<dependencies>
-  <dependency>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <artifactId>pattern</artifactId>
+  <name>pattern</name>
+  <version>1.0.0-SNAPSHOT</version>
+  <parent>
     <groupId>edu.washington.cs.knowitall</groupId>
-    <artifactId>nlptools</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-  </dependency>
-  <dependency>
-    <groupId>edu.washington.cs.knowitall</groupId>
-    <artifactId>nlp</artifactId>
+    <artifactId>knowitall</artifactId>
     <version>1.1.3-SNAPSHOT</version>
-  </dependency>
-  <dependency>
-    <groupId>cc.factorie</groupId>
-    <artifactId>factorie</artifactId>
-    <version>0.10.1-SNAPSHOT</version>
-  </dependency>
-  <dependency>
-    <groupId>edu.washington.cs.knowitall</groupId>
-    <artifactId>scommonlib</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-  </dependency>
-  <dependency>
-    <groupId>edu.washington.cs.knowitall</groupId>
-    <artifactId>scommonlib</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-  </dependency>
-  <!-- Logging -->
-  <dependency>
-    <groupId>org.slf4j</groupId>
-    <artifactId>slf4j-api</artifactId>
-  </dependency>
-  <dependency>
-    <groupId>org.slf4j</groupId>
-    <artifactId>slf4j-log4j12</artifactId>
-  </dependency>
-  <dependency>
-    <groupId>log4j</groupId>
-    <artifactId>log4j</artifactId>
-  </dependency>
-</dependencies>
-<build>
-  <plugins>
-    <plugin>
-      <groupId>org.scala-tools</groupId>
-      <artifactId>maven-scala-plugin</artifactId>
-      <executions>
-        <execution>
-          <goals>
-            <goal>compile</goal>
-            <goal>testCompile</goal>
-          </goals>
-        </execution>
-      </executions>
-      <configuration>
-        <args>
-          <arg>-deprecation</arg>
-        </args>
-        <jvmArgs>
-          <jvmArg>-Xms128m</jvmArg>
-          <jvmArg>-Xmx1024m</jvmArg>
-        </jvmArgs>
-      </configuration>
-</plugin>
+  </parent>
+  <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <repositories>
+    <repository>
+      <id>knowitall-public</id>
+      <url>http://knowitall.cs.washington.edu/maven2</url>
+    </repository>
+    <repository>
+      <id>knowitall-snapshot</id>
+      <url>http://knowitall.cs.washington.edu/maven2-snapshot</url>
+    </repository>
+  </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>scala-tools.org</id>
+      <name>Scala-tools Maven2 Repository</name>
+      <url>http://scala-tools.org/repo-releases</url>
+    </pluginRepository>
+  </pluginRepositories>
+  <dependencies>
+    <dependency>
+      <groupId>edu.washington.cs.knowitall</groupId>
+      <artifactId>nlptools</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>edu.washington.cs.knowitall</groupId>
+      <artifactId>nlp</artifactId>
+      <version>1.1.3-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>cc.factorie</groupId>
+      <artifactId>factorie</artifactId>
+      <version>0.10.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>edu.washington.cs.knowitall</groupId>
+      <artifactId>scommonlib</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>edu.washington.cs.knowitall</groupId>
+      <artifactId>scommonlib</artifactId>
+      <version>1.0.0-SNAPSHOT</version>
+    </dependency>
+    <!-- Logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-log4j12</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>log4j</groupId>
+      <artifactId>log4j</artifactId>
+    </dependency>
+    <!-- Test -->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.10</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.scala-tools.testing</groupId>
+      <artifactId>specs_2.9.1</artifactId>
+      <version>1.6.9</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.scala-tools</groupId>
+        <artifactId>maven-scala-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>testCompile</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <args>
+            <arg>-deprecation</arg>
+          </args>
+          <jvmArgs>
+            <jvmArg>-Xms128m</jvmArg>
+            <jvmArg>-Xmx1024m</jvmArg>
+          </jvmArgs>
+        </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>add-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/main/scala</source>
+              </sources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>add-test-source</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>add-test-source</goal>
+            </goals>
+            <configuration>
+              <sources>
+                <source>src/test/scala</source>
+              </sources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+    <pluginManagement>
+      <plugins>
+        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
         <plugin>
-            <groupId>org.codehaus.mojo</groupId>
-            <artifactId>build-helper-maven-plugin</artifactId>
-            <executions>
-                <execution>
-                    <id>add-source</id>
-                    <phase>generate-sources</phase>
-                    <goals>
-                        <goal>add-source</goal>
-                    </goals>
-                    <configuration>
-                        <sources>
-                            <source>src/main/scala</source>
-                        </sources>
-                    </configuration>
-                </execution>
-                <execution>
-                    <id>add-test-source</id>
-                    <phase>generate-sources</phase>
-                    <goals>
-                        <goal>add-test-source</goal>
-                    </goals>
-                    <configuration>
-                        <sources>
-                            <source>src/test/scala</source>
-                        </sources>
-                    </configuration>
-                </execution>
-            </executions>
-        </plugin>
-  </plugins>
-  <pluginManagement>
-  	<plugins>
-  		<!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-  		<plugin>
-  			<groupId>org.eclipse.m2e</groupId>
-  			<artifactId>lifecycle-mapping</artifactId>
-  			<version>1.0.0</version>
-  			<configuration>
-  				<lifecycleMappingMetadata>
-  					<pluginExecutions>
-  						<pluginExecution>
-  							<pluginExecutionFilter>
-  								<groupId>org.scala-tools</groupId>
-  								<artifactId>
+          <groupId>org.eclipse.m2e</groupId>
+          <artifactId>lifecycle-mapping</artifactId>
+          <version>1.0.0</version>
+          <configuration>
+            <lifecycleMappingMetadata>
+              <pluginExecutions>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.scala-tools</groupId>
+                    <artifactId>
   									maven-scala-plugin
   								</artifactId>
-  								<versionRange>[2.15.2,)</versionRange>
-  								<goals>
-  									<goal>testCompile</goal>
-  									<goal>compile</goal>
-  								</goals>
-  							</pluginExecutionFilter>
-  							<action>
-  								<ignore></ignore>
-  							</action>
-  						</pluginExecution>
-  						<pluginExecution>
-  							<pluginExecutionFilter>
-  								<groupId>org.codehaus.mojo</groupId>
-  								<artifactId>
+                    <versionRange>[2.15.2,)</versionRange>
+                    <goals>
+                      <goal>testCompile</goal>
+                      <goal>compile</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <ignore/>
+                  </action>
+                </pluginExecution>
+                <pluginExecution>
+                  <pluginExecutionFilter>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>
   									build-helper-maven-plugin
   								</artifactId>
-  								<versionRange>[1.5,)</versionRange>
-  								<goals>
-  									<goal>add-source</goal>
-  									<goal>add-test-source</goal>
-  								</goals>
-  							</pluginExecutionFilter>
-  							<action>
-  								<ignore></ignore>
-  							</action>
-  						</pluginExecution>
-  					</pluginExecutions>
-  				</lifecycleMappingMetadata>
-  			</configuration>
-  		</plugin>
-  	</plugins>
-  </pluginManagement>
-</build>
+                    <versionRange>[1.5,)</versionRange>
+                    <goals>
+                      <goal>add-source</goal>
+                      <goal>add-test-source</goal>
+                    </goals>
+                  </pluginExecutionFilter>
+                  <action>
+                    <ignore/>
+                  </action>
+                </pluginExecution>
+              </pluginExecutions>
+            </lifecycleMappingMetadata>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
 </project>
