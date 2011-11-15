@@ -46,7 +46,7 @@ object PatternExtractor {
     if (parser.parse(args)) {
       val patternSource = Source.fromFile(parser.patternFilePath)
       val patterns = try {
-        patternSource.getLines.map(Pattern.deserialize(_)).toList
+        patternSource.getLines.map(DependencyPattern.deserialize(_)).toList
       } finally {
         patternSource.close
       }
@@ -57,13 +57,13 @@ object PatternExtractor {
           val Array(text, deps) = line.split("\t")
           for (p <- patterns) {
             val graph = new DependencyGraph(text, Dependencies.deserialize(deps)).collapseNounGroups.collapseNNPOf
-            val matches = p(graph)
+            val matches = p(graph.graph)
             val extractions = matches.map { m => 
               val extr = toExtraction(m.groups) 
               (scoreExtraction(extr), extr)
             }
             for ((score, extr) <- extractions) {
-              System.out.println(score+"\t"+extr+"\t"+p+"\t"+text)
+              System.out.println(score+"\t"+extr+"\t"+p+"\t"+text+"\t"+deps)
             }
           }
         }

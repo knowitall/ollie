@@ -16,7 +16,7 @@ import util.DefaultObjects
 
 object TreePatternLearner {
   def main(args: Array[String]) {
-    def toString(pattern: Pattern, arg1: String, arg2: String) = {
+    def toString(pattern: Pattern[DependencyNode], arg1: String, arg2: String) = {
       pattern.toString
     }
 
@@ -52,8 +52,8 @@ object TreePatternLearner {
           val graph = new DependencyGraph(line, dependencies).collapseNounGroups.collapseNNPOf
           val patterns = findPattern(lemmas, Map(arg1.mkString(" ") -> "arg1", arg2.mkString(" ") -> "arg2"), graph)
             .filter(_.matchers.find(_
-              .isInstanceOf[CaptureNodeMatcher]).map(_
-              .asInstanceOf[CaptureNodeMatcher].alias == "arg1").getOrElse(false))
+              .isInstanceOf[CaptureNodeMatcher[DependencyNode]]).map(_
+              .asInstanceOf[CaptureNodeMatcher[DependencyNode]].alias == "arg1").getOrElse(false))
           for (pattern <- patterns) {
             map.addBinding(toString(pattern, arg1.mkString(" "), arg2.mkString(" ")), line)
           }
@@ -87,18 +87,19 @@ object TreePatternLearner {
 
     val allNodes = lemmas.flatMap { lemma =>
       // find all exact matches
-      val exacts = graph.vertices.filter(node => node.text == lemma)
+      val exacts = graph.graph.vertices.filter(node => node.text == lemma)
 
       // or one partial match
-      if (exacts.isEmpty) graph.vertices.find(node => node.text.contains(lemma)) map { List(_) } getOrElse List.empty
+      if (exacts.isEmpty) graph.graph.vertices.find(node => node.text.contains(lemma)) map { List(_) } getOrElse List.empty
       else exacts
     }
 
     combinations(allNodes).flatMap { nodes =>
-      val paths = graph.edgeBipaths(nodes)
+      val paths = graph.graph.edgeBipaths(nodes)
 
       // restrict to paths that go up and then down
-      paths.filter(bipath => bipath.path.length > 0 && bipath.path.dropWhile(_.isInstanceOf[UpEdge]).dropWhile(_.isInstanceOf[DownEdge]).isEmpty)
+      paths.filter(bipath => bipath.path.length > 0 && 
+          bipath.path.dropWhile(_.isInstanceOf[UpEdge[DependencyNode]]).dropWhile(_.isInstanceOf[DownEdge[DependencyNode]]).isEmpty)
     }
   }
 
@@ -122,11 +123,11 @@ object TreePatternLearner {
       val rep = replacements.map {
         case (target, replacement) =>
           val index = 2 * bip.nodes.indexWhere(_.text.contains(target))
-          (index, new CaptureNodeMatcher(replacement))
+          (index, new CaptureNodeMatcher[DependencyNode](replacement))
       }
 
       // make the replacements
-      rep.foldRight(new Pattern(bip)) {
+      rep.foldRight(DependencyPattern.create(bip)) {
         case (rep, pat) =>
           pat.replaceMatcherAt(rep._1, rep._2)
       }
@@ -139,23 +140,23 @@ object TreePatternLearner {
 
     val filtered = patterns.filter(_
       .matchers.find(_
-        .isInstanceOf[CaptureNodeMatcher]).map(_
-        .asInstanceOf[CaptureNodeMatcher].alias == "arg1").getOrElse(false)).toList
+        .isInstanceOf[CaptureNodeMatcher[DependencyNode]]).map(_
+        .asInstanceOf[CaptureNodeMatcher[DependencyNode]].alias == "arg1").getOrElse(false)).toList
 
     // find the best part to replace with rel
     filtered.map { pattern =>
       val relindex = pattern.matchers.indexWhere(_ match {
-        case nm: DefaultNodeMatcher => rel.contains(nm.label)
+        case nm: DependencyNodeMatcher => rel.contains(nm.label)
         case _ => false
       })
 
       // replace rel
-      val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher("rel"))
+      val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher[DependencyNode]("rel"))
 
-      // find all DefaultNodeMatchers.  These are the slots.
+      // find all DependencyNodeMatchers.  These are the slots.
       val slots = p.matchers.zipWithIndex flatMap {
         case (nm, index) => nm match {
-          case nm: DefaultNodeMatcher => List((nm.label, index))
+          case nm: DependencyNodeMatcher => List((nm.label, index))
           case _ => List.empty
         }
       }
