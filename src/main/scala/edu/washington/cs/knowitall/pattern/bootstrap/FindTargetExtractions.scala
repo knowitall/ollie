@@ -20,7 +20,7 @@ object FindTargetExtractions {
   }
 
   def negated(lemmas: Array[String]) =
-    !lemmas.contains("not") && !lemmas.contains("no") && !lemmas.contains("n't") && !lemmas.contains("never")
+    lemmas.contains("not") || lemmas.contains("no") || lemmas.contains("n't") || lemmas.contains("never")
 
   def main(args: Array[String]) {
     def stripPostag(target: String, part: Seq[(String, String, String)]) = {
@@ -65,21 +65,6 @@ object FindTargetExtractions {
       }
       catch {
         case e => e.printStackTrace
-      }
-    }
-  }
-}
-
-object FixNormalizedRelations {
-  import FindTargetExtractions._
-  def main(args: Array[String]) {
-    for (line <- Source.stdin.getLines) {
-      val Array(arg1, rel, arg2, arg1postag, relpostag, arg2postag, arg1lemma, rellemma, arg2lemma, count) = line.split("\t")
-      val rs =  new RelationString(rel, rellemma, relpostag)
-      rs.correctNormalization
-
-      if (!negated(rellemma.split(" "))) {
-        println(rs.getNormPred + "\t" + line)
       }
     }
   }
