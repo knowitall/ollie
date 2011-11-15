@@ -177,7 +177,7 @@ object TreePatternLearner {
 object BuildTreePatterns {
   import TreePatternLearner._
 
-  val CHUNK_SIZE = 10000
+  val CHUNK_SIZE = 100000
 
   def main(args: Array[String]) {
     // file with dependencies
@@ -188,7 +188,7 @@ object BuildTreePatterns {
     for (lines <- source.getLines.grouped(CHUNK_SIZE)) {
       val lock: AnyRef = new Object()
       lines.par.foreach { line =>
-        val Array(arg1, rel, arg2, lemmaString, deps) = line.split("\t")
+        val Array(arg1, rel, arg2, lemmaString, text, deps) = line.split("\t")
         val lemmas = lemmaString.split("\\s+").toSet
 
         val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
@@ -199,7 +199,7 @@ object BuildTreePatterns {
           val (pat, slots) = pattern
           if (slots.length == 0) {
             lock.synchronized {
-              println((List(rel, arg1, arg2, lemmas.mkString(" "), pat) ::: slots).mkString("\t"))
+              println((List(rel, arg1, arg2, lemmas.mkString(" "), pat, text, deps) ::: slots).mkString("\t"))
             }
           }
         }
