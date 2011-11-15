@@ -19,6 +19,9 @@ object FindTargetExtractions {
     zip3$(l1, l2, l3, List[(String,String,String)]())
   }
 
+  def negated(lemmas: Array[String]) =
+    !lemmas.contains("not") && !lemmas.contains("no") && !lemmas.contains("n't") && !lemmas.contains("never")
+
   def main(args: Array[String]) {
     def stripPostag(target: String, part: Seq[(String, String, String)]) = {
       part.filter { case (pos, tok, lem) => !pos.matches(target) }
@@ -54,7 +57,7 @@ object FindTargetExtractions {
           targets.contains(normalizedRelationString) &&
           arg1Postag.split("\\s+").forall(proper.contains(_)) && 
           arg2Postag.split("\\s+").forall(proper.contains(_)) &&
-          !relationLemma.contains(" not ") && !relationLemma.contains(" no ") && !relationLemma.contains("n't")) {
+          !negated(relationLemma.split(" "))) {
           for (i <- 0 until count.toInt) {
             System.out.println(Iterable(normalizedRelationString, arg1cleanLemma.mkString(" "), arg2cleanLemma.mkString(" "), (arg1cleanLemma ++ relcleanLemma ++ arg2cleanLemma).mkString(" "), arg1String, relationString, arg2String, arg1Postag, relationPostag, arg2Postag).mkString("\t"))
           }
@@ -68,11 +71,16 @@ object FindTargetExtractions {
 }
 
 object FixNormalizedRelations {
+  import FindTargetExtractions._
   def main(args: Array[String]) {
     for (line <- Source.stdin.getLines) {
       val Array(arg1, rel, arg2, arg1postag, relpostag, arg2postag, arg1lemma, rellemma, arg2lemma, count) = line.split("\t")
       val rs =  new RelationString(rel, rellemma, relpostag)
       rs.correctNormalization
+
+      if (!negated(rellemma.split(" "))) {
+        println(rs.getNormPred + "\t" + line)
+      }
     }
   }
 }
