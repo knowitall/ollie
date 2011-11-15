@@ -65,3 +65,13 @@ object FindTargetExtractions {
     }
   }
 }
+
+object FixNormalizedRelations {
+  def main(args: Array[String]) {
+    for (line <- Source.stdin.getLines) {
+      val Array(arg1, rel, arg2, arg1postag, relpostag, arg2postag, arg1lemma, rellemma, arg2lemma, count) = line.split("\t")
+      val rs =  new RelationString(rel, rellemma, relpostag)
+      rs.correctNormalization
+    }
+  }
+}
