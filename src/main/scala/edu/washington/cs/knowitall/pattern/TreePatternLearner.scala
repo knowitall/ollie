@@ -52,8 +52,8 @@ object TreePatternLearner {
           val graph = new DependencyGraph(line, dependencies).collapseNounGroups.collapseNNPOf
           val patterns = findPattern(lemmas, Map(arg1.mkString(" ") -> "arg1", arg2.mkString(" ") -> "arg2"), graph)
             .filter(_.matchers.find(_
-              .isInstanceOf[CaptureNodeMatcher[DependencyNode]]).map(_
-              .asInstanceOf[CaptureNodeMatcher[DependencyNode]].alias == "arg1").getOrElse(false))
+              .isInstanceOf[CaptureNodeMatcher[_]]).map(_
+              .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false))
           for (pattern <- patterns) {
             map.addBinding(toString(pattern, arg1.mkString(" "), arg2.mkString(" ")), line)
           }
@@ -99,7 +99,7 @@ object TreePatternLearner {
 
       // restrict to paths that go up and then down
       paths.filter(bipath => bipath.path.length > 0 && 
-          bipath.path.dropWhile(_.isInstanceOf[UpEdge[DependencyNode]]).dropWhile(_.isInstanceOf[DownEdge[DependencyNode]]).isEmpty)
+          bipath.path.dropWhile(_.isInstanceOf[UpEdge[_]]).dropWhile(_.isInstanceOf[DownEdge[_]]).isEmpty)
     }
   }
 
@@ -140,8 +140,8 @@ object TreePatternLearner {
 
     val filtered = patterns.filter(_
       .matchers.find(_
-        .isInstanceOf[CaptureNodeMatcher[DependencyNode]]).map(_
-        .asInstanceOf[CaptureNodeMatcher[DependencyNode]].alias == "arg1").getOrElse(false)).toList
+        .isInstanceOf[CaptureNodeMatcher[_]]).map(_
+        .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false)).toList
 
     // find the best part to replace with rel
     filtered.map { pattern =>
