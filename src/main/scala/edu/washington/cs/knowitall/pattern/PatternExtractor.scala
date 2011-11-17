@@ -6,25 +6,41 @@ import scopt.OptionParser
 import tool.parse.graph._
 import tool.parse.pattern._
 
+class Extraction(
+    val arg1: DependencyNode, 
+    val rel: DependencyNode, 
+    val arg2: DependencyNode) {
+  override def toString() =
+    Iterable(arg1, rel, arg2).mkString("(", ", ", ")")
+}
+
 object PatternExtractor {
-  def toExtraction(groups: collection.Map[String, DependencyNode]): (DependencyNode, DependencyNode, DependencyNode) = {
+  def toExtraction(graph: DependencyGraph, groups: collection.Map[String, DependencyNode]): Extraction = {
+	def buildArgument(node: DependencyNode) = {
+	  def cond(e: Edge[DependencyNode]) = 
+	    e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "CD"
+	  val inferiors = graph.graph.inferiors(node, cond).map(_.index)
+	  // use the original dependencies nodes in case some information
+	  // was lost.  For example, of is collapsed into the edge prep_of
+	  val string = graph.nodes.get.slice(inferiors.min, inferiors.max+1).map(_.text).mkString(" ")
+	  new DependencyNode(string, node.pos, node.index)
+	}
+	
     val rel = groups.find { case (s, dn) => s.equals("rel") }
     val arg1 = groups.find { case (s, dn) => s.equals("arg1") }
     val arg2 = groups.find { case (s, dn) => s.equals("arg2") }
     
     (rel, arg1, arg2) match {
-      case (Some((_,rel)), Some((_,arg1)), Some((_,arg2))) => (arg1, rel, arg2)
+      case (Some((_,rel)), Some((_,arg1)), Some((_,arg2))) => 
+        new Extraction(buildArgument(arg1), rel, buildArgument(arg2))
       case _ => throw new IllegalArgumentException("missing group, expected {rel, arg1, arg2}: " + groups)
     }
   }
 
-  def scoreExtraction(extr: (DependencyNode, DependencyNode, DependencyNode)): Int = {
+  def scoreExtraction(extr: Extraction): Int = {
     // helper methods
     def isProper(node: DependencyNode) = node.pos.equals("NNP") || node.pos.equals("NNPS")
     def isPrep(node: DependencyNode) = node.pos.equals("PRP") || node.pos.equals("PRPS")
-
-    val arg1 = extr._1
-    val arg2 = extr._3
 
     // pimped boolean
     class toInt(b: Boolean) {
@@ -32,7 +48,7 @@ object PatternExtractor {
     }
     implicit def convertBooleanToInt(b: Boolean) = new toInt(b)
 
-    2 + isProper(arg1).toInt + isProper(arg2).toInt + -isPrep(arg1).toInt + -isPrep(arg2).toInt
+    2 + isProper(extr.arg1).toInt + isProper(extr.arg2).toInt + -isPrep(extr.arg1).toInt + -isPrep(extr.arg2).toInt
   }
   
   def main(args: Array[String]) {
@@ -56,10 +72,12 @@ object PatternExtractor {
         for (line <- sentenceSource.getLines) {
           val Array(text, deps) = line.split("\t")
           for (p <- patterns) {
-            val graph = new DependencyGraph(text, Dependencies.deserialize(deps)).collapseNounGroups.collapseNNPOf
-            val matches = p(graph.graph)
+            val dependencies = Dependencies.deserialize(deps)
+            val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
+            val dgraph = new DependencyGraph(text, nodes.toArray, dependencies).collapseNounGroups.collapseNNPOf
+            val matches = p(dgraph.graph)
             val extractions = matches.map { m => 
-              val extr = toExtraction(m.groups) 
+              val extr = toExtraction(dgraph, m.groups) 
               (scoreExtraction(extr), extr)
             }
             for ((score, extr) <- extractions) {
