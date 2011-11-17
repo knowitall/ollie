@@ -189,7 +189,7 @@ object BuildTreePatterns {
     for (lines <- source.getLines.grouped(CHUNK_SIZE)) {
       val lock: AnyRef = new Object()
       lines.par.foreach { line =>
-        val Array(arg1, rel, arg2, lemmaString, text, deps) = line.split("\t")
+        val Array(arg1, rel, arg2, lemmaString, text, _/*lemmas*/, _/*postags*/, _/*chunks*/, deps) = line.split("\t")
         val lemmas = lemmaString.split("\\s+").toSet
 
         val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
