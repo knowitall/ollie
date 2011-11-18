@@ -114,7 +114,7 @@ object TreePatternLearner {
     // of the replacement targets
     val filtered = bipaths
       .filter(bip =>
-        replacements.keys.forall(key =>
+        replacements.keys.forall(key => 
           bip.nodes.count(node => node.text.contains(key)) == 1))
 
     filtered.map { bip =>
@@ -189,12 +189,14 @@ object BuildTreePatterns {
     for (lines <- source.getLines.grouped(CHUNK_SIZE)) {
       val lock: AnyRef = new Object()
       lines.par.foreach { line =>
-        val Array(arg1, rel, arg2, lemmaString, text, _/*lemmas*/, _/*postags*/, _/*chunks*/, deps) = line.split("\t")
-        val lemmas = lemmaString.split("\\s+").toSet
+        val Array(rel, arg1, arg2, lemmaString, text, _/*lemmas*/, _/*postags*/, _/*chunks*/, deps) = line.split("\t")
+        val lemmasArray = lemmaString.split("\\s+")
+        val lemmas = lemmasArray.toSet
 
         val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
         val graph = new DependencyGraph(dependencies).collapseNounGroups.collapseNNPOf
 
+        val bareRel = (lemmasArray intersect rel.split(" ")).mkString(" ")
         val patterns = findPatternsForLDA(lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, graph)
         for (pattern <- patterns) {
           val (pat, slots) = pattern
