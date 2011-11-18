@@ -23,7 +23,7 @@ object PatternExtractor {
 	  // use the original dependencies nodes in case some information
 	  // was lost.  For example, of is collapsed into the edge prep_of
 	  val string = graph.nodes.get.slice(inferiors.min, inferiors.max+1).map(_.text).mkString(" ")
-	  new DependencyNode(string, node.pos, node.index)
+	  new DependencyNode(string, node.postag, node.index)
 	}
 	
     val rel = groups.find { case (s, dn) => s.equals("rel") }
@@ -39,8 +39,8 @@ object PatternExtractor {
 
   def scoreExtraction(extr: Extraction): Int = {
     // helper methods
-    def isProper(node: DependencyNode) = node.pos.equals("NNP") || node.pos.equals("NNPS")
-    def isPrep(node: DependencyNode) = node.pos.equals("PRP") || node.pos.equals("PRPS")
+    def isProper(node: DependencyNode) = node.postag.equals("NNP") || node.postag.equals("NNPS")
+    def isPrep(node: DependencyNode) = node.postag.equals("PRP") || node.postag.equals("PRPS")
 
     // pimped boolean
     class toInt(b: Boolean) {
