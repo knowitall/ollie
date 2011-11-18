@@ -199,9 +199,7 @@ object BuildTreePatterns {
         for (pattern <- patterns) {
           val (pat, slots) = pattern
           if (slots.length == 0) {
-            lock.synchronized {
-              println((List(rel, arg1, arg2, lemmas.mkString(" "), pat, text, deps) ::: slots).mkString("\t"))
-            }
+            println((List(rel, arg1, arg2, lemmas.mkString(" "), pat, text, deps) ::: slots).mkString("\t"))
           }
         }
       }
