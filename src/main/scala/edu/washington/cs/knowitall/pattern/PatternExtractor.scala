@@ -17,12 +17,12 @@ class Extraction(
 object PatternExtractor {
   def toExtraction(graph: DependencyGraph, groups: collection.Map[String, DependencyNode]): Extraction = {
 	def buildArgument(node: DependencyNode) = {
-	  def cond(e: Edge[DependencyNode]) = 
+	  def cond(e: Graph.Edge[DependencyNode]) = 
 	    e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "CD"
 	  val inferiors = graph.graph.inferiors(node, cond).map(_.index)
 	  // use the original dependencies nodes in case some information
 	  // was lost.  For example, of is collapsed into the edge prep_of
-	  val string = graph.nodes.get.slice(inferiors.min, inferiors.max+1).map(_.text).mkString(" ")
+	  val string = graph.nodes.slice(inferiors.min, inferiors.max+1).map(_.text).mkString(" ")
 	  new DependencyNode(string, node.postag, node.index)
 	}
 	
@@ -36,6 +36,11 @@ object PatternExtractor {
       case _ => throw new IllegalArgumentException("missing group, expected {rel, arg1, arg2}: " + groups)
     }
   }
+  
+  def validMatch(graph: Graph[DependencyNode])(m: Match[DependencyNode]) =
+    !m.bipath.nodes.exists { v =>
+      graph.edges(v).exists(_.label == "neg")
+    }
 
   def scoreExtraction(extr: Extraction): Int = {
     // helper methods
@@ -49,6 +54,14 @@ object PatternExtractor {
     implicit def convertBooleanToInt(b: Boolean) = new toInt(b)
 
     2 + isProper(extr.arg1).toInt + isProper(extr.arg2).toInt + -isPrep(extr.arg1).toInt + -isPrep(extr.arg2).toInt
+  }
+
+  def extract(dgraph: DependencyGraph, pattern: Pattern[DependencyNode]) = {
+    val matches = pattern(dgraph.graph).filter(validMatch(dgraph.graph))
+    matches.map { m =>
+      val extr = toExtraction(dgraph, m.groups)
+      (scoreExtraction(extr), extr)
+    }
   }
   
   def main(args: Array[String]) {
@@ -75,12 +88,7 @@ object PatternExtractor {
             val dependencies = Dependencies.deserialize(deps)
             val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
             val dgraph = new DependencyGraph(text, nodes.toArray, dependencies).collapseNounGroups.collapseNNPOf
-            val matches = p(dgraph.graph)
-            val extractions = matches.map { m => 
-              val extr = toExtraction(dgraph, m.groups) 
-              (scoreExtraction(extr), extr)
-            }
-            for ((score, extr) <- extractions) {
+            for ((score, extr) <- extract(dgraph, p)) {
               System.out.println(score+"\t"+extr+"\t"+p+"\t"+text+"\t"+deps)
             }
           }
