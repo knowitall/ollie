@@ -84,11 +84,11 @@ object PatternExtractor {
       try {
         for (line <- sentenceSource.getLines) {
           val Array(text, deps) = line.split("\t")
-	      val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
+          val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
           
           for (p <- patterns) {
             val dependencies = Dependencies.deserialize(deps)
-            val dgraph = new DependencyGraph(text, nodes.toArray, dependencies).collapseNounGroups.collapseNNPOf
+            val dgraph = new DependencyGraph(text, nodes.toList, dependencies).collapseNounGroups.collapseNNPOf
             for ((score, extr) <- extract(dgraph, p)) {
               System.out.println(score+"\t"+extr+"\t"+p+"\t"+text+"\t"+deps)
             }
