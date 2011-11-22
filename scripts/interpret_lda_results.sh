@@ -1,4 +1,4 @@
-# $1 -- lda folder
+# $1 -- lda base folder
 STATS=$1/stats
 mkdir -p $STATS
 cd ..

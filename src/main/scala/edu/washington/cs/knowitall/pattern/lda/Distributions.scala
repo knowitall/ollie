@@ -293,47 +293,51 @@ object TestDistributions {
 }
 
 object Evaluate {
+  class ExampleException(message: String) extends Exception(message) {}
   def evaluate(dist: Distributions, examples: Source, output: PrintStream) = {
     def printResult(name: String, prob: Double, relation: Int, pattern: Int) {
       output.println(name + ": "+(" "*(5-name.size))+"%2f".format(prob)+"\t"+relation+"\t"+pattern+"\t"+dist.relationDecoding(relation)+"\t"+dist.patternDecoding(pattern))
     }
 
-    val random = new util.Random
-    for (i <- 0 until 10) {
-    }
+    val random = new java.util.Random
 
     var ldaGtRand = 0
     var baseGtRand = 0
     var total = 0
     for (line <- examples.getLines) {
-      val Array(relation, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
-      val randRelation = random.nextInt(dist.relationCount)
-      val randPattern = random.nextInt(dist.patternCount)
+      try {
+        val Array(relation, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
+        val randRelation = random.nextInt(dist.relationCount)
+        val randPattern = random.nextInt(dist.patternCount)
 
-      val r = dist.relationEncoding(relation)
-      val p = dist.patternEncoding(pattern)
+        val r = dist.relationEncoding(relation)
+        val p = dist.patternEncoding.getOrElse(pattern, throw new ExampleException("test set contains untrained pattern: " + pattern))
 
-      val lda = dist.prob(r)(p)
-      printResult("lda", lda, r, p)
-      // println("set:  "+"%2f".format(lda)+"\t"+relationEncoding(relation)+"\t"+patternEncoding(pattern)+"\t"+relation+"\t"+pattern)
+        val lda = dist.prob(r)(p)
+        printResult("lda", lda, r, p)
+        // println("set:  "+"%2f".format(lda)+"\t"+relationEncoding(relation)+"\t"+patternEncoding(pattern)+"\t"+relation+"\t"+pattern)
 
-      val base = dist.probBaseline(r)(p)
-      printResult("base", base, r, p)
-      //println("base: "+"%2f".format(base)+"\t"+relationEncoding(relation)+"\t"+patternEncoding(pattern)+"\t"+relation+"\t"+pattern)
+        val base = dist.probBaseline(r)(p)
+        printResult("base", base, r, p)
+        //println("base: "+"%2f".format(base)+"\t"+relationEncoding(relation)+"\t"+patternEncoding(pattern)+"\t"+relation+"\t"+pattern)
 
-      val randl = dist.prob(dist.relationEncoding(relation))(randPattern)
-      printResult("randl", randl, r, randPattern)
+        val randl = dist.prob(dist.relationEncoding(relation))(randPattern)
+        printResult("randl", randl, r, randPattern)
 
-      val randb = dist.probBaseline(dist.relationEncoding(relation))(randPattern)
-      printResult("randb", randb, r, randPattern)
+        val randb = dist.probBaseline(dist.relationEncoding(relation))(randPattern)
+        printResult("randb", randb, r, randPattern)
 
-      output.println("lda/randl:"+"%2f".format(lda / randl))
-      output.println("base/randb:"+"%2f".format(lda / randb))
-      output.println()
+        output.println("lda/randl:"+"%2f".format(lda / randl))
+        output.println("base/randb:"+"%2f".format(lda / randb))
+        output.println()
 
-      total += 1
-      if (lda > randl) ldaGtRand += 1
-      if (base > randb) baseGtRand += 1
+        total += 1
+        if (lda > randl) ldaGtRand += 1
+        if (base > randb) baseGtRand += 1
+      }
+      catch {
+        case e: ExampleException => System.err.println("error: " + e)
+      }
     }
 
     output.println("lda  > randl: " + ldaGtRand)
