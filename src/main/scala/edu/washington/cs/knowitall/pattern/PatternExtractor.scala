@@ -19,11 +19,11 @@ object PatternExtractor {
 	def buildArgument(node: DependencyNode) = {
 	  def cond(e: Graph.Edge[DependencyNode]) = 
 	    e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "CD"
-	  val inferiors = graph.graph.inferiors(node, cond).map(_.index)
+	  val inferiors = graph.graph.inferiors(node, cond).map(_.indices) reduce (_ ++ _)
 	  // use the original dependencies nodes in case some information
-	  // was lost.  For example, of is collapsed into the edge prep_of
-	  val string = graph.nodes.slice(inferiors.min, inferiors.max+1).map(_.text).mkString(" ")
-	  new DependencyNode(string, node.postag, node.index)
+	  // was lost.  Fo example, of is collapsed into the edge prep_of
+	  val string = graph.nodes.filter(node => node.indices.max >= inferiors.min && node.indices.max <= inferiors.max).map(_.text).mkString(" ")
+	  new DependencyNode(string, node.postag, node.indices)
 	}
 	
     val rel = groups.find { case (s, dn) => s.equals("rel") }
@@ -84,9 +84,10 @@ object PatternExtractor {
       try {
         for (line <- sentenceSource.getLines) {
           val Array(text, deps) = line.split("\t")
+	      val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
+          
           for (p <- patterns) {
             val dependencies = Dependencies.deserialize(deps)
-            val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
             val dgraph = new DependencyGraph(text, nodes.toArray, dependencies).collapseNounGroups.collapseNNPOf
             for ((score, extr) <- extract(dgraph, p)) {
               System.out.println(score+"\t"+extr+"\t"+p+"\t"+text+"\t"+deps)

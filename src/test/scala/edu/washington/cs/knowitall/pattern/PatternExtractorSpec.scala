@@ -27,5 +27,19 @@ object PatternExtractorSpec extends Specification {
     }
   }
   
+  def testStringRewrite {
+    val sentence = "Dr Rice for her part said the United States and European Union had agreed to 'recognise the territorial integrity of Georgia and recognise that Abkhazia and South Ossetia are within the internationally recognized boundaries of Georgia ' ."
+    val deps = Dependencies.deserialize("nn(Rice_NNP_1, Dr_NNP_0); nsubj(said_VBD_5, Rice_NNP_1); poss(part_NN_4, her_PRP$_3); prep_for(Rice_NNP_1, part_NN_4); det(States_NNPS_8, the_DT_6); nn(States_NNPS_8, United_NNP_7); nsubj(agreed_VBN_13, States_NNPS_8); nn(Union_NNP_11, European_NNP_10); conj_and(States_NNPS_8, Union_NNP_11); nsubj(agreed_VBN_13, Union_NNP_11); aux(agreed_VBN_13, had_VBD_12); ccomp(said_VBD_5, agreed_VBN_13); aux('recognise_VB_15, to_TO_14); xcomp(agreed_VBN_13, 'recognise_VB_15); det(integrity_NN_18, the_DT_16); amod(integrity_NN_18, territorial_JJ_17); dobj('recognise_VB_15, integrity_NN_18); prep_of(integrity_NN_18, Georgia_NNP_20); dobj('recognise_VB_15, recognise_NN_22); conj_and(integrity_NN_18, recognise_NN_22); complm(are_VBP_28, that_IN_23); nsubj(are_VBP_28, Abkhazia_NNP_24); nn(Ossetia_NNP_27, South_NNP_26); conj_and(Abkhazia_NNP_24, Ossetia_NNP_27); nsubj(are_VBP_28, Ossetia_NNP_27); dep(integrity_NN_18, are_VBP_28); det(boundaries_NNS_33, the_DT_30); advmod(recognized_VBN_32, internationally_RB_31); amod(boundaries_NNS_33, recognized_VBN_32); prep_within(are_VBP_28, boundaries_NNS_33); prep_of(boundaries_NNS_33, Georgia_NNP_35); punct(Georgia_NNP_35, '_''_36); punct(said_VBD_5, ._._37)")
+    val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >nsubj> {arg2}")
+    
+    "(European Union, agreed, the United States) is found because of an index rewrite" in {
+      val graph = new DependencyGraph(deps.map(_.lemmatize(MorphaStemmer.instance))).collapseNounGroups.collapseNNPOf
+      val extractions = PatternExtractor.extract(graph, pattern)
+      extractions.size must_== 4
+      extractions.map(_._2.toString) must contain("(european union, agree, the united states)")
+    }
+  }
+  
   testAvoidNeg
+  testStringRewrite
 }
