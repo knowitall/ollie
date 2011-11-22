@@ -15,6 +15,8 @@ import tool.parse.graph._
 import util.DefaultObjects
 
 object TreePatternLearner {
+  class NoRelationNodeException(message: String) extends NoSuchElementException(message)
+  
   def main(args: Array[String]) {
     def toString(pattern: Pattern[DependencyNode], arg1: String, arg2: String) = {
       pattern.toString
@@ -38,9 +40,6 @@ object TreePatternLearner {
 
     val tokenizer = DefaultObjects.getDefaultTokenizer
 
-    dest.println(lemmas.mkString(" "))
-    println(relation.mkString(", "))
-
     val map = new collection.mutable.HashMap[String, collection.mutable.Set[String]]() with collection.mutable.MultiMap[String, String]
     source.foreach { line =>
       if (line.length < 500) {
@@ -50,7 +49,7 @@ object TreePatternLearner {
         val dependencies = parser.dependencies(tokens.mkString(" ")).map(dep => dep.lemmatize(MorphaStemmer.instance))
         if (lemmas forall { l => sentenceLemmas.contains(l) }) {
           val graph = new DependencyGraph(dependencies).collapseNounGroups.collapseNNPOf
-          val patterns = findPattern(graph, lemmas, Map(arg1.mkString(" ") -> "arg1", arg2.mkString(" ") -> "arg2"), Some(2))
+          val patterns = findPattern(graph, lemmas, Map(arg1.mkString(" ") -> "arg1", arg2.mkString(" ") -> "arg2"), None)
             .filter(_.matchers.find(_
               .isInstanceOf[CaptureNodeMatcher[_]]).map(_
               .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false))
@@ -148,10 +147,17 @@ object TreePatternLearner {
 
     // find the best part to replace with rel
     filtered.map { pattern =>
-      val (relmatcher, relindex) = pattern.matchers.view.zipWithIndex.find(_._1 match {
-        case nm: DependencyNodeMatcher => !(rel intersect nm.label).isEmpty
-        case _ => false
-      }).get
+      println(relStrings.mkString("; "))
+      println(pattern)
+      val (relmatcher, relindex) = try {
+        pattern.matchers.view.zipWithIndex.find(_._1 match {
+          case nm: DependencyNodeMatcher => !(rel intersect nm.label).isEmpty
+          case _ => false
+        }).get
+      }
+      catch {
+        case e: NoSuchElementException => throw new NoRelationNodeException("No relation ("+rel+") in pattern: " + pattern)
+      }
 
       // replace rel
       val relmatcherPostag = relmatcher.asInstanceOf[DependencyNodeMatcher].postag
@@ -191,7 +197,7 @@ object BuildTreePatterns {
       else Source.stdin
     
     for (lines <- source.getLines.grouped(CHUNK_SIZE)) {
-      lines.par.foreach { line =>
+      lines.foreach { line =>
         val Array(rel, arg1, arg2, lemmaString, text, _/*lemmas*/, _/*postags*/, _/*chunks*/, deps) = line.split("\t")
         val lemmasArray = lemmaString.split("\\s+")
         val lemmas = lemmasArray.toSet
@@ -201,7 +207,7 @@ object BuildTreePatterns {
 
         val bareRel = (lemmasArray intersect rel.split(" ")).mkString(" ")
         try {
-          val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, Some(2))
+          val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, None)
           for (pattern <- patterns) {
             val (pat, slots) = pattern
             if (slots.length == 0) {
@@ -210,9 +216,33 @@ object BuildTreePatterns {
           }
         }
         catch {
-          case e => System.err.println(line); e.printStackTrace
+          case e: NoRelationNodeException => System.err.println(line); e.printStackTrace
         }
       }
     }
+    
+    source.close
+  }
+}
+
+object KeepCommonPatterns {
+  def main(args: Array[String]) {
+    val source = Source.fromFile(args(0))
+    val min = args(1).toInt
+      
+    val patterns = collection.mutable.HashMap[String, Int]().withDefaultValue(0)
+    for (line <- source.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _) = line.split("\t")
+      patterns += pattern -> (patterns(pattern) + 1)
+    }
+    
+    for (line <- source.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _) = line.split("\t")
+      if (patterns(pattern) >= min) {
+        println(line)
+      }
+    }
+      
+    source.close
   }
 }
