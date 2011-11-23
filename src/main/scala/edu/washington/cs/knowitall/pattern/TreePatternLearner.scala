@@ -147,8 +147,6 @@ object TreePatternLearner {
 
     // find the best part to replace with rel
     filtered.map { pattern =>
-      println(relStrings.mkString("; "))
-      println(pattern)
       val (relmatcher, relindex) = try {
         pattern.matchers.view.zipWithIndex.find(_._1 match {
           case nm: DependencyNodeMatcher => !(rel intersect nm.label.get).isEmpty
