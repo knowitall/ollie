@@ -151,7 +151,7 @@ object TreePatternLearner {
       println(pattern)
       val (relmatcher, relindex) = try {
         pattern.matchers.view.zipWithIndex.find(_._1 match {
-          case nm: DependencyNodeMatcher => !(rel intersect nm.label).isEmpty
+          case nm: DependencyNodeMatcher => !(rel intersect nm.label.get).isEmpty
           case _ => false
         }).get
       }

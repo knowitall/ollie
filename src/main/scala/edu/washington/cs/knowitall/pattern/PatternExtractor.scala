@@ -18,11 +18,12 @@ object PatternExtractor {
   def toExtraction(graph: DependencyGraph, groups: collection.Map[String, DependencyNode]): Extraction = {
 	def buildArgument(node: DependencyNode) = {
 	  def cond(e: Graph.Edge[DependencyNode]) = 
-	    e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "CD"
-	  val inferiors = graph.graph.inferiors(node, cond).map(_.indices) reduce (_ ++ _)
+	    e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn"
+	  val inferiors = graph.graph.inferiors(node, cond)
+	  val indices = inferiors.map(_.indices) reduce (_ ++ _)
 	  // use the original dependencies nodes in case some information
 	  // was lost.  Fo example, of is collapsed into the edge prep_of
-	  val string = graph.nodes.filter(node => node.indices.max >= inferiors.min && node.indices.max <= inferiors.max).map(_.text).mkString(" ")
+	  val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
 	  new DependencyNode(string, node.postag, node.indices)
 	}
 	
