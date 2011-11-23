@@ -159,7 +159,7 @@ object TreePatternLearner {
 
       // replace rel
       val relmatcherPostag = relmatcher.asInstanceOf[DependencyNodeMatcher].postag
-      val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher[DependencyNode]("rel:"+relmatcherPostag))
+      val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher[DependencyNode]("rel:"+relmatcherPostag.get))
 
       // find all DependencyNodeMatchers.  These are the slots.
       val slots = p.matchers.zipWithIndex flatMap {
