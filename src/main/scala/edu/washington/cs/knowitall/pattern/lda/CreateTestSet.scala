@@ -27,6 +27,9 @@ object CreateTestSet {
     println("opening output files")
     val testWriter = new PrintWriter(new File(testFilePath))
     val trainWriter = new PrintWriter(new File(trainFilePath))
+    println("building a test set of 100 random seed extractions.")
+    var testRows = 0
+    var trainRows = 0
     try {
       var extractions = Set[Extraction]()
 
@@ -44,15 +47,26 @@ object CreateTestSet {
 
         if (testExtractions.contains(extr)) {
           testWriter.println(line)
+          testRows += 1
         }
         else {
           trainWriter.println(line)
+          trainRows += 1
         }
+      }
+
+      println("10 random test seed extractions.")
+      for (seed <- extractions.take(10)) {
+        println("\t" + seed)
       }
     }
     finally {
       trainWriter.close
       testWriter.close
     }
+
+    println(testRows + " test rows")
+    println(trainRows + " test rows")
+    println("done.")
   }
 }
