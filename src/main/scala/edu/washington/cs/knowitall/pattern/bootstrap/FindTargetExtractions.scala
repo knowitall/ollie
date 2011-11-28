@@ -10,9 +10,9 @@ import edu.washington.cs.knowitall.normalization._
 
 object FindCommon {
   // tags allowed in proper arguments
-  val properPostags = Set("DT", "NNP", "NNPS")
+  val properPostags = Set("DT", "IN", "NNP", "NNPS")
   def proper(lemmas: Array[String]) =
-    lemmas.forall(properPostags.contains(_)) && !lemmas.forall(_ == "DT")
+    lemmas.forall(properPostags.contains(_)) && lemmas.exists(lemma => lemma == "NNP" || lemma == "NNPS")
 }
 
 object FindTargetExtractions {
