@@ -1,10 +1,12 @@
-package edu.washington.cs.knowitall.pattern.lda
+package edu.washington.cs.knowitall
+package pattern.lda
 
 import scala.io.Source
 import scala.collection.mutable
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.io.PrintWriter
+import tool.parse.pattern.DependencyPattern
 
 object CreateLDAFiles {
   def main(args: Array[String]) {
@@ -105,6 +107,7 @@ object CreateLDAFiles {
     
     source.getLines.foreach { line => 
       val Array(rel, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
+      assert(DependencyPattern.deserialize(pattern).toString == pattern) // sanity check
       if (!map.contains(pattern)) {
         map += pattern -> index
         index += 1
