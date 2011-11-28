@@ -36,7 +36,7 @@ object PatternExtractorSpec extends Specification {
       val graph = new DependencyGraph(deps.map(_.lemmatize(MorphaStemmer.instance))).collapseNounGroups.collapseNNPOf
       val extractions = PatternExtractor.extract(graph, pattern)
       extractions.size must_== 4
-      extractions.map(_._2.toString) must contain("(european union, agree, the united states)")
+      extractions.map(_.toString) must contain("(european union, agree, the united states)")
     }
   }
   
@@ -49,14 +49,14 @@ object PatternExtractorSpec extends Specification {
 	  val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >prep_in> {arg2}")
       val extractions = PatternExtractor.extract(graph, pattern)
       extractions.size must_== 1
-      extractions.map(_._2.toString) must contain("(angels, appear, the bible story)")
+      extractions.map(_.toString) must contain("(angels, appear, the bible story)")
     }
     
     "(Angels, appear, the Bible) is found with a postag constraint" in {
 	  val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel:VB} >prep_in> {arg2}")
       val extractions = PatternExtractor.extract(graph, pattern)
       extractions.size must_== 1
-      extractions.map(_._2.toString) must contain("(angels, appear, the bible story)")
+      extractions.map(_.toString) must contain("(angels, appear, the bible story)")
     }
     
     "(Angels, appear, the Bible) is not found with the wrong postag constraint" in {

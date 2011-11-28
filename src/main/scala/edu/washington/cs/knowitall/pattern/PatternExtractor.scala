@@ -5,6 +5,7 @@ import scala.io.Source
 import scopt.OptionParser
 import tool.parse.graph._
 import tool.parse.pattern._
+import org.slf4j.LoggerFactory
 
 class Extraction(
     val arg1: DependencyNode, 
@@ -15,6 +16,8 @@ class Extraction(
 }
 
 object PatternExtractor {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   def toExtraction(graph: DependencyGraph, groups: collection.Map[String, DependencyNode]): Extraction = {
 	def buildArgument(node: DependencyNode) = {
 	  def cond(e: Graph.Edge[DependencyNode]) = 
@@ -22,7 +25,7 @@ object PatternExtractor {
 	  val inferiors = graph.graph.inferiors(node, cond)
 	  val indices = inferiors.map(_.indices) reduce (_ ++ _)
 	  // use the original dependencies nodes in case some information
-	  // was lost.  Fo example, of is collapsed into the edge prep_of
+	  // was lost.  For example, of is collapsed into the edge prep_of
 	  val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
 	  new DependencyNode(string, node.postag, node.indices)
 	}
@@ -43,7 +46,7 @@ object PatternExtractor {
       graph.edges(v).exists(_.label == "neg")
     }
 
-  def scoreExtraction(extr: Extraction): Int = {
+  def score(extr: Extraction): Int = {
     // helper methods
     def isProper(node: DependencyNode) = node.postag.equals("NNP") || node.postag.equals("NNPS")
     def isPrep(node: DependencyNode) = node.postag.equals("PRP") || node.postag.equals("PRPS")
@@ -56,12 +59,15 @@ object PatternExtractor {
 
     2 + isProper(extr.arg1).toInt + isProper(extr.arg2).toInt + -isPrep(extr.arg1).toInt + -isPrep(extr.arg2).toInt
   }
+  
+  def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
+    count.toDouble / maxCount.toDouble
+  }
 
   def extract(dgraph: DependencyGraph, pattern: Pattern[DependencyNode]) = {
     val matches = pattern(dgraph.graph).filter(validMatch(dgraph.graph))
     matches.map { m =>
-      val extr = toExtraction(dgraph, m.groups)
-      (scoreExtraction(extr), extr)
+      toExtraction(dgraph, m.groups)
     }
   }
   
@@ -74,24 +80,39 @@ object PatternExtractor {
     }
 
     if (parser.parse(args)) {
+      logger.info("Reading patterns...")
       val patternSource = Source.fromFile(parser.patternFilePath)
       val patterns = try {
-        patternSource.getLines.map(DependencyPattern.deserialize(_)).toList
+        // parse the file
+        patternSource.getLines.map { line =>
+          line.split("\t") match {
+            // full information specified
+            case Array(pat, count) => (DependencyPattern.deserialize(pat), count.toInt)
+            // assume a count of 1 if nothing is specified
+            case Array(pat) => System.err.println("warning: pattern has no count: " + pat); (DependencyPattern.deserialize(pat), 1)
+            case _ => throw new IllegalArgumentException("file can't have more than two columns")
+          }
+        // sort by inverse count so frequent patterns appear first 
+        }.toList.sortBy(-_._2)
       } finally {
         patternSource.close
       }
+      
+      val totalCount = patterns.map(_._2).max
 
+      logger.info("Performing extractions...")
       val sentenceSource = Source.fromFile(parser.sentenceFilePath)
       try {
         for (line <- sentenceSource.getLines) {
           val Array(text, deps) = line.split("\t")
           val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
-          
-          for (p <- patterns) {
-            val dependencies = Dependencies.deserialize(deps)
-            val dgraph = new DependencyGraph(text, nodes.toList, dependencies).collapseNounGroups.collapseNNPOf
-            for ((score, extr) <- extract(dgraph, p)) {
-              System.out.println(score+"\t"+extr+"\t"+p+"\t"+text+"\t"+deps)
+
+          val dependencies = Dependencies.deserialize(deps)
+          val dgraph = new DependencyGraph(text, nodes.toList, dependencies).collapseNounGroups.collapseNNPOf
+          for ((pattern, count) <- patterns) {
+            for (extr <- extract(dgraph, pattern)) {
+              val conf = confidence(extr, count, totalCount)
+              System.out.println(("%1.6f" format conf)+"\t"+extr+"\t"+pattern+"\t"+text+"\t"+deps)
             }
           }
         }
