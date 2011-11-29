@@ -27,6 +27,9 @@ object CreateTestSet {
     println("opening output files")
     val testWriter = new PrintWriter(new File(testFilePath))
     val trainWriter = new PrintWriter(new File(trainFilePath))
+    println("building a test set of 100 random seed extractions.")
+    var testRows = 0
+    var trainRows = 0
     try {
       var extractions = Set[Extraction]()
 
@@ -39,20 +42,31 @@ object CreateTestSet {
       val testExtractions = Random.choose(extractions, testSize, rand)
 
       for (line <- Source.fromFile(sourceFilePath).getLines) {
-        val Array(rel, arg1, arg2, _*) = line.split("\t")
+        val Array(rel, arg1, arg2, pattern, _*) = line.split("\t")
         val extr = Extraction(rel, arg1, arg2)
 
         if (testExtractions.contains(extr)) {
-          testWriter.println(line)
+          testWriter.println(Iterable(rel, arg1, arg2, pattern).mkString("\t"))
+          testRows += 1
         }
         else {
-          trainWriter.println(line)
+          trainWriter.println(Iterable(rel, arg1, arg2, pattern).mkString("\t"))
+          trainRows += 1
         }
+      }
+
+      println("10 random test seed extractions.")
+      for (seed <- extractions.take(10)) {
+        println("\t" + seed)
       }
     }
     finally {
       trainWriter.close
       testWriter.close
     }
+
+    println(testRows + " test rows")
+    println(trainRows + " test rows")
+    println("done.")
   }
 }

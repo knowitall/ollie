@@ -147,11 +147,9 @@ object TreePatternLearner {
 
     // find the best part to replace with rel
     filtered.map { pattern =>
-      println(relStrings.mkString("; "))
-      println(pattern)
       val (relmatcher, relindex) = try {
         pattern.matchers.view.zipWithIndex.find(_._1 match {
-          case nm: DependencyNodeMatcher => !(rel intersect nm.label).isEmpty
+          case nm: DependencyNodeMatcher => !(rel intersect nm.label.get).isEmpty
           case _ => false
         }).get
       }
@@ -161,7 +159,7 @@ object TreePatternLearner {
 
       // replace rel
       val relmatcherPostag = relmatcher.asInstanceOf[DependencyNodeMatcher].postag
-      val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher[DependencyNode]("rel:"+relmatcherPostag))
+      val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher[DependencyNode]("rel:"+relmatcherPostag.get))
 
       // find all DependencyNodeMatchers.  These are the slots.
       val slots = p.matchers.zipWithIndex flatMap {

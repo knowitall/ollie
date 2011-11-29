@@ -19,18 +19,18 @@ object ConvertLDAOutput {
         if (token == "z") {
           assert(scan.next() == "=")
           
-          while (scan.hasNext) {
-	        var line = List[Int]()
-	        while (scan.hasNextInt) {
-	          line ::= scan.nextInt()
-	        }
-	        
-	        assert(scan.next() == ";")
-	        
-	        if (!line.isEmpty) {
-	          println(line.reverse.mkString(" "))
-	        }
-	      }
+          while (scan.hasNextInt) {
+            var line = List[Int]()
+            while (scan.hasNextInt) {
+              line ::= scan.nextInt()
+            }
+            
+            assert(!scan.hasNext || scan.next() == ";")
+            
+            if (!line.isEmpty) {
+              println(line.reverse.mkString(" "))
+            }
+          }
         }
         else {
           scan.nextLine

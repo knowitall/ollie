@@ -1,10 +1,12 @@
-package edu.washington.cs.knowitall.pattern.lda
+package edu.washington.cs.knowitall
+package pattern.lda
 
 import scala.io.Source
 import scala.collection.mutable
 import java.io.BufferedWriter
 import java.io.FileWriter
 import java.io.PrintWriter
+import tool.parse.pattern.DependencyPattern
 
 object CreateLDAFiles {
   def main(args: Array[String]) {
@@ -20,8 +22,10 @@ object CreateLDAFiles {
     val relPatternFile = new PrintWriter(new BufferedWriter(new FileWriter(dest + "/rel_pattern.txt")))
     val relArg1File = new PrintWriter(new BufferedWriter(new FileWriter(dest + "/rel_arg1.txt")))
     val relArg2File = new PrintWriter(new BufferedWriter(new FileWriter(dest + "/rel_arg2.txt")))
+    /*
     val relSlot1File = new PrintWriter(new BufferedWriter(new FileWriter(dest + "/pattern_slot1.txt")))
     val relSlot2File = new PrintWriter(new BufferedWriter(new FileWriter(dest + "/pattern_slot2.txt")))
+    */
     
     var source: Source = null
     
@@ -54,6 +58,7 @@ object CreateLDAFiles {
     writeRelWordFile(wordEncoding, patternEncoding, 2, source, relArg2File)
     source.close
     
+    /*
     println("writing rel arg2s")
     source = Source.fromFile(sourcePath)
     writePatternWordFile(wordEncoding, patternEncoding, 4, source, relSlot1File)
@@ -63,6 +68,7 @@ object CreateLDAFiles {
     source = Source.fromFile(sourcePath)
     writePatternWordFile(wordEncoding, patternEncoding, 5, source, relSlot2File)
     source.close
+    */
     
     println("writing rel slot2s")
     wordEncodingFile.close
@@ -71,8 +77,10 @@ object CreateLDAFiles {
     relPatternFile.close
     relArg1File.close
     relArg2File.close
+    /*
     relSlot1File.close
     relSlot2File.close
+    */
   }
   
   def createWordEncoding(source: Source) = {
@@ -80,8 +88,8 @@ object CreateLDAFiles {
     var map = new mutable.HashMap[String, Int]
     
     source.getLines.foreach { line => 
-      val Array(rel, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
-      val words = List() ++ rel.split("\\s+") ++ arg1.split("\\s+") ++ arg2.split("\\s+") ++ slot1.split("\\s+") ++ slot2.split("\\s+")
+      val Array(rel, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
+      val words = List() ++ rel.split("\\s+") ++ arg1.split("\\s+") ++ arg2.split("\\s+") ++ slots.flatMap(_.split("\\s+"))
       
       words.foreach { word =>
         if (!map.contains(word))
@@ -98,7 +106,8 @@ object CreateLDAFiles {
     var map = new mutable.HashMap[String, Int]
     
     source.getLines.foreach { line => 
-      val Array(rel, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
+      val Array(rel, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
+      assert(DependencyPattern.deserialize(pattern).toString == pattern) // sanity check
       if (!map.contains(pattern)) {
         map += pattern -> index
         index += 1
@@ -117,7 +126,7 @@ object CreateLDAFiles {
   def writeRelPatternFile(wordEncoding: mutable.Map[String, Int], patternEncoding: mutable.Map[String, Int], source: Source, output: PrintWriter, relOutput: PrintWriter) {
     var map = new mutable.HashMap[String, List[Int]]
     source.getLines.foreach { line => 
-      val Array(rel, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
+      val Array(rel, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
       
       val list = map.getOrElse(rel, List.empty)
       map += rel -> (patternEncoding(pattern) :: list)
@@ -132,7 +141,7 @@ object CreateLDAFiles {
   def writeRelWordFile(wordEncoding: mutable.Map[String, Int], patternEncoding: mutable.Map[String, Int], index: Int, source: Source, output: PrintWriter) {
     var map = new mutable.HashMap[String, List[Int]]
     source.getLines.foreach { line => 
-      val ar, Array(rel, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
+      val ar, Array(rel, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
       
       val part = ar(index)
       part.split("\\s+").foreach { word =>
@@ -149,7 +158,7 @@ object CreateLDAFiles {
   def writePatternWordFile(wordEncoding: mutable.Map[String, Int], patternEncoding: mutable.Map[String, Int], index: Int, source: Source, output: PrintWriter) {
     var map = new mutable.HashMap[Int, List[Int]]
     source.getLines.foreach { line => 
-      val ar, Array(rel, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
+      val ar, Array(rel, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
       
       val part = ar(index)
       part.split("\\s+").foreach { word =>
