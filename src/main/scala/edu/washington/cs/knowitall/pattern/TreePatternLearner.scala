@@ -5,6 +5,7 @@ import java.io.File
 import java.io.PrintWriter
 
 import scala.io.Source
+import scala.collection
 
 import TreePatternLearner.findPattern
 

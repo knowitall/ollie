@@ -3,6 +3,7 @@ package parse
 package pattern
 package bootstrap
 
+import scala.collection
 import scala.collection.mutable
 import scala.io.Source
 

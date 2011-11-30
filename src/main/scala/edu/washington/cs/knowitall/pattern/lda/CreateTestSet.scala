@@ -39,7 +39,7 @@ object CreateTestSet {
       }
 
       val rand = new scala.util.Random
-      val testExtractions = Random.choose(extractions, testSize, rand)
+      val testExtractions = Random.select(extractions, testSize, rand).toList
 
       for (line <- Source.fromFile(sourceFilePath).getLines) {
         val Array(rel, arg1, arg2, pattern, _*) = line.split("\t")

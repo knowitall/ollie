@@ -6,6 +6,8 @@ import edu.washington.cs.knowitall.nlp.{ChunkedSentence, OpenNlpSentenceChunker}
 import edu.washington.cs.knowitall.stemmer.MorphaStemmer
 import edu.washington.cs.knowitall.Sentence
 import java.io.{File, PrintWriter}
+
+import scala.collection
 import scala.collection.JavaConversions._
 import scala.io.Source
 
