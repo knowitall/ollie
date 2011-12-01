@@ -28,16 +28,24 @@ abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
 }
 
 class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
+  import GeneralPatternExtractor._
+  
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
 
   override def extract(dgraph: DependencyGraph) = {
+    logger.debug("pattern: " + pattern)
+    
     // apply pattern and keep valid matches
     val matches = pattern(dgraph.graph)
+    if (!matches.isEmpty) logger.debug("matches: " + matches.mkString(", "))
 
     val filtered = matches.filter(validMatch(dgraph.graph))
+    if (!filtered.isEmpty) logger.debug("filtered: " + filtered.mkString(", "))
 
-    // convert to an extraction
-    filtered.map(m => buildExtraction(dgraph, m.groups))
+    val extractions = filtered.map(m => buildExtraction(dgraph, m.groups))
+    if (!extractions.isEmpty) logger.debug("extractions: " + extractions.mkString(", "))
+    
+    extractions
   }
 
   override def confidence(extr: Extraction): Double = {
@@ -74,6 +82,9 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
     }
   }
 }
+object GeneralPatternExtractor {
+  val logger = LoggerFactory.getLogger(this.getClass)
+}
 
 class SpecificPatternExtractor(val relation: String, 
   val relationLemmas: List[String], 
@@ -100,17 +111,30 @@ extends GeneralPatternExtractor(pattern, patternCount, relationCount) {
 
 class LdaPatternExtractor private (pattern: Pattern[DependencyNode], private val patternCode: Int, val dist: Distributions) 
 extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.patternCount) {
+  import LdaPatternExtractor._
+  
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternEncoding(pattern.toString), dist)
 
   override def extract(dgraph: DependencyGraph) = {
     val p = dist.patternEncoding(pattern.toString)
 
-    super.extract(dgraph).map { extr =>
-      // find relation that maximizes P(p | r)
-      val maxr = dist.relationCodes.maxBy(r => dist.prob(r)(p))
+    super.extract(dgraph).flatMap { extr =>
+      // find relation string that intersects with extraction relation string
+      val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
+      val rels = dist.relationEncoding.keys.filter(rel => extrRelationLemmas.forall(exr => rel.contains(exr)))
+      if (!rels.isEmpty) logger.debug("matching relstrings: " + rels.mkString(", "))
 
       // replace the relation
-      extr.replaceRelation(dist.relationDecoding(maxr))
+      if (rels.isEmpty) {
+	    logger.debug("extraction discarded, no matching relstrings")
+	    None
+      }
+      else {
+	    val bestRel = rels.maxBy(rel => dist.prob(dist.relationEncoding(rel))(p))
+        val replaced = extr.replaceRelation(bestRel)
+        logger.debug("replaced extraction: " + replaced)
+        Some(replaced)
+      }
     }
   }
 
@@ -119,25 +143,12 @@ extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.pa
     dist.prob(r)(patternCode)
   }
 }
+object LdaPatternExtractor {
+  val logger = LoggerFactory.getLogger(this.getClass)
+}
 
 object PatternExtractor {
   val logger = LoggerFactory.getLogger(this.getClass)
-  
-  /*
-  def score(extr: Extraction): Int = {
-    // helper methods
-    def isProper(node: DependencyNode) = node.postag.equals("NNP") || node.postag.equals("NNPS")
-    def isPrep(node: DependencyNode) = node.postag.equals("PRP") || node.postag.equals("PRPS")
-
-    // pimped boolean
-    class toInt(b: Boolean) {
-      def toInt = if (b) 1 else 0
-    }
-    implicit def convertBooleanToInt(b: Boolean) = new toInt(b)
-
-    2 + isProper(extr.arg1.text).toInt + isProper(extr.arg2.text).toInt + -isPrep(extr.arg1.text).toInt + -isPrep(extr.arg2).toInt
-  }
-  */
   
   def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
     count.toDouble / maxCount.toDouble
@@ -224,7 +235,7 @@ object PatternExtractor {
       val reverseLookup = (for (extractor <- extractors; edge <- extractor.pattern.edgeMatchers.collect{case m: DependencyEdgeMatcher => m}) yield {
         (edge.label, extractor)
       }).foldLeft(Map[String, List[PatternExtractor]]().withDefaultValue(List())) { (acc, pair) => 
-        acc + (pair._1 -> (pair._2 :: acc(pair._1)))
+        acc + (pair._1 -> (pair._2 :: acc(pair._1))))
       }
       */
       
@@ -237,6 +248,8 @@ object PatternExtractor {
 
           val dependencies = Dependencies.deserialize(deps)
           val dgraph = new DependencyGraph(text, nodes.toList, dependencies).collapseNounGroups.collapseNNPOf
+          logger.debug("text: " + text)
+          logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
           
           for (
             extractor <- extractors;
