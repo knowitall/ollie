@@ -235,22 +235,23 @@ object BuildTreePatterns {
 
 object KeepCommonPatterns {
   def main(args: Array[String]) {
-    val source = Source.fromFile(args(0))
     val min = args(1).toInt
-      
+
     val patterns = collection.mutable.HashMap[String, Int]().withDefaultValue(0)
-    for (line <- source.getLines) {
-      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _) = line.split("\t")
+    val firstSource = Source.fromFile(args(0))
+    for (line <- firstSource.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       patterns += pattern -> (patterns(pattern) + 1)
     }
-    
-    for (line <- source.getLines) {
-      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _) = line.split("\t")
+    firstSource.close
+
+    val secondSource = Source.fromFile(args(0))
+    for (line <- secondSource.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       if (patterns(pattern) >= min) {
         println(line)
       }
     }
-      
-    source.close
+    secondSource.close
   }
 }
