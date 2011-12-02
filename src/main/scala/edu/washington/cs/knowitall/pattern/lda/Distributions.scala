@@ -1,9 +1,17 @@
-package edu.washington.cs.knowitall.pattern.lda
+package edu.washington.cs.knowitall
+package pattern.lda
 
 import java.io._
 import scala.io.Source
+import org.slf4j.LoggerFactory
+
+import common.Resource._
 
 class Distributions(relp: Array[Array[Int]], relt: Array[Array[Int]], val relationDecoding: Map[Int, String], val patternDecoding: Map[Int, String]) {
+  import Distributions.logger
+
+  logger.info("building distributions")
+
   val relationEncoding = relationDecoding.map(_.swap)
   val patternEncoding = patternDecoding.map(_.swap)
 
@@ -11,27 +19,55 @@ class Distributions(relp: Array[Array[Int]], relt: Array[Array[Int]], val relati
   val relationCount = relp.size
   def relationCount(r: Int) = relt(r).size
 
-  // count topics
-  val topicCount = relt.map(_.max).reduce(math.max(_, _)) + 1
-  val topicCountMap = ((0 until topicCount).map(z => (z, relt.map(_.filter(_ == z).size).sum))).toMap
-  def topicCount(z: Int): Int = topicCountMap(z)
+  def patterns: Iterable[String] = patternEncoding.keys
+  def patternCodes: Iterable[Int] = patternDecoding.keys
+  // assert (patternCodes == patternDecoding.keys)
+  def relations: Iterable[String] = relationEncoding.keys
+  def relationCodes: Iterable[Int] = relationDecoding.keys
+  // assert (relationCodes == relationDecoding.keys)
 
-  // count patterns (unoptimized)
-  val patternCount = relp.map(_.max).reduce(math.max(_, _)) + 1
+  def relationByPattern = rel_pat
+  def topicByPattern = top_pat
+  def relationByTopic = rel_top
+
+  def relationsForPattern(p: Int): Iterable[Int] = {
+    rel_pat.zipWithIndex.filter(_._1._1.keys.iterator.contains(p)).map(_._2)
+  }
 
   // laplacian smoothing constant
   val smoothing = 1.0
 
+  // count topics
+  logger.info("counting all topics")
+  val topicCount = relt.map(_.max).reduce(math.max(_, _)) + 1
+
   // topics by patterns
-  val top_pat = Array.tabulate(topicCount)(topic => buildPatterns(topic))
+  logger.info("arranging topics by patterns")
+  private val top_pat: Array[(Map[Int, Int], Int)] = Array.tabulate(topicCount)(topic => buildPatterns(topic))
+
   // relations by topics
-  val rel_top = Array.tabulate(relationCount){ relation => 
+  logger.info("arranging relations by topics")
+  private val rel_top: Array[(Map[Int, Int], Int)] = Array.tabulate(relationCount){ relation => 
     buildMapCount(relt(relation))
   }
+
   // relations by patterns
-  val rel_pat = Array.tabulate(relationCount) { relation =>
+  logger.info("arranging relations by patterns")
+  private val rel_pat: Array[(Map[Int, Int], Int)] = Array.tabulate(relationCount) { relation =>
     buildMapCount(relp(relation))
   }
+  
+  logger.info("counting individual topic occurrences")
+  private val topicCountMap = ((0 until topicCount).map(z => (z, rel_top.view.map(_._1(z)).sum))).toMap
+  def topicCount(z: Int): Int = topicCountMap(z)
+
+  // count patterns
+  logger.info("counting all patterns")
+  val patternCount = relp.map(_.max).reduce(math.max(_, _)) + 1
+  logger.info("counting individual pattern occurrences")
+  private val patternCountMap = ((0 until patternCount).map(p => (p, rel_pat.view.map(_._1(p)).sum))).toMap
+  def patternCount(p: Int): Int = patternCountMap(p)
+  val maxPatternCount = patternCodes.map(patternCount(_)).max
 
   /*
    * build a row to store the counts of a particular pattern and all patterns
@@ -131,32 +167,46 @@ class Distributions(relp: Array[Array[Int]], relt: Array[Array[Int]], val relati
 }
 
 object Distributions {
+  val logger = LoggerFactory.getLogger(this.getClass)
+
   def fromArgs(args: Array[String]) = {
     val (relPattern, relTopic, relationDecoding, patternDecoding) =
       Distributions.load(args)
     new Distributions(relPattern, relTopic, relationDecoding, patternDecoding)
   }
+  
+  def fromDirectory(directory: String) = {
+    fromArgs(Array(directory+"/ldainput/rel_pattern.txt", 
+        directory+"/ldaoutput/output.txt", 
+        directory+"/ldainput/relation_encoding.txt", 
+        directory+"/ldainput/pattern_encoding.txt"))
+  }
 
   def load(args: Array[String]) = {
     val Array(ldaInputPath, ldaOutputPath, relationDecodingPath, patternDecodingPath) = args
 
-    val ldaInput = Source.fromFile(new File(ldaInputPath))
-    val relPattern = Decode.readRelFile(ldaInput)
-    ldaInput.close
+    logger.info("loading lda input: " + ldaInputPath)
+    val relPattern = using (Source.fromFile(new File(ldaInputPath))) { source =>
+      Decode.readRelFile(source)
+    }
 
-    val ldaOutput = Source.fromFile(new File(ldaOutputPath))
-    val relTopic = Decode.readRelFile(ldaOutput)
-    ldaOutput.close
+    logger.info("loading lda ouput: " + ldaOutputPath)
+    val relTopic = using (Source.fromFile(new File(ldaOutputPath))) { source =>
+       Decode.readRelFile(source)
+    }
 
-    val relationDecodingSource = Source.fromFile(new File(relationDecodingPath))
-    val relationDecoding = Decode.readDecoding(relationDecodingSource)
-    relationDecodingSource.close
+    logger.info("loading relation decoding: " + relationDecodingPath)
+    val relationDecoding = using (Source.fromFile(new File(relationDecodingPath))) { source =>
+      Decode.readDecoding(source)
+    }
 
-    // index patterns from 0
-    val patternDecodingSource = Source.fromFile(new File(patternDecodingPath))
-    val patternDecoding = Decode.readDecoding(patternDecodingSource).map{ case (a, b) => (a-1, b) } 
-    patternDecodingSource.close
+    logger.info("loading pattern decoding: " + patternDecodingPath)
+    val patternDecoding = using (Source.fromFile(new File(patternDecodingPath))) { source =>
+      // index patterns from 0
+      Decode.readDecoding(source).map{ case (a, b) => (a-1, b) } 
+    }
 
+    logger.info("done loading")
     (relPattern, relTopic, relationDecoding, patternDecoding)
   }
 

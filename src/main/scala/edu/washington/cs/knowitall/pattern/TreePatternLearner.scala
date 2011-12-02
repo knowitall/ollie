@@ -5,6 +5,7 @@ import java.io.File
 import java.io.PrintWriter
 
 import scala.io.Source
+import scala.collection
 
 import TreePatternLearner.findPattern
 
@@ -107,15 +108,21 @@ object TreePatternLearner {
     replacements: Map[String, String],
     maxLength: Option[Int]) = {
 
+    def valid(bip: Bipath[DependencyNode]) =
+      // we don't have any "punct" edges
+      !bip.edges.exists(_.label == "punct") &&
+      // all edges are simple word characters
+      bip.edges.forall(_.label.matches("\\w+")) &&
+      // we have exactly one of each replacement
+      replacements.keys.forall(key =>
+        bip.nodes.count(node => node.text.contains(key)) == 1)
+
     // find paths containing lemma
     val bipaths = findBipaths(lemmas, graph, maxLength)
 
     // make sure each path contains exactly one of each 
     // of the replacement targets
-    val filtered = bipaths
-      .filter(bip =>
-        replacements.keys.forall(key => 
-          bip.nodes.count(node => node.text.contains(key)) == 1))
+    val filtered = bipaths.filter(valid)
 
     filtered.map { bip =>
       // get the indices where we need to make a replacement
@@ -135,13 +142,16 @@ object TreePatternLearner {
   }
 
   def findPatternsForLDA(graph: DependencyGraph, lemmas: Set[String], replacements: Map[String, String], rel: String, maxLength: Option[Int]) = {
-    // arg1 comes before other replacements
+    def valid(pattern: Pattern[DependencyNode]) = 
+      // make sure arg1 comes first
+      pattern.matchers.find(_
+        .isInstanceOf[CaptureNodeMatcher[_]]).map(_
+        .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false)
+      
     val patterns = findPattern(graph, lemmas, replacements, maxLength)
 
-    val filtered = patterns.filter(_
-      .matchers.find(_
-        .isInstanceOf[CaptureNodeMatcher[_]]).map(_
-        .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false)).toList
+    val filtered = patterns.filter(valid).toList
+    
 
     val relStrings = rel.split(" ")
 
@@ -225,22 +235,23 @@ object BuildTreePatterns {
 
 object KeepCommonPatterns {
   def main(args: Array[String]) {
-    val source = Source.fromFile(args(0))
     val min = args(1).toInt
-      
+
     val patterns = collection.mutable.HashMap[String, Int]().withDefaultValue(0)
-    for (line <- source.getLines) {
-      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _) = line.split("\t")
+    val firstSource = Source.fromFile(args(0))
+    for (line <- firstSource.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       patterns += pattern -> (patterns(pattern) + 1)
     }
-    
-    for (line <- source.getLines) {
-      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _) = line.split("\t")
+    firstSource.close
+
+    val secondSource = Source.fromFile(args(0))
+    for (line <- secondSource.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       if (patterns(pattern) >= min) {
         println(line)
       }
     }
-      
-    source.close
+    secondSource.close
   }
 }
