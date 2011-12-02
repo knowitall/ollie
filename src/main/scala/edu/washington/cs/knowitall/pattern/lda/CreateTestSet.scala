@@ -42,7 +42,7 @@ object CreateTestSet {
       val testExtractions = Random.choose(extractions, testSize, rand)
 
       for (line <- Source.fromFile(sourceFilePath).getLines) {
-        val Array(rel, arg1, arg2, pattern, _*) = line.split("\t")
+        val Array(rel, arg1, arg2, lemmas, pattern, _*) = line.split("\t")
         val extr = Extraction(rel, arg1, arg2)
 
         if (testExtractions.contains(extr)) {

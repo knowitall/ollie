@@ -107,7 +107,7 @@ object CreateLDAFiles {
     
     source.getLines.foreach { line => 
       val Array(rel, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
-      assert(DependencyPattern.deserialize(pattern).toString == pattern) // sanity check
+      assert(DependencyPattern.deserialize(pattern).toString != null, pattern)
       if (!map.contains(pattern)) {
         map += pattern -> index
         index += 1

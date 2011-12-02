@@ -306,7 +306,7 @@ object Evaluate {
     var total = 0
     for (line <- examples.getLines) {
       try {
-        val Array(relation, arg1, arg2, pattern, slot1, slot2) = line.split("\t", -1)
+        val Array(relation, arg1, arg2, pattern, slots @ _*) = line.split("\t", -1)
         val randRelation = random.nextInt(dist.relationCount)
         val randPattern = random.nextInt(dist.patternCount)
 
@@ -391,9 +391,11 @@ object ByTopic {
     output.println("Best relations with z as a topic (optimizing P(z | r)).")
     output.println("Best relations for topic z (optimizing P(r | z)).")
     output.println("Best patterns for topic z (optimizing beta = P(p | z))")
-    for (results <- List(relationsWithZHigh, topRelations, topPatterns).transpose;
-      (z, xs) <- results) {
-      output.println(z + ": " + xs.mkString(", "))
+    for (results <- List(relationsWithZHigh, topRelations, topPatterns).transpose) {
+      output.println
+      for ((z, xs) <- results) {
+        output.println(z + ": " + xs.mkString(", "))
+      }
     }
   }
 }
