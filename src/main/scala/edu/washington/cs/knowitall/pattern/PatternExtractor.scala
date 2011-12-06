@@ -62,8 +62,8 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
 
   private def buildExtraction(graph: DependencyGraph, groups: collection.Map[String, DependencyNode]): Extraction = {
     def buildArgument(node: DependencyNode) = {
-      def cond(e: Graph.Edge[DependencyNode]) = 
-        e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn"
+      def cond(e: Graph.Edge[DependencyNode]) = (e.source.indices borders e.dest.indices) &&
+        (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn")
       val inferiors = graph.graph.inferiors(node, cond)
       val indices = Interval.union(inferiors.map(_.indices).toSeq)
       // use the original dependencies nodes in case some information
