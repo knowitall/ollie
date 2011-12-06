@@ -4,6 +4,7 @@ package pattern
 import scala.io.Source
 import scala.collection
 import scopt.OptionParser
+import edu.washington.cs.knowitall.collection.immutable.Interval
 import tool.stem.MorphaStemmer
 import tool.parse.graph._
 import tool.parse.pattern._
@@ -64,7 +65,7 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
       def cond(e: Graph.Edge[DependencyNode]) = 
         e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn"
       val inferiors = graph.graph.inferiors(node, cond)
-      val indices = inferiors.map(_.indices) reduce (_ ++ _)
+      val indices = Interval.union(inferiors.map(_.indices).toSeq)
       // use the original dependencies nodes in case some information
       // was lost.  For example, of is collapsed into the edge prep_of
       val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
@@ -156,7 +157,7 @@ object PatternExtractor {
 
   def loadGeneralExtractorsFromFile(patternFilePath: String): List[GeneralPatternExtractor] = {
     val patternSource = Source.fromFile(patternFilePath)
-    val patterns: Iterator[(Pattern[DependencyNode], Int)] = try {
+    val patterns: List[(Pattern[DependencyNode], Int)] = try {
       // parse the file
       patternSource.getLines.map { line =>
         line.split("\t") match {
@@ -166,7 +167,7 @@ object PatternExtractor {
           case Array(pat) => logger.warn("warning: pattern has no count: " + pat); (DependencyPattern.deserialize(pat), 1)
           case _ => throw new IllegalArgumentException("file can't have more than two columns")
         }
-      }
+      }.toList
     } finally {
       patternSource.close
     }
@@ -205,9 +206,11 @@ object PatternExtractor {
       var ldaDirectoryPath: Option[String] = None
       var sentenceFilePath: String = null
       var extractorType: String = null
+      var duplicates: Boolean = false
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
+      booleanOpt("d", "duplicates", "<boolean>", { v: Boolean => duplicates = v })
       arg("type", "type of extractor", { v: String => extractorType = v })
       arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
     }
@@ -239,6 +242,14 @@ object PatternExtractor {
       }
       */
       
+      case class Result(conf: Double, extr: Extraction, rest: String) extends Ordered[Result] {
+        override def toString = {
+          ("%1.6f" format conf) + "\t" + extr + "\t" + rest
+        }
+        
+        override def compare(that: Result) = this.conf.compare(that.conf)
+      }
+      
       logger.info("performing extractions")
       val sentenceSource = Source.fromFile(parser.sentenceFilePath)
       try {
@@ -251,15 +262,27 @@ object PatternExtractor {
           logger.debug("text: " + text)
           logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
           
-          for (
+          val results = for (
             extractor <- extractors;
             // todo: organize patterns by a reverse-lookup on edges
             // optimization: make sure the dependency graph contains all the edges
             if (extractor.pattern.edgeMatchers.forall(matcher => dependencies.exists(matcher.canMatch(_))));
             extr <- extractor.extract(dgraph) 
-          ) {
+          ) yield {
             val conf = extractor.confidence(extr)
-            System.out.println(("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + text + "\t" + deps)
+            Result(conf, extr, extractor.pattern + "\t" + text + "\t" + deps)
+          }
+          
+          if (parser.duplicates) {
+            for (result <- results.sorted(Ordering[Result].reverse)) {
+              println(result)
+            }
+          }
+          else {
+            val maxes = for (results <- results.groupBy(_.extr)) yield (results._2.max)
+            for (result <- maxes.toSeq.sorted(Ordering[Result].reverse)) {
+              println(result)
+            }
           }
         }
       } finally {

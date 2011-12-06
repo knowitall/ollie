@@ -15,11 +15,14 @@ import tool.stem.MorphaStemmer
 import edu.washington.cs.knowitall.normalization._
 
 object FindTargetExtractions {
-  val logger = LoggerFactory.getLogger(this.getClass)
   import FindCommon._
+
+  val logger = LoggerFactory.getLogger(this.getClass)
 
   def negated(lemmas: Array[String]) =
     lemmas.contains("not") || lemmas.contains("no") || lemmas.contains("n't") || lemmas.contains("never")
+
+  val lemmaBlacklist = Set("the", "that", "of")
 
   /** args(0): extractions formatted like the clean clueweb
     * args(1): a file of target relations
@@ -71,6 +74,8 @@ object FindTargetExtractions {
           val (relcleanPostags, relcleanStrings, relcleanLemmas) = stripPostag("DT", rel).unzip3
 
           val relcleanLemmaString = relcleanLemmas.mkString(" ")
+          val arg1cleanLemmaString = arg1cleanLemmas.mkString(" ")
+          val arg2cleanLemmaString = arg2cleanLemmas.mkString(" ")
 
           // ensure the extraction parts are relatively small
           if (relationLemma.length < 64 && 
@@ -79,17 +84,20 @@ object FindTargetExtractions {
             // ensure arguments are proper
             proper(arg1Postag.split("\\s+")) &&
             proper(arg2Postag.split("\\s+")) &&
+            arg1cleanLemmaString != arg2cleanLemmaString &&
             // ensure the args are permissible
-            arguments.contains(arg1cleanLemmas.mkString(" ")) && arguments.contains(arg2cleanLemmas.mkString(" ")) &&
+            arguments.contains(arg1cleanLemmaString) && arguments.contains(arg2cleanLemmaString) &&
             // ensure the unnormalized relation is not negated
             !negated(relationLemma.split(" "))) {
+
+            val lemmas = (arg1cleanLemmas ++ relationLemmas(relcleanLemmaString) ++ arg2cleanLemmas) filterNot lemmaBlacklist
 
             for (i <- 0 until count.toInt) {
               println(Iterable(
                 relcleanLemmaString, 
-                arg1cleanLemmas.mkString(" "), 
-                arg2cleanLemmas.mkString(" "),
-                (arg1cleanLemmas ++ relationLemmas(relcleanLemmaString) ++ arg2cleanLemmas).mkString(" "), 
+                arg1cleanLemmaString, 
+                arg2cleanLemmaString,
+                lemmas.mkString(" "), 
                 arg1String, relationString, arg2String, arg1Postag, relationPostag, arg2Postag).mkString("\t"))
             }
           }
