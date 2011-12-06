@@ -53,7 +53,7 @@ object TreePatternLearner {
         val nodes = sentenceLemmas.zipWithIndex.map { case (lemma, index) => new DependencyNode(lemma, lemma, index) }
         val dependencies = parser.dependencies(tokens.mkString(" ")).map(dep => dep.lemmatize(MorphaStemmer.instance))
         if (lemmas forall { l => sentenceLemmas.contains(l) }) {
-          val graph = DependencyGraph(dependencies).collapseNounGroups.collapseNNPOf
+          val graph = DependencyGraph(dependencies).normalize
           val patterns = findPattern(graph, lemmas, Map(arg1.mkString(" ") -> "arg1", arg2.mkString(" ") -> "arg2"), None)
             .filter(_.matchers.find(_
               .isInstanceOf[CaptureNodeMatcher[_]]).map(_
@@ -221,7 +221,7 @@ object BuildTreePatterns {
 
         // todo: push stemming forward in the process
         val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
-        val graph = DependencyGraph(dependencies).collapseNounGroups.collapseNNPOf
+        val graph = DependencyGraph(dependencies).normalize
 
         try {
           val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, Some(2))

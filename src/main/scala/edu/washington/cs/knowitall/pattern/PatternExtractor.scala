@@ -62,10 +62,10 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
 
   private def buildExtraction(graph: DependencyGraph, groups: collection.Map[String, DependencyNode]): Extraction = {
     def buildArgument(node: DependencyNode) = {
-      def cond(e: Graph.Edge[DependencyNode]) = (e.source.indices borders e.dest.indices) &&
+      def cond(e: Graph.Edge[DependencyNode]) = 
         (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn")
       val inferiors = graph.graph.inferiors(node, cond)
-      val indices = Interval.union(inferiors.map(_.indices).toSeq)
+      val indices = Interval.span(inferiors.map(_.indices).toSeq)
       // use the original dependencies nodes in case some information
       // was lost.  For example, of is collapsed into the edge prep_of
       val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
@@ -261,7 +261,7 @@ object PatternExtractor {
           val dependencies = Dependencies.deserialize(dependencyString)
           val text = if (parts.length > 1) Some(parts(0)) else None
 
-          val dgraph = DependencyGraph(text, dependencies).collapseNounGroups.collapseNNPOf
+          val dgraph = DependencyGraph(text, dependencies).normalize
           if (text.isDefined) logger.debug("text: " + text.get)
           logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
           
