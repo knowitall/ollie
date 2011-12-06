@@ -254,12 +254,15 @@ object PatternExtractor {
       val sentenceSource = Source.fromFile(parser.sentenceFilePath)
       try {
         for (line <- sentenceSource.getLines) {
-          val Array(text, deps) = line.split("\t")
-          val nodes = text.split("\\s+").zipWithIndex.map{case (tok, i) => new DependencyNode(tok, null, i)}
+          val parts = line.split("\t")
+          require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
 
-          val dependencies = Dependencies.deserialize(deps)
-          val dgraph = new DependencyGraph(text, nodes.toList, dependencies).collapseNounGroups.collapseNNPOf
-          logger.debug("text: " + text)
+          val dependencyString = parts.last
+          val dependencies = Dependencies.deserialize(dependencyString)
+          val text = if (parts.length > 1) Some(parts(0)) else None
+
+          val dgraph = DependencyGraph(text, dependencies).collapseNounGroups.collapseNNPOf
+          if (text.isDefined) logger.debug("text: " + text.get)
           logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
           
           val results = for (
@@ -270,7 +273,7 @@ object PatternExtractor {
             extr <- extractor.extract(dgraph) 
           ) yield {
             val conf = extractor.confidence(extr)
-            Result(conf, extr, extractor.pattern + "\t" + text + "\t" + deps)
+            Result(conf, extr, extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString)
           }
           
           if (parser.duplicates) {
