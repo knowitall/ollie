@@ -9,7 +9,7 @@ object FindTargetArguments {
   import FindCommon._
 
   val blacklist = Set("inc", "ltd", "page", 
-    "vehicle", "turn", "site")
+    "vehicle", "turn", "site", "photo", "gallery")
 
   def valid(lemma: String) = {
     lemma.length > 2 && lemma.length < 64 && !blacklist.contains(lemma)
