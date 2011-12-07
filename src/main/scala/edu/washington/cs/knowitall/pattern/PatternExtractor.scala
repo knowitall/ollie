@@ -22,7 +22,7 @@ class Extraction(
 }
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
-  def extract(dgraph: DependencyGraph): Iterable[Extraction]
+  def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction): Iterable[Extraction]
   def confidence(extr: Extraction): Double
 
   override def toString = pattern.toString
@@ -33,7 +33,7 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
   
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
 
-  override def extract(dgraph: DependencyGraph) = {
+  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction) = {
     logger.debug("pattern: " + pattern)
     
     // apply pattern and keep valid matches
@@ -43,7 +43,7 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
     val filtered = matches.filter(validMatch(dgraph.graph))
     if (!filtered.isEmpty) logger.debug("filtered: " + filtered.mkString(", "))
 
-    val extractions = filtered.map(m => buildExtraction(dgraph, m.groups))
+    val extractions = filtered.map(m => buildExtraction(dgraph, m))
     if (!extractions.isEmpty) logger.debug("extractions: " + extractions.mkString(", "))
     
     extractions
@@ -57,30 +57,6 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
     !m.bipath.nodes.exists { v =>
       // no neg edges
       graph.edges(v).exists(_.label == "neg")
-  }
-
-
-  private def buildExtraction(graph: DependencyGraph, groups: collection.Map[String, DependencyNode]): Extraction = {
-    def buildArgument(node: DependencyNode) = {
-      def cond(e: Graph.Edge[DependencyNode]) = 
-        (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn")
-      val inferiors = graph.graph.inferiors(node, cond)
-      val indices = Interval.span(inferiors.map(_.indices).toSeq)
-      // use the original dependencies nodes in case some information
-      // was lost.  For example, of is collapsed into the edge prep_of
-      val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
-      new DependencyNode(string, node.postag, node.indices)
-    }
-  
-    val rel = groups.find { case (s, dn) => s.equals("rel") }
-    val arg1 = groups.find { case (s, dn) => s.equals("arg1") }
-    val arg2 = groups.find { case (s, dn) => s.equals("arg2") }
-    
-    (rel, arg1, arg2) match {
-      case (Some((_,rel)), Some((_,arg1)), Some((_,arg2))) => 
-        new Extraction(buildArgument(arg1).text, rel.text, buildArgument(arg2).text)
-      case _ => throw new IllegalArgumentException("missing group, expected {rel, arg1, arg2}: " + groups)
-    }
   }
 }
 object GeneralPatternExtractor {
@@ -101,7 +77,7 @@ extends GeneralPatternExtractor(pattern, patternCount, relationCount) {
       dist.relationByPattern(dist.relationEncoding(relation))._1(dist.patternEncoding(pattern.toString)),
       dist.relationByPattern(dist.relationEncoding(relation))._2)
 
-  override def extract(dgraph: DependencyGraph) = {
+  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction) = {
     val extractions = super.extract(dgraph)
     extractions.withFilter{ extr =>
       val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
@@ -116,7 +92,7 @@ extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.pa
   
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternEncoding(pattern.toString), dist)
 
-  override def extract(dgraph: DependencyGraph) = {
+  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction) = {
     val p = dist.patternEncoding(pattern.toString)
 
     super.extract(dgraph).flatMap { extr =>
@@ -153,6 +129,32 @@ object PatternExtractor {
   
   def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
     count.toDouble / maxCount.toDouble
+  }
+
+  private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Extraction = {
+    val groups = m.groups
+    def buildArgument(node: DependencyNode) = {
+      def cond(e: Graph.Edge[DependencyNode]) = 
+        (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn")
+      val inferiors = graph.graph.inferiors(node, cond)
+      val indices = Interval.span(inferiors.map(_.indices).toSeq)
+      // use the original dependencies nodes in case some information
+      // was lost.  For example, of is collapsed into the edge prep_of
+      val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
+      new DependencyNode(string, node.postag, node.indices)
+    }
+  
+    val rel = groups.find { case (s, dn) => s.equals("rel") }
+    val arg1 = groups.find { case (s, dn) => s.equals("arg1") }
+    val arg2 = groups.find { case (s, dn) => s.equals("arg2") }
+    
+    (rel, arg1, arg2) match {
+      case (Some((_,rel)), Some((_,arg1)), Some((_,arg2))) => 
+        val newArg1 = if (expandArgument) buildArgument(arg1) else arg1
+        val newArg2 = if (expandArgument) buildArgument(arg2) else arg2
+        new Extraction(newArg1.text, rel.text, newArg2.text)
+      case _ => throw new IllegalArgumentException("missing group, expected {rel, arg1, arg2}: " + groups)
+    }
   }
 
   def loadGeneralExtractorsFromFile(patternFilePath: String): List[GeneralPatternExtractor] = {
@@ -206,11 +208,14 @@ object PatternExtractor {
       var ldaDirectoryPath: Option[String] = None
       var sentenceFilePath: String = null
       var extractorType: String = null
+
       var duplicates: Boolean = false
+      var expandArguments: Boolean = false
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
-      booleanOpt("d", "duplicates", "<boolean>", { v: Boolean => duplicates = v })
+      opt("d", "duplicates", "keep duplicate extractions", { duplicates = true })
+      opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
       arg("type", "type of extractor", { v: String => extractorType = v })
       arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
     }
@@ -241,6 +246,8 @@ object PatternExtractor {
         acc + (pair._1 -> (pair._2 :: acc(pair._1))))
       }
       */
+
+      implicit def defaultBuildExtraction = this.buildExtraction(parser.expandArguments)_
       
       case class Result(conf: Double, extr: Extraction, rest: String) extends Ordered[Result] {
         override def toString = {
