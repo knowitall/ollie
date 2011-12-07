@@ -157,6 +157,8 @@ object PatternExtractor {
     }
   }
 
+  implicit def defaultBuildExtraction = this.buildExtraction(true)_
+
   def loadGeneralExtractorsFromFile(patternFilePath: String): List[GeneralPatternExtractor] = {
     val patternSource = Source.fromFile(patternFilePath)
     val patterns: List[(Pattern[DependencyNode], Int)] = try {
