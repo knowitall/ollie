@@ -12,6 +12,8 @@ import tool.parse.graph.Dependencies
 import tool.stem.MorphaStemmer
 import tool.parse.pattern.DependencyPattern
 
+import PatternExtractor._
+
 @RunWith(classOf[JUnitSuiteRunner])
 class PatternExtractorSpecTest extends JUnit4(PatternExtractorSpec)
 object PatternExtractorSpec extends Specification {
