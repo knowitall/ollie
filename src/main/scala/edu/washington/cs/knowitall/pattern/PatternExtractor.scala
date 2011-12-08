@@ -10,6 +10,10 @@ import tool.parse.graph._
 import tool.parse.pattern._
 import org.slf4j.LoggerFactory
 import edu.washington.cs.knowitall.pattern.lda.Distributions
+import edu.washington.cs.knowitall.util.DefaultObjects
+import edu.washington.cs.knowitall.extractor.ReVerbExtractor
+import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
+import edu.washington.cs.knowitall.normalization.RelationString
 
 class Extraction(
     val arg1: String, 
@@ -19,10 +23,14 @@ class Extraction(
     Iterable(arg1, rel, arg2).mkString("(", ", ", ")")
     
   def replaceRelation(relation: String) = new Extraction(this.arg1, relation, this.arg2)
+  def softMatch(that: Extraction) = 
+    (that.arg1.contains(this.arg1) || this.arg1.contains(that.arg1)) &&
+    this.rel == that.rel &&
+    (that.arg2.contains(this.arg2) || this.arg2.contains(that.arg2))
 }
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
-  def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction): Iterable[Extraction]
+  def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[Extraction]
   def confidence(extr: Extraction): Double
 
   override def toString = pattern.toString
@@ -33,7 +41,7 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
   
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
 
-  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction) = {
+  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     logger.debug("pattern: " + pattern)
     
     // apply pattern and keep valid matches
@@ -51,12 +59,6 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
 
   override def confidence(extr: Extraction): Double = {
     patternCount.toDouble / maxPatternCount.toDouble
-  }
-
-  private def validMatch(graph: Graph[DependencyNode])(m: Match[DependencyNode]) =
-    !m.bipath.nodes.exists { v =>
-      // no neg edges
-      graph.edges(v).exists(_.label == "neg")
   }
 }
 object GeneralPatternExtractor {
@@ -77,7 +79,7 @@ extends GeneralPatternExtractor(pattern, patternCount, relationCount) {
       dist.relationByPattern(dist.relationEncoding(relation))._1(dist.patternEncoding(pattern.toString)),
       dist.relationByPattern(dist.relationEncoding(relation))._2)
 
-  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction) = {
+  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     val extractions = super.extract(dgraph)
     extractions.withFilter{ extr =>
       val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
@@ -92,7 +94,7 @@ extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.pa
   
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternEncoding(pattern.toString), dist)
 
-  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction) = {
+  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     val p = dist.patternEncoding(pattern.toString)
 
     super.extract(dgraph).flatMap { extr =>
@@ -130,6 +132,15 @@ object PatternExtractor {
   def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
     count.toDouble / maxCount.toDouble
   }
+  
+  private def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
+    val validArgPostag = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS")
+    // no neighboring neg edges
+    !m.bipath.nodes.exists { v =>
+      graph.edges(v).exists(_.label == "neg")
+	} && 
+	(!restrictArguments || (validArgPostag.contains(m.groups("arg1").postag) && validArgPostag.contains(m.groups("arg2").postag)))
+  }
 
   private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Extraction = {
     val groups = m.groups
@@ -157,7 +168,8 @@ object PatternExtractor {
     }
   }
 
-  implicit def defaultBuildExtraction = this.buildExtraction(true)_
+  implicit def implicitBuildExtraction = this.buildExtraction(true)_
+  implicit def implicitValidMatch = this.validMatch(false) _
 
   def loadGeneralExtractorsFromFile(patternFilePath: String): List[GeneralPatternExtractor] = {
     val patternSource = Source.fromFile(patternFilePath)
@@ -211,13 +223,17 @@ object PatternExtractor {
       var sentenceFilePath: String = null
       var extractorType: String = null
 
+      var showReverb: Boolean = false
       var duplicates: Boolean = false
       var expandArguments: Boolean = false
+      var showAll: Boolean = false
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
       opt("d", "duplicates", "keep duplicate extractions", { duplicates = true })
       opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
+      opt("r", "reverb", "show which extractions are reverb extractions", { showReverb = true })
+      opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { showAll = true })
       arg("type", "type of extractor", { v: String => extractorType = v })
       arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
     }
@@ -249,7 +265,8 @@ object PatternExtractor {
       }
       */
 
-      implicit def defaultBuildExtraction = this.buildExtraction(parser.expandArguments)_
+      implicit def implicitBuildExtraction = this.buildExtraction(parser.expandArguments)_
+      implicit def implicitValidMatch = this.validMatch(!parser.showAll)_
       
       case class Result(conf: Double, extr: Extraction, rest: String) extends Ordered[Result] {
         override def toString = {
@@ -257,6 +274,21 @@ object PatternExtractor {
         }
         
         override def compare(that: Result) = this.conf.compare(that.conf)
+      }
+      
+      val chunker = if (parser.showReverb) Some(new OpenNlpSentenceChunker) else None
+      val reverb = if (parser.showReverb) Some(new ReVerbExtractor) else None
+      
+      def reverbExtract(sentence: String) = {
+        import scala.collection.JavaConversions._
+        val chunked = chunker.get.chunkSentence(sentence)
+        val extractions = reverb.get.extract(chunked)
+        extractions.map { extr =>
+          val rs = new RelationString(extr.getRelation.getText, extr.getRelation.getTokens.map(MorphaStemmer.instance.lemmatize(_)).mkString(" "), extr.getRelation.getPosTags.mkString(" "))
+          rs.correctNormalization()
+          
+          new Extraction(extr.getArgument1.getText, rs.getPred, extr.getArgument2.getText)
+        }
       }
       
       logger.info("performing extractions")
@@ -269,6 +301,9 @@ object PatternExtractor {
           val dependencyString = parts.last
           val dependencies = Dependencies.deserialize(dependencyString)
           val text = if (parts.length > 1) Some(parts(0)) else None
+          
+          require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
+          val reverbExtractions = if (!parser.showReverb) Nil else reverbExtract(text.get)
 
           val dgraph = DependencyGraph(text, dependencies).normalize
           if (text.isDefined) logger.debug("text: " + text.get)
@@ -282,7 +317,8 @@ object PatternExtractor {
             extr <- extractor.extract(dgraph) 
           ) yield {
             val conf = extractor.confidence(extr)
-            Result(conf, extr, extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString)
+            val extra = reverbExtractions.find(_.softMatch(extr)).map("\treverb:" + _.toString)
+            Result(conf, extr, extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString + extra.getOrElse(""))
           }
           
           if (parser.duplicates) {
