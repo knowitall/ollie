@@ -157,7 +157,6 @@ object TreePatternLearner {
     val patterns = findPattern(graph, lemmas, replacements, maxLength)
 
     val filtered = patterns.filter(valid).toList
-    
 
     val relStrings = rel.split(" ")
 
@@ -165,7 +164,7 @@ object TreePatternLearner {
     filtered.map { pattern =>
       val (relmatcher, relindex) = try {
         pattern.matchers.view.zipWithIndex.find(_._1 match {
-          case nm: DependencyNodeMatcher => !(rel intersect nm.label.get).isEmpty
+          case nm: DependencyNodeMatcher => !(rel intersect nm.text.get).isEmpty
           case _ => false
         }).get
       }
@@ -180,7 +179,7 @@ object TreePatternLearner {
       // find all DependencyNodeMatchers.  These are the slots.
       val slots = p.matchers.zipWithIndex flatMap {
         case (nm, index) => nm match {
-          case nm: DependencyNodeMatcher => List((nm.label, index))
+          case nm: DependencyNodeMatcher => List((nm.text, index))
           case _ => List.empty
         }
       }
@@ -194,7 +193,7 @@ object TreePatternLearner {
           (p.replaceMatcherAt(index, new CaptureNodeMatcher(replacement)))
       }
 
-      (patternWithReplacedSlots, slotLabels)
+      (new ExtractorPattern(patternWithReplacedSlots), slotLabels)
     }
   }
 }

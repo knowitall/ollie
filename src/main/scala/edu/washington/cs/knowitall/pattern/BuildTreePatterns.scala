@@ -42,10 +42,9 @@ object BuildTreePatterns {
 
         try {
           val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, Some(2))
-          for (pattern <- patterns) {
-            val (pat, slots) = pattern
+          for ((pattern, slots) <- patterns; if pattern.valid) {
             if (slots.length == 0) {
-              writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pat, text, deps) ::: slots).mkString("\t"))
+              writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
               count += 1
             }
           }
