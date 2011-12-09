@@ -234,7 +234,7 @@ object BuildTreePatterns {
           }
         }
         catch {
-          case e: NoRelationNodeException => System.err.println(e); System.err.println(line)
+          case e: NoRelationNodeException => // System.err.println(e); System.err.println(line)
         }
       })
 

@@ -18,14 +18,25 @@ import edu.washington.cs.knowitall.normalization.RelationString
 class Extraction(
     val arg1: String, 
     val rel: String, 
+    val relLemmas: Option[Set[String]], 
     val arg2: String) {
+
+  def this(arg1: String, rel: String, arg2: String) = this(arg1, rel, None, arg2)
+
+  override def equals(that: Any) = that match {
+    case that: Extraction => (that canEqual this) && that.arg1 == this.arg1 && that.rel == this.rel && that.arg2 == this.arg2
+    case _ => false
+  }
+  def canEqual(that: Any) = that.isInstanceOf[Extraction]
+  override def hashCode = arg1.hashCode + 39 * (rel.hashCode + 39 * arg2.hashCode)
+
   override def toString() =
     Iterable(arg1, rel, arg2).mkString("(", ", ", ")")
     
-  def replaceRelation(relation: String) = new Extraction(this.arg1, relation, this.arg2)
+  def replaceRelation(relation: String) = new Extraction(this.arg1, relation, relLemmas, this.arg2)
   def softMatch(that: Extraction) = 
     (that.arg1.contains(this.arg1) || this.arg1.contains(that.arg1)) &&
-    this.rel == that.rel &&
+    this.relLemmas == that.relLemmas &&
     (that.arg2.contains(this.arg2) || this.arg2.contains(that.arg2))
 }
 
@@ -74,7 +85,7 @@ extends GeneralPatternExtractor(pattern, patternCount, relationCount) {
     pattern: Pattern[DependencyNode], dist: Distributions) =
     this(relation, 
       // todo: hack
-      (relation.split(" ").toSet -- Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")).toList,
+      (relation.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST).toList,
       pattern, 
       dist.relationByPattern(dist.relationEncoding(relation))._1(dist.patternEncoding(pattern.toString)),
       dist.relationByPattern(dist.relationEncoding(relation))._2)
@@ -100,7 +111,7 @@ extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.pa
     super.extract(dgraph).flatMap { extr =>
       // find relation string that intersects with extraction relation string
       val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
-      val rels = dist.relationEncoding.keys.filter(rel => extrRelationLemmas.forall(exr => rel.contains(exr)))
+      val rels = dist.relationLemmas.filter{case (relation, lemmas) => extrRelationLemmas.forall(exr => lemmas.contains(exr))}.map(_._1)
       if (!rels.isEmpty) logger.debug("matching relstrings: " + rels.mkString(", "))
 
       // replace the relation
@@ -127,6 +138,7 @@ object LdaPatternExtractor {
 }
 
 object PatternExtractor {
+  val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
   val logger = LoggerFactory.getLogger(this.getClass)
   
   def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
@@ -163,7 +175,7 @@ object PatternExtractor {
       case (Some((_,rel)), Some((_,arg1)), Some((_,arg2))) => 
         val newArg1 = if (expandArgument) buildArgument(arg1) else arg1
         val newArg2 = if (expandArgument) buildArgument(arg2) else arg2
-        new Extraction(newArg1.text, rel.text, newArg2.text)
+        new Extraction(newArg1.text, rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), newArg2.text)
       case _ => throw new IllegalArgumentException("missing group, expected {rel, arg1, arg2}: " + groups)
     }
   }
@@ -227,6 +239,7 @@ object PatternExtractor {
       var duplicates: Boolean = false
       var expandArguments: Boolean = false
       var showAll: Boolean = false
+      var verbose: Boolean = false
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
@@ -234,6 +247,7 @@ object PatternExtractor {
       opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
       opt("r", "reverb", "show which extractions are reverb extractions", { showReverb = true })
       opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { showAll = true })
+      opt("v", "verbose", "", { verbose = true })
       arg("type", "type of extractor", { v: String => extractorType = v })
       arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
     }
@@ -268,10 +282,8 @@ object PatternExtractor {
       implicit def implicitBuildExtraction = this.buildExtraction(parser.expandArguments)_
       implicit def implicitValidMatch = this.validMatch(!parser.showAll)_
       
-      case class Result(conf: Double, extr: Extraction, rest: String) extends Ordered[Result] {
-        override def toString = {
-          ("%1.6f" format conf) + "\t" + extr + "\t" + rest
-        }
+      case class Result(conf: Double, extr: Extraction, text: String) extends Ordered[Result] {
+        override def toString = text
         
         override def compare(that: Result) = this.conf.compare(that.conf)
       }
@@ -287,7 +299,7 @@ object PatternExtractor {
           val rs = new RelationString(extr.getRelation.getText, extr.getRelation.getTokens.map(MorphaStemmer.instance.lemmatize(_)).mkString(" "), extr.getRelation.getPosTags.mkString(" "))
           rs.correctNormalization()
           
-          new Extraction(extr.getArgument1.getText, rs.getPred, extr.getArgument2.getText)
+          new Extraction(extr.getArgument1.getText, extr.getRelation.getText, Some(rs.getNormPred.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), extr.getArgument2.getText)
         }
       }
       
@@ -301,13 +313,22 @@ object PatternExtractor {
           val dependencyString = parts.last
           val dependencies = Dependencies.deserialize(dependencyString)
           val text = if (parts.length > 1) Some(parts(0)) else None
-          
-          require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
-          val reverbExtractions = if (!parser.showReverb) Nil else reverbExtract(text.get)
 
           val dgraph = DependencyGraph(text, dependencies).normalize
           if (text.isDefined) logger.debug("text: " + text.get)
           logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
+
+          if (parser.verbose) {
+            if (text.isDefined) println("text: " + text.get)
+            println("deps: " + dependencyString)
+          }
+          
+          require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
+          val reverbExtractions = if (!parser.showReverb) Nil else reverbExtract(text.get)
+          if (parser.showReverb) {
+            if (parser.verbose) println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+            logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+          }
           
           val results = for (
             extractor <- extractors;
@@ -317,8 +338,14 @@ object PatternExtractor {
             extr <- extractor.extract(dgraph) 
           ) yield {
             val conf = extractor.confidence(extr)
-            val extra = reverbExtractions.find(_.softMatch(extr)).map("\treverb:" + _.toString)
-            Result(conf, extr, extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString + extra.getOrElse(""))
+            val reverbMatches = reverbExtractions.find(_.softMatch(extr))
+            logger.debug("reverb match: " + reverbMatches.toString)
+            val extra = reverbMatches.map("\treverb:" + _.toString)
+
+            val resultText =
+              if (parser.verbose) "extraction: (" + ("%1.6f" format conf) + ") for " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
+              else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString + extra.getOrElse("")
+            Result(conf, extr, resultText)
           }
           
           if (parser.duplicates) {
@@ -332,6 +359,8 @@ object PatternExtractor {
               println(result)
             }
           }
+
+          println
         }
       } finally {
         sentenceSource.close

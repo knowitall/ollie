@@ -34,6 +34,9 @@ class Distributions(relp: Array[Array[Int]], relt: Array[Array[Int]], val relati
     rel_pat.zipWithIndex.filter(_._1._1.keys.iterator.contains(p)).map(_._2)
   }
 
+  val relationLemmaBlacklist = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
+  val relationLemmas = relationEncoding.keys.map(key => (key, key.split("\\s+").toSet -- relationLemmaBlacklist))
+
   // laplacian smoothing constant
   val smoothing = 1.0
 
