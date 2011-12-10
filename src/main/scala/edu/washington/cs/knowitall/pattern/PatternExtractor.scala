@@ -156,6 +156,11 @@ object PatternExtractor {
 
   private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Extraction = {
     val groups = m.groups
+  
+    val rel = groups.find { case (s, dn) => s.equals("rel") } getOrElse(throw new IllegalArgumentException("no rel: " + m))
+    val arg1 = groups.find { case (s, dn) => s.equals("arg1") } getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
+    val arg2 = groups find { case (s, dn) => s.equals("arg2") } getOrElse(throw new IllegalArgumentException("no arg2: " + m))
+    
     def buildArgument(node: DependencyNode) = {
       def cond(e: Graph.Edge[DependencyNode]) = 
         (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn")
@@ -166,17 +171,12 @@ object PatternExtractor {
       val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
       new DependencyNode(string, node.postag, node.indices)
     }
-  
-    val rel = groups.find { case (s, dn) => s.equals("rel") }
-    val arg1 = groups.find { case (s, dn) => s.equals("arg1") }
-    val arg2 = groups.find { case (s, dn) => s.equals("arg2") }
     
     (rel, arg1, arg2) match {
-      case (Some((_,rel)), Some((_,arg1)), Some((_,arg2))) => 
-        val newArg1 = if (expandArgument) buildArgument(arg1) else arg1
-        val newArg2 = if (expandArgument) buildArgument(arg2) else arg2
-        new Extraction(newArg1.text, rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), newArg2.text)
-      case _ => throw new IllegalArgumentException("missing group, expected {rel, arg1, arg2}: " + groups)
+      case ((_,rel), (_,arg1), (_,arg2)) => 
+	    val newArg1 = if (expandArgument) buildArgument(arg1) else arg1
+	    val newArg2 = if (expandArgument) buildArgument(arg2) else arg2
+	    new Extraction(newArg1.text, rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), newArg2.text)
     }
   }
 
