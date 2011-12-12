@@ -42,10 +42,15 @@ object BuildTreePatterns {
 
         try {
           val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, Some(2))
-          for ((pattern, slots) <- patterns; if pattern.valid) {
-            if (slots.length == 0) {
-              writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
-              count += 1
+          for ((pattern, slots) <- patterns) {
+            if (!pattern.valid) {
+              logger.info("invalid: " + pattern)
+            }
+            else {
+              if (slots.length == 0) {
+                writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
+                count += 1
+              }
             }
           }
         }

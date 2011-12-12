@@ -139,6 +139,7 @@ object LdaPatternExtractor {
 
 object PatternExtractor {
   val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
+  val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS")
   val logger = LoggerFactory.getLogger(this.getClass)
   
   def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
@@ -146,12 +147,11 @@ object PatternExtractor {
   }
   
   private def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
-    val validArgPostag = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS")
     // no neighboring neg edges
     !m.bipath.nodes.exists { v =>
       graph.edges(v).exists(_.label == "neg")
 	} && 
-	(!restrictArguments || (validArgPostag.contains(m.groups("arg1").postag) && validArgPostag.contains(m.groups("arg2").postag)))
+	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.groups("arg1").postag) && VALID_ARG_POSTAG.contains(m.groups("arg2").postag)))
   }
 
   private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Extraction = {

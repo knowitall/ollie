@@ -20,6 +20,8 @@ import util.DefaultObjects
 import org.slf4j.LoggerFactory
 
 object TreePatternLearner {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
   class NoRelationNodeException(message: String) extends NoSuchElementException(message)
   
   def main(args: Array[String]) {
@@ -112,21 +114,29 @@ object TreePatternLearner {
     replacements: Map[String, String],
     maxLength: Option[Int]) = {
 
-    def valid(bip: Bipath[DependencyNode]) =
+    def valid(bip: Bipath[DependencyNode]) = {
       // we don't have any "punct" edges
       !bip.edges.exists(_.label == "punct") &&
       // all edges are simple word characters
       bip.edges.forall(_.label.matches("\\w+")) &&
+      // all replacements have a valid argument postag
+      bip.nodes.filter(node => replacements.keys.exists(key => node.text.contains(key))).forall { node =>
+        PatternExtractor.VALID_ARG_POSTAG.contains(node.postag)
+      } &&
       // we have exactly one of each replacement
       replacements.keys.forall(key =>
         bip.nodes.count(node => node.text.contains(key)) == 1)
+    }
 
     // find paths containing lemma
     val bipaths = findBipaths(lemmas, graph, maxLength)
 
     // make sure each path contains exactly one of each 
     // of the replacement targets
-    val filtered = bipaths.filter(valid)
+    val filtered = bipaths.filter { bip =>
+      if (valid(bip)) true
+      else { logger.info("invalid: " + bip); false }
+    }
 
     filtered.map { bip =>
       // get the indices where we need to make a replacement
