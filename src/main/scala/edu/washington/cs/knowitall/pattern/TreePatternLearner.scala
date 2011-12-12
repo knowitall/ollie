@@ -114,7 +114,7 @@ object TreePatternLearner {
     replacements: Map[String, String],
     maxLength: Option[Int]) = {
 
-    def valid(bip: Bipath[DependencyNode]) = {
+    def valid(bip: Bipath[DependencyNode], rep: Map[Int, ArgumentMatcher]) = {
       // we don't have any "punct" edges
       if (bip.edges.exists(_.label == "punct")) {
         logger.info("invalid: punct edge: " + bip)
@@ -126,19 +126,18 @@ object TreePatternLearner {
         logger.info("invalid: special character in edge: " + bip)
         false
       }
-      
-      // all replacements have a valid argument postag
-      else if (!bip.nodes.filter(node => replacements.keys.exists(key => node.text.contains(key))).forall { node =>
-        PatternExtractor.VALID_ARG_POSTAG.contains(node.postag)
-      }) {
-        logger.info("invalid: invalid arg postag: " + bip)
+
+      // we found replacements for everything
+      else if (!rep.forall { case (index, _) => index >= 0 }) {
+        logger.info("invalid: wrong number of replacements: " + replacements + "; " + bip)
         false
       }
       
-      // we have exactly one of each replacement
-      else if (!replacements.keys.forall(key =>
-        bip.nodes.count(node => node.text.contains(key)) == 1)) {
-        logger.info("invalid: wrong number of replacements: " + replacements + "; " + bip)
+      // all replacements have a valid argument postag
+      else if (rep.forall { case (index, _) =>
+        PatternExtractor.VALID_ARG_POSTAG.contains(bip.nodes(index).postag)
+      }) {
+        logger.info("invalid: invalid arg postag: "+bip)
         false
       }
       
@@ -150,26 +149,37 @@ object TreePatternLearner {
     // find paths containing lemma
     val bipaths = findBipaths(lemmas, graph, maxLength)
 
-    // make sure each path contains exactly one of each 
-    // of the replacement targets
-    val filtered = bipaths.filter(valid)
-
-    filtered.map { bip =>
+    bipaths.flatMap { bip =>
       // get the indices where we need to make a replacement
       // and pair them with the replacement itself
       val rep = replacements.map {
         case (target, replacement) =>
-          val index = 2 * bip.nodes.indexWhere(_.text.contains(target))
+          // find an exact match
+          val exactMatchIndex = bip.nodes.indexWhere(_.text == target)
+
+          // otherwise, find the best match
+          val index = 
+            if (exactMatchIndex == -1) bip.nodes.indexWhere(_.text.contains(target))
+            else exactMatchIndex
+
           (index, new ArgumentMatcher(replacement))
       }
 
-      // make the replacements
-      val replaced = rep.foldRight(DependencyPattern.create(bip)) {
-        case (rep, pat) =>
-          pat.replaceMatcherAt(rep._1, rep._2)
+      // make sure our bipath is valid
+      // and we found the right replacements
+      if (valid(bip, rep)) {
+        // make the replacements
+        val replaced = rep.foldRight(DependencyPattern.create(bip)) {
+          case (rep, pat) =>
+            // double the node index so we have a matcher index
+            pat.replaceMatcherAt(2*rep._1, rep._2)
+        }
+
+        Some(new ExtractorPattern(replaced))
       }
-      
-      new ExtractorPattern(replaced)
+      else {
+        None
+      }
     }
   }
 
