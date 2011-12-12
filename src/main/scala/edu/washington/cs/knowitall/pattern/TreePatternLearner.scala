@@ -115,35 +115,26 @@ object TreePatternLearner {
     maxLength: Option[Int]) = {
 
     def valid(bip: Bipath[DependencyNode], rep: Map[Int, ArgumentMatcher]) = {
-      // we don't have any "punct" edges
-      if (bip.edges.exists(_.label == "punct")) {
-        logger.info("invalid: punct edge: " + bip)
-        false
-      }
-      
-      // all edges are simple word characters
-      else if (!bip.edges.forall(_.label.matches("\\w+"))) {
-        logger.info("invalid: special character in edge: " + bip)
-        false
-      }
+      def params = replacements.toString+"; "+bip.toString
 
+      // we don't have any "punct" edges
+      !bip.edges.find(_.label == "punct").map { edge =>
+        logger.debug("invalid: punct edge '"+edge+"': "+bip)
+      }.isDefined &&
+      // all edges are simple word characters
+      !bip.edges.find(!_.label.matches("\\w+")).map { edge =>
+        logger.debug("invalid: special character in edge '"+edge+"': "+bip)
+      }.isDefined &&
       // we found replacements for everything
-      else if (!rep.forall { case (index, _) => index >= 0 }) {
-        logger.info("invalid: wrong number of replacements: " + replacements + "; " + bip)
-        false
-      }
-      
+      !rep.find { case (index, _) => index < 0 }.map { x =>
+        logger.debug("invalid: wrong number of replacements: "+params)
+      }.isDefined &&
       // all replacements have a valid argument postag
-      else if (rep.forall { case (index, _) =>
-        PatternExtractor.VALID_ARG_POSTAG.contains(bip.nodes(index).postag)
-      }) {
-        logger.info("invalid: invalid arg postag: "+bip)
-        false
-      }
-      
-      else {
-        true
-      }
+      !rep.find { case (index, _) =>
+        !PatternExtractor.VALID_ARG_POSTAG.contains(bip.nodes(index).postag)
+      }.map { case (index, _) =>
+        logger.debug("invalid: invalid arg postag '"+bip.nodes(index)+"': "+params)
+      }.isDefined
     }
 
     // find paths containing lemma

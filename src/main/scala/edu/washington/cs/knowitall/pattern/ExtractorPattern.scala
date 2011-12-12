@@ -12,7 +12,11 @@ import tool.parse.pattern.NodeMatcher
 import tool.parse.pattern.EdgeMatcher
 import tool.parse.pattern.TrivialNodeMatcher
 
+import org.slf4j.LoggerFactory
+
 class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends DependencyPattern(matchers) {
+  val logger = LoggerFactory.getLogger(this.getClass)
+
   def this(pattern: Pattern[DependencyNode]) = this(pattern.matchers.map { _ match {
     case m: ExtractionPartMatcher => m
     // lift extractor matchers to a more representitive class
@@ -26,13 +30,29 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     case m => m
   }})
   
-  def valid = {
+  def valid: Boolean = {
     /* check for multiple prep edges */
     def multiplePreps = this.depEdgeMatchers.count(_.label.contains("prep")) > 1
     /* check for a conj_and edge */
     def conjAnd = this.depEdgeMatchers.exists(_.label == "conj_and")
-    
-    !(symmetric | multiplePreps | conjAnd)
+
+    val length = edgeMatchers.length
+
+    if (symmetric) {
+      logger.debug("invalid: symmetric: " + this.toString)
+      false
+    }
+    else if (length == 2 && multiplePreps) {
+      logger.debug("invalid: multiple preps: " + this.toString)
+      false
+    }
+    else if (length == 2 && conjAnd) {
+      logger.debug("invalid: conj_and: " + this.toString)
+      false
+    }
+    else {
+      true
+    }
   }
   
   /* determine if the pattern is symmetric, such as:
