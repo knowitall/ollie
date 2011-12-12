@@ -116,19 +116,19 @@ object TreePatternLearner {
 
     def valid(bip: Bipath[DependencyNode]) = {
       // we don't have any "punct" edges
-      if (!bip.edges.exists(_.label == "punct")) {
+      if (bip.edges.exists(_.label == "punct")) {
         logger.info("invalid: punct edge: " + bip)
         false
       }
       
       // all edges are simple word characters
-      else if (bip.edges.forall(_.label.matches("\\w+"))) {
+      else if (!bip.edges.forall(_.label.matches("\\w+"))) {
         logger.info("invalid: special character in edge: " + bip)
         false
       }
       
       // all replacements have a valid argument postag
-      else if (bip.nodes.filter(node => replacements.keys.exists(key => node.text.contains(key))).forall { node =>
+      else if (!bip.nodes.filter(node => replacements.keys.exists(key => node.text.contains(key))).forall { node =>
         PatternExtractor.VALID_ARG_POSTAG.contains(node.postag)
       }) {
         logger.info("invalid: invalid arg postag: " + bip)
@@ -136,9 +136,9 @@ object TreePatternLearner {
       }
       
       // we have exactly one of each replacement
-      else if (replacements.keys.forall(key =>
+      else if (!replacements.keys.forall(key =>
         bip.nodes.count(node => node.text.contains(key)) == 1)) {
-        logger.info("invalid: too many replacements: " + replacements + "; " + bip)
+        logger.info("invalid: wrong number of replacements: " + replacements + "; " + bip)
         false
       }
       
