@@ -174,7 +174,7 @@ object TreePatternLearner {
     }
   }
 
-  def findPatternsForLDA(graph: DependencyGraph, lemmas: Set[String], replacements: Map[String, String], rel: String, maxLength: Option[Int]) = {
+  def findPatternsForLDA(graph: DependencyGraph, lemmas: Set[String], replacements: Map[String, String], rel: String, maxLength: Option[Int]): List[(ExtractorPattern, List[String])] = {
     def valid(pattern: Pattern[DependencyNode]) = 
       // make sure arg1 comes first
       pattern.matchers.find(_
@@ -204,10 +204,10 @@ object TreePatternLearner {
       val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher[DependencyNode]("rel:"+relmatcherPostag.get))
 
       // find all DependencyNodeMatchers.  These are the slots.
-      val slots = p.matchers.zipWithIndex flatMap {
+      val slots: List[(String, Int)] = p.matchers.zipWithIndex flatMap {
         case (nm, index) => nm match {
-          case nm: DependencyNodeMatcher => List((nm.text, index))
-          case _ => List.empty
+          case nm: DependencyNodeMatcher => Some((nm.text.get, index))
+          case _ => None
         }
       }
 
