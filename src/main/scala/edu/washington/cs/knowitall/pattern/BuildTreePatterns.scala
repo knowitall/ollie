@@ -65,7 +65,7 @@ object BuildTreePatterns {
         try {
           val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
           for ((pattern, slots) <- patterns; if pattern.valid) {
-            if (settings.length.isDefined && slots.length == settings.length.get) {
+            if (!settings.length.isDefined || pattern.nodeMatchers.length <= settings.length.get) {
               writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
               count += 1
             }
