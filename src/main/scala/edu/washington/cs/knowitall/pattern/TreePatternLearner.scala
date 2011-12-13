@@ -101,7 +101,7 @@ object TreePatternLearner {
     }
 
     combinations(allNodes).flatMap { nodes =>
-      val paths = graph.graph.bipaths(nodes)
+      val paths = graph.graph.bipaths(nodes, maxLength)
 
       // restrict to paths that go up and then down
       paths.filter(bipath => bipath.path.length > 0 && 
