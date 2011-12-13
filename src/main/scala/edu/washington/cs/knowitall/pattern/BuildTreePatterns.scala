@@ -14,6 +14,8 @@ import tool.parse.graph._
 import util.DefaultObjects
 import org.slf4j.LoggerFactory
 
+import scopt.OptionParser
+
 object BuildTreePatterns {
   import TreePatternLearner._
 
@@ -21,12 +23,32 @@ object BuildTreePatterns {
 
   val CHUNK_SIZE = 100000
 
+  class Settings {
+    var sourcePath: String = _
+    var destPath: String = _
+    var length = Option.empty[Int]
+  }
+
   def main(args: Array[String]) {
+    val settings = new Settings
+
+    val parser = new OptionParser("buildpats") {
+      arg("source", "source", { v: String => settings.sourcePath = v })
+      arg("dest", "dest", { v: String => settings.destPath = v })
+      intOpt("l", "length", "<length>", "maximum number of edges in the patterns", { l: Int => settings.length = Some(l) })
+    }
+    if (parser.parse(args)) {
+      main(settings)
+    }
+  }
+ 
+ def main(settings: Settings) {
     // file with dependencies
-    val source = Source.fromFile(args(0))
-    val writer = new PrintWriter(new File(args(1)))
+    val source = Source.fromFile(settings.sourcePath)
+    val writer = new PrintWriter(new File(settings.destPath))
     
     logger.info("chunk size: " + CHUNK_SIZE)
+    logger.info("pattern length: " + settings.length)
 
     var index = 0
     for (lines <- source.getLines.grouped(CHUNK_SIZE)) {
@@ -41,7 +63,7 @@ object BuildTreePatterns {
         val graph = DependencyGraph(dependencies).normalize
 
         try {
-          val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, Some(2))
+          val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
           for ((pattern, slots) <- patterns) {
             if (!pattern.valid) {
               logger.info("invalid: " + pattern)
