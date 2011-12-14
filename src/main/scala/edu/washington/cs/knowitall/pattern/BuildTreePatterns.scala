@@ -90,22 +90,33 @@ object BuildTreePatterns {
 object KeepCommonPatterns {
   def main(args: Array[String]) {
     val min = args(1).toInt
+    System.err.println("minimum pattern size: "+min)
+
+    var rows = 0
+    var keepers = 0
 
     val patterns = collection.mutable.HashMap[String, Int]().withDefaultValue(0)
     val firstSource = Source.fromFile(args(0))
     for (line <- firstSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
+      rows += 1
       patterns += pattern -> (patterns(pattern) + 1)
     }
     firstSource.close
+
+    System.err.println(rows+" rows")
+    System.err.println(patterns.size+" unique patterns")
 
     val secondSource = Source.fromFile(args(0))
     for (line <- secondSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       if (patterns(pattern) >= min) {
+        keepers += 1
         println(line)
       }
     }
     secondSource.close
+
+    System.err.println(keepers+" patterns that occur more than "+min+"times") 
   }
 }
