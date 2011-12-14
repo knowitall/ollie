@@ -121,6 +121,10 @@ object TreePatternLearner {
       !bip.edges.find(_.label == "punct").map { edge =>
         logger.debug("invalid: punct edge '"+edge+"': "+bip)
       }.isDefined &&
+      // we don't have any "dep" edges
+      !bip.edges.find(_.label == "dep").map { edge =>
+        logger.debug("invalid: dep edge '"+edge+"': "+bip)
+      }.isDefined &&
       // all edges are simple word characters
       !bip.edges.find(!_.label.matches("\\w+")).map { edge =>
         logger.debug("invalid: special character in edge '"+edge+"': "+bip)
