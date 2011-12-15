@@ -175,27 +175,32 @@ object PatternExtractor {
   private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Extraction = {
     val groups = m.groups
   
-    val rel = groups.find { case (s, dn) => s.equals("rel") } getOrElse(throw new IllegalArgumentException("no rel: " + m))
-    val arg1 = groups.find { case (s, dn) => s.equals("arg1") } getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
-    val arg2 = groups find { case (s, dn) => s.equals("arg2") } getOrElse(throw new IllegalArgumentException("no arg2: " + m))
+    val rel = groups.get("rel") getOrElse(throw new IllegalArgumentException("no rel: " + m))
+    val arg1 = groups.get("arg1") getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
+    val arg2 = groups.get("arg2") getOrElse(throw new IllegalArgumentException("no arg2: " + m))
     
     def buildArgument(node: DependencyNode) = {
+      // don't restrict to adjacent (by interval) because prep_of, etc.
+      // remove some nodes that we want to expand across.  In the end,
+      // we get the span over the inferiors.
       def cond(e: Graph.Edge[DependencyNode]) = 
         (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn")
-      val inferiors = graph.graph.inferiors(node, cond)
-      val indices = Interval.span(inferiors.map(_.indices).toSeq)
+      val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
+
+      val lefts = inferiors.takeWhile(_ != node).reverse
+      val rights = inferiors.dropWhile(_ != node).drop(1)
+
+      val indices = Interval.span(node.indices :: lefts.takeWhile(_ != rel).map(_.indices) ++ rights.takeWhile(_ != rel).map(_.indices))
+
       // use the original dependencies nodes in case some information
       // was lost.  For example, of is collapsed into the edge prep_of
       val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
       new DependencyNode(string, node.postag, node.indices)
     }
     
-    (rel, arg1, arg2) match {
-      case ((_,rel), (_,arg1), (_,arg2)) => 
-	    val newArg1 = if (expandArgument) buildArgument(arg1) else arg1
-	    val newArg2 = if (expandArgument) buildArgument(arg2) else arg2
-	    new Extraction(newArg1.text, rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), newArg2.text)
-    }
+    val newArg1 = if (expandArgument) buildArgument(arg1) else arg1
+    val newArg2 = if (expandArgument) buildArgument(arg2) else arg2
+    new Extraction(newArg1.text, rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), newArg2.text)
   }
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
@@ -369,7 +374,7 @@ object PatternExtractor {
           val dependencies = Dependencies.deserialize(dependencyString)
           val text = if (parts.length > 1) Some(parts(0)) else None
 
-          val dgraph = DependencyGraph(text, dependencies).normalize
+          val dgraph = DependencyGraph(text, dependencies)
           if (text.isDefined) logger.debug("text: " + text.get)
           logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
 
