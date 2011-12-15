@@ -48,7 +48,9 @@ object Template {
 }
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
-  def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[Extraction]
+  def extract(dgraph: DependencyGraph)(implicit 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[Extraction]
   def confidence(extr: Extraction): Double
 
   override def toString = pattern.toString
@@ -59,7 +61,9 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
   
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
 
-  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
+  override def extract(dgraph: DependencyGraph)(implicit 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     logger.debug("pattern: " + pattern)
     
     // apply pattern and keep valid matches
@@ -69,7 +73,7 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
     val filtered = matches.filter(validMatch(dgraph.graph))
     if (!filtered.isEmpty) logger.debug("filtered: " + filtered.mkString(", "))
 
-    val extractions = filtered.map(m => buildExtraction(dgraph, m))
+    val extractions = filtered.flatMap(m => buildExtraction(dgraph, m))
     if (!extractions.isEmpty) logger.debug("extractions: " + extractions.mkString(", "))
     
     extractions
@@ -86,7 +90,7 @@ object GeneralPatternExtractor {
 class TemplatePatternExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
 extends GeneralPatternExtractor(pattern, patternCount, maxPatternCount) {
   override def extract(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     val extractions = super.extract(dgraph)
@@ -108,7 +112,9 @@ extends GeneralPatternExtractor(pattern, patternCount, relationCount) {
       dist.relationByPattern(dist.relationEncoding(relation))._1(dist.patternEncoding(pattern.toString)),
       dist.relationByPattern(dist.relationEncoding(relation))._2)
 
-  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
+  override def extract(dgraph: DependencyGraph)(implicit 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     val extractions = super.extract(dgraph)
     extractions.withFilter{ extr =>
       val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
@@ -123,7 +129,9 @@ extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.pa
   
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternEncoding(pattern.toString), dist)
 
-  override def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
+  override def extract(dgraph: DependencyGraph)(implicit 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     val p = dist.patternEncoding(pattern.toString)
 
     super.extract(dgraph).flatMap { extr =>
@@ -172,14 +180,14 @@ object PatternExtractor {
 	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.groups("arg1").postag) && VALID_ARG_POSTAG.contains(m.groups("arg2").postag)))
   }
 
-  private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Extraction = {
+  private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[Extraction] = {
     val groups = m.groups
   
     val rel = groups.get("rel") getOrElse(throw new IllegalArgumentException("no rel: " + m))
     val arg1 = groups.get("arg1") getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
     val arg2 = groups.get("arg2") getOrElse(throw new IllegalArgumentException("no arg2: " + m))
     
-    def buildArgument(node: DependencyNode) = {
+    def expand(node: DependencyNode) = {
       // don't restrict to adjacent (by interval) because prep_of, etc.
       // remove some nodes that we want to expand across.  In the end,
       // we get the span over the inferiors.
@@ -194,13 +202,18 @@ object PatternExtractor {
 
       // use the original dependencies nodes in case some information
       // was lost.  For example, of is collapsed into the edge prep_of
-      val string = graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max).map(_.text).mkString(" ")
-      new DependencyNode(string, node.postag, node.indices)
+      graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max)//.map(_.text).mkString(" ")
     }
+
+    def makeString(nodes: List[DependencyNode]) = nodes.map(_.text).mkString(" ")
     
-    val newArg1 = if (expandArgument) buildArgument(arg1) else arg1
-    val newArg2 = if (expandArgument) buildArgument(arg2) else arg2
-    new Extraction(newArg1.text, rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), newArg2.text)
+    val expandedArg1 = if (expandArgument) expand(arg1) else List(arg1)
+    val expandedArg2 = if (expandArgument) expand(arg2) else List(arg2)
+    if (Interval.span(expandedArg1.map(_.indices)) intersects Interval.span(expandedArg2.map(_.indices))) {
+      logger.debug("invalid: arguments overlap: " + makeString(expandedArg1) + ", " + makeString(expandedArg2))
+      None
+    }
+    else Some(new Extraction(makeString(expandedArg1), rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), makeString(expandedArg2)))
   }
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
@@ -403,7 +416,7 @@ object PatternExtractor {
             val extra = reverbMatches.map("\treverb:" + _.toString)
 
             val resultText =
-              if (parser.verbose) "extraction: (" + ("%1.6f" format conf) + ") for " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
+              if (parser.verbose) "extraction: "+("%1.6f" format conf)+" " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
               else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString + extra.getOrElse("")
             Result(conf, extr, resultText)
           }
