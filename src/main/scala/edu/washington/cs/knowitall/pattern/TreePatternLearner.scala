@@ -109,12 +109,13 @@ object TreePatternLearner {
     }
   }
 
+  class InvalidBipathException(message: String) extends RuntimeException(message)
   def findPattern(graph: DependencyGraph,
     lemmas: Set[String],
     replacements: Map[String, String],
     maxLength: Option[Int]) = {
 
-    def valid(bip: Bipath[DependencyNode], rep: Map[Int, ArgumentMatcher]) = {
+    def valid(bip: Bipath[DependencyNode]) = {
       def params = replacements.toString+"; "+bip.toString
 
       // we don't have any "punct" edges
@@ -128,53 +129,45 @@ object TreePatternLearner {
       // all edges are simple word characters
       !bip.edges.find(!_.label.matches("\\w+")).map { edge =>
         logger.debug("invalid: special character in edge '"+edge+"': "+bip)
-      }.isDefined &&
-      // we found replacements for everything
-      !rep.find { case (index, _) => index < 0 }.map { x =>
-        logger.debug("invalid: wrong number of replacements: "+params)
-      }.isDefined &&
-      // all replacements have a valid argument postag
-      !rep.find { case (index, _) =>
-        !PatternExtractor.VALID_ARG_POSTAG.contains(bip.nodes(index).postag)
-      }.map { case (index, _) =>
-        logger.debug("invalid: invalid arg postag '"+bip.nodes(index)+"': "+params)
       }.isDefined
     }
 
     // find paths containing lemma
-    val bipaths = findBipaths(lemmas, graph, maxLength)
+    val bipaths = findBipaths(lemmas, graph, maxLength) filter valid
 
     bipaths.flatMap { bip =>
-      // get the indices where we need to make a replacement
-      // and pair them with the replacement itself
-      val rep = replacements.map {
-        case (target, replacement) =>
-          // find an exact match
-          val exactMatchIndex = bip.nodes.indexWhere(_.text == target)
+      import scalaz._
+      import Scalaz._
 
-          // otherwise, find the best match
-          val index = 
-            if (exactMatchIndex == -1) bip.nodes.indexWhere(_.text.contains(target))
-            else exactMatchIndex
+      val zipper = DependencyPattern.create(bip).matchers.toZipper.get
 
-          (index, new ArgumentMatcher(replacement))
+      val zipperReplaced = try { Some((zipper /: replacements){ 
+        case (zipper, (target, rep)) =>
+          val zipperMatch = 
+            // find an exact match
+            zipper.findZ {
+              case m: DependencyNodeMatcher => m.text.get == target
+              case _ => false
+           } orElse
+            // find a partial match
+            zipper.findZ {
+              case m: DependencyNodeMatcher => m.text.get contains target
+              case _ => false
+            } getOrElse {
+              throw new InvalidBipathException("invalid: couldn't find replacement '"+rep+"': "+bip)
+            }
+
+          // ensure valid postags
+          if (!PatternExtractor.VALID_ARG_POSTAG.contains(zipperMatch.focus.asInstanceOf[DependencyNodeMatcher].postag.get))
+            throw new InvalidBipathException("invalid: invalid arg postag '"+zipper.focus+"': "+bip)
+
+          // make replacements
+          Scalaz.zipper(zipperMatch.lefts, new ArgumentMatcher(rep), zipperMatch.rights)
+      })} catch {
+        case e: InvalidBipathException => logger.debug(e.getMessage); None
       }
 
-      // make sure our bipath is valid
-      // and we found the right replacements
-      if (valid(bip, rep)) {
-        // make the replacements
-        val replaced = rep.foldRight(DependencyPattern.create(bip)) {
-          case (rep, pat) =>
-            // double the node index so we have a matcher index
-            pat.replaceMatcherAt(2*rep._1, rep._2)
-        }
-
-        Some(new ExtractorPattern(replaced))
-      }
-      else {
-        None
-      }
+      zipperReplaced.map(zipper => new ExtractorPattern(zipper.toStream.toList))
     }
   }
 
@@ -193,38 +186,47 @@ object TreePatternLearner {
 
     // find the best part to replace with rel
     filtered.map { pattern =>
-      val (relmatcher, relindex) = try {
-        pattern.matchers.view.zipWithIndex.find(_._1 match {
+      import scalaz._
+      import Scalaz._
+
+      def replaceRel(zipper: Zipper[Matcher[DependencyNode]]) = {
+        // find the rel node
+        val relZipper = zipper.findNext(_ match {
           case nm: DependencyNodeMatcher => !(rel intersect nm.text.get).isEmpty
           case _ => false
-        }).get
-      }
-      catch {
-        case e: NoSuchElementException => throw new NoRelationNodeException("No relation ("+rel+") in pattern: " + pattern)
-      }
-
-      // replace rel
-      val relmatcherPostag = relmatcher.asInstanceOf[DependencyNodeMatcher].postag
-      val p = pattern.replaceMatcherAt(relindex, new CaptureNodeMatcher[DependencyNode]("rel:"+relmatcherPostag.get))
-
-      // find all DependencyNodeMatchers.  These are the slots.
-      val slots: List[(String, Int)] = p.matchers.zipWithIndex flatMap {
-        case (nm, index) => nm match {
-          case nm: DependencyNodeMatcher => Some((nm.text.get, index))
-          case _ => None
+        }) getOrElse {
+          throw new NoRelationNodeException("No relation ("+rel+") in pattern: " + pattern)
         }
+
+        // replace rel
+        val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag.get
+        Scalaz.zipper[Matcher[DependencyNode]](relZipper.lefts, new CaptureNodeMatcher("rel:"+postag), relZipper.rights)
       }
 
-      val (slotLabels, _) = slots.unzip
+      def replaceSlots(zipper: Zipper[Matcher[DependencyNode]]) = {
+        val startZipper = zipper.move(0).get
 
-      val patternWithReplacedSlots = slots.zipWithIndex.map {
-        case ((label, matcherIndex), slotIndex) => ("slot" + slotIndex, matcherIndex)
-      }.foldRight(p) {
-        case ((replacement, index), p) =>
-          (p.replaceMatcherAt(index, new CaptureNodeMatcher(replacement)))
+        def replaceSlots(zipper: Zipper[Matcher[DependencyNode]], index: Int): Zipper[Matcher[DependencyNode]] = {
+          def replaceSlot(zipper: Zipper[Matcher[DependencyNode]]) = {
+            Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot" + index), zipper.rights)
+          }
+
+          zipper.findNext(_.isInstanceOf[DependencyNodeMatcher]) match {
+            case Some(z) => replaceSlots(replaceSlot(z), index + 1)
+            case None => zipper
+          }
+        }
+
+        replaceSlots(zipper, 0)
       }
 
-      (new ExtractorPattern(patternWithReplacedSlots), slotLabels)
+      val zipper = pattern.matchers.toZipper.get
+      val relZipper = replaceRel(zipper)
+      val slotZipper = replaceSlots(relZipper)
+
+      val slotLabels: List[String] = pattern.matchers.collect{ case m: DependencyNodeMatcher => m.text.get }
+
+      (new ExtractorPattern(slotZipper.toStream.toList), slotLabels)
     }
   }
 }

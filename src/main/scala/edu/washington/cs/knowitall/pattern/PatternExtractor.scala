@@ -40,6 +40,13 @@ class Extraction(
     (that.arg2.contains(this.arg2) || this.arg2.contains(that.arg2))
 }
 
+case class Template(string: String) {
+  def apply(extr: Extraction) = extr.replaceRelation(string.replaceAll("\\{rel}", extr.rel))
+}
+object Template {
+  def deserialize(string: String) = Template(string)
+}
+
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
   def extract(dgraph: DependencyGraph)(implicit buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[Extraction]
   def confidence(extr: Extraction): Double
@@ -74,6 +81,17 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
 }
 object GeneralPatternExtractor {
   val logger = LoggerFactory.getLogger(this.getClass)
+}
+
+class TemplatePatternExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
+extends GeneralPatternExtractor(pattern, patternCount, maxPatternCount) {
+  override def extract(dgraph: DependencyGraph)(implicit
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Extraction, 
+    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
+
+    val extractions = super.extract(dgraph)
+    extractions.map(template(_))
+  }
 }
 
 class SpecificPatternExtractor(val relation: String, 
@@ -205,6 +223,32 @@ object PatternExtractor {
       new GeneralPatternExtractor(p, count, maxCount)
     }).toList
   }
+
+  def loadTemplateExtractorsFromFile(patternFilePath: String): List[GeneralPatternExtractor] = {
+    val patternSource = Source.fromFile(patternFilePath)
+    val patterns: List[(Template, Pattern[DependencyNode], Int)] = try {
+      // parse the file
+      patternSource.getLines.map { line =>
+        line.split("\t") match {
+          // full information specified
+          case Array(template, pat, count) => 
+            (Template.deserialize(template), DependencyPattern.deserialize(pat), count.toInt)
+          // assume a count of 1 if nothing is specified
+          case Array(template, pat) => 
+            logger.warn("warning: pattern has no count: " + pat); 
+            (Template.deserialize(template), DependencyPattern.deserialize(pat), 1)
+          case _ => throw new IllegalArgumentException("file can't have more than two columns")
+        }
+      }.toList
+    } finally {
+      patternSource.close
+    }
+
+    val maxCount = patterns.maxBy(_._3)._3
+    (for ((template, pattern, count) <- patterns) yield {
+      new TemplatePatternExtractor(template, pattern, count, maxCount)
+    }).toList
+  }
   
   def loadLdaExtractorsFromDistributions(dist: Distributions): List[LdaPatternExtractor] = {
     (for (p <- dist.patternCodes) yield {
@@ -231,6 +275,7 @@ object PatternExtractor {
   def main(args: Array[String]) {
     val parser = new OptionParser("applypat") {
       var patternFilePath: Option[String] = None
+      var templateFilePath: Option[String] = None
       var ldaDirectoryPath: Option[String] = None
       var sentenceFilePath: String = null
       var extractorType: String = null
@@ -243,11 +288,15 @@ object PatternExtractor {
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
+
       opt("d", "duplicates", "keep duplicate extractions", { duplicates = true })
       opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
       opt("r", "reverb", "show which extractions are reverb extractions", { showReverb = true })
+      opt("t", "template", "template file for templated extractor", { s: String => templateFilePath = Option(s) })
+
       opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { showAll = true })
       opt("v", "verbose", "", { verbose = true })
+
       arg("type", "type of extractor", { v: String => extractorType = v })
       arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
     }
@@ -261,13 +310,19 @@ object PatternExtractor {
       
       logger.info("reading patterns")
       // sort by inverse count so frequent patterns appear first 
-      val extractors = ((parser.extractorType, distributions, parser.patternFilePath) match {
-        case (_, Some(_), Some(_)) => throw new IllegalArgumentException
-        case ("lda", Some(distributions), None) => loadLdaExtractorsFromDistributions(distributions)
-        case ("general", Some(distributions), None) => loadGeneralExtractorsFromDistributions(distributions)
-        case ("specific", Some(distributions), None) => loadSpecificExtractorsFromDistributions(distributions)
-        case ("general", None, Some(patternFilePath)) => loadGeneralExtractorsFromFile(patternFilePath)
-        case _ => throw new IllegalArgumentException
+      val extractors = ((parser.extractorType, distributions) match {
+        case ("lda", Some(distributions)) => loadLdaExtractorsFromDistributions(distributions)
+        case ("general", Some(distributions)) => loadGeneralExtractorsFromDistributions(distributions)
+        case ("template", None) => 
+          loadTemplateExtractorsFromFile(
+            parser.patternFilePath.getOrElse(
+              throw new IllegalArgumentException("pattern template file (--patterns) required for the template extractor.")))
+        case ("specific", Some(distributions)) => loadSpecificExtractorsFromDistributions(distributions)
+        case ("general", None) => 
+          loadGeneralExtractorsFromFile(
+            parser.patternFilePath.getOrElse(
+              throw new IllegalArgumentException("pattern file (--patterns) required for the general extractor.")))
+        case _ => throw new IllegalArgumentException("invalid parameters")
       }).toList
       
       /*
