@@ -192,7 +192,7 @@ object PatternExtractor {
       // remove some nodes that we want to expand across.  In the end,
       // we get the span over the inferiors.
       def cond(e: Graph.Edge[DependencyNode]) = 
-        (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn")
+        (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn" || e.label == "poss")
       val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
 
       val lefts = inferiors.takeWhile(_ != node).reverse
