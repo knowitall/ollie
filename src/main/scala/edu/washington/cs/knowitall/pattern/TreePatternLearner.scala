@@ -191,7 +191,7 @@ object TreePatternLearner {
 
       def replaceRel(zipper: Zipper[Matcher[DependencyNode]]) = {
         // find the rel node
-        val relZipper = zipper.findNext(_ match {
+        val relZipper = zipper.findZ(_ match {
           case nm: DependencyNodeMatcher => !(rel intersect nm.text.get).isEmpty
           case _ => false
         }) getOrElse {
@@ -204,14 +204,12 @@ object TreePatternLearner {
       }
 
       def replaceSlots(zipper: Zipper[Matcher[DependencyNode]]) = {
-        val startZipper = zipper.move(0).get
-
         def replaceSlots(zipper: Zipper[Matcher[DependencyNode]], index: Int): Zipper[Matcher[DependencyNode]] = {
           def replaceSlot(zipper: Zipper[Matcher[DependencyNode]]) = {
             Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot" + index), zipper.rights)
           }
 
-          zipper.findNext(_.isInstanceOf[DependencyNodeMatcher]) match {
+          zipper.findZ(_.isInstanceOf[DependencyNodeMatcher]) match {
             case Some(z) => replaceSlots(replaceSlot(z), index + 1)
             case None => zipper
           }
