@@ -59,10 +59,10 @@ object BuildTreePatterns {
         val lemmas = lemmaString.split("\\s+").toSet
 
         // todo: push stemming forward in the process
-        val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
-        val graph = DependencyGraph(dependencies).normalize
-
         try {
+          val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
+          val graph = DependencyGraph(dependencies).normalize
+
           val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
           for ((pattern, slots) <- patterns; if pattern.valid) {
             if (!settings.length.isDefined || pattern.nodeMatchers.length <= settings.length.get) {
@@ -72,6 +72,7 @@ object BuildTreePatterns {
           }
         }
         catch {
+          case e: DependencySerializationException => logger.warn("match exception on Dependency deserialization (likely a non-printable character): " + deps)
           case e: NoRelationNodeException => logger.warn(e.toString)
         }
       })
