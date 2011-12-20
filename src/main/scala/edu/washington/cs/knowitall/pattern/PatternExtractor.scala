@@ -383,60 +383,65 @@ object PatternExtractor {
           val parts = line.split("\t")
           require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
 
-          val dependencyString = parts.last
-          val dependencies = Dependencies.deserialize(dependencyString)
-          val text = if (parts.length > 1) Some(parts(0)) else None
+          try {
+            val dependencyString = parts.last
+            val dependencies = Dependencies.deserialize(dependencyString)
+            val text = if (parts.length > 1) Some(parts(0)) else None
 
-          val rawDgraph = DependencyGraph(text, dependencies)
-          val dgraph = if (parser.collapseVB) rawDgraph.simplifyPostags.simplifyVBPostags
-          else rawDgraph.simplifyPostags
+            val rawDgraph = DependencyGraph(text, dependencies)
+            val dgraph = if (parser.collapseVB) rawDgraph.simplifyPostags.simplifyVBPostags
+            else rawDgraph.simplifyPostags
 
-          if (text.isDefined) logger.debug("text: " + text.get)
-          logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
+            if (text.isDefined) logger.debug("text: " + text.get)
+            logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
 
-          if (parser.verbose) {
-            if (text.isDefined) println("text: " + text.get)
-            println("deps: " + dependencyString)
-          }
-          
-          require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
-          val reverbExtractions = if (!parser.showReverb) Nil else reverbExtract(text.get)
-          if (parser.showReverb) {
-            if (parser.verbose) println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-            logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-          }
-          
-          val results = for (
-            extractor <- extractors;
-            // todo: organize patterns by a reverse-lookup on edges
-            // optimization: make sure the dependency graph contains all the edges
-            if (extractor.pattern.edgeMatchers.forall(matcher => dependencies.exists(matcher.canMatch(_))));
-            extr <- extractor.extract(dgraph) 
-          ) yield {
-            val conf = extractor.confidence(extr)
-            val reverbMatches = reverbExtractions.find(_.softMatch(extr))
-            logger.debug("reverb match: " + reverbMatches.toString)
-            val extra = reverbMatches.map("\treverb:" + _.toString)
-
-            val resultText =
-              if (parser.verbose) "extraction: "+("%1.6f" format conf)+" " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
-              else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString + extra.getOrElse("")
-            Result(conf, extr, resultText)
-          }
-          
-          if (parser.duplicates) {
-            for (result <- results.sorted(Ordering[Result].reverse)) {
-              println(result)
+            if (parser.verbose) {
+              if (text.isDefined) println("text: " + text.get)
+              println("deps: " + dependencyString)
             }
-          }
-          else {
-            val maxes = for (results <- results.groupBy(_.extr)) yield (results._2.max)
-            for (result <- maxes.toSeq.sorted(Ordering[Result].reverse)) {
-              println(result)
+            
+            require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
+            val reverbExtractions = if (!parser.showReverb) Nil else reverbExtract(text.get)
+            if (parser.showReverb) {
+              if (parser.verbose) println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+              logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
             }
-          }
+            
+            val results = for (
+              extractor <- extractors;
+              // todo: organize patterns by a reverse-lookup on edges
+              // optimization: make sure the dependency graph contains all the edges
+              if (extractor.pattern.edgeMatchers.forall(matcher => dependencies.exists(matcher.canMatch(_))));
+              extr <- extractor.extract(dgraph) 
+            ) yield {
+              val conf = extractor.confidence(extr)
+              val reverbMatches = reverbExtractions.find(_.softMatch(extr))
+              logger.debug("reverb match: " + reverbMatches.toString)
+              val extra = reverbMatches.map("\treverb:" + _.toString)
 
-          if (parser.verbose) println()
+              val resultText =
+                if (parser.verbose) "extraction: "+("%1.6f" format conf)+" " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
+                else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString + extra.getOrElse("")
+              Result(conf, extr, resultText)
+            }
+            
+            if (parser.duplicates) {
+              for (result <- results.sorted(Ordering[Result].reverse)) {
+                println(result)
+              }
+            }
+            else {
+              val maxes = for (results <- results.groupBy(_.extr)) yield (results._2.max)
+              for (result <- maxes.toSeq.sorted(Ordering[Result].reverse)) {
+                println(result)
+              }
+            }
+
+            if (parser.verbose) println()
+          }
+          catch {
+            case e: DependencySerializationException => logger.warn(e.getMessage)
+          }
         }
       } finally {
         sentenceSource.close
