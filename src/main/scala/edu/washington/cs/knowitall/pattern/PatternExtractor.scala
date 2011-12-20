@@ -436,7 +436,7 @@ object PatternExtractor {
             }
           }
 
-          println
+          if (parser.verbose) println()
         }
       } finally {
         sentenceSource.close
