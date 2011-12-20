@@ -293,7 +293,6 @@ object PatternExtractor {
   def main(args: Array[String]) {
     val parser = new OptionParser("applypat") {
       var patternFilePath: Option[String] = None
-      var templateFilePath: Option[String] = None
       var ldaDirectoryPath: Option[String] = None
       var sentenceFilePath: String = null
       var extractorType: String = null
@@ -303,6 +302,7 @@ object PatternExtractor {
       var expandArguments: Boolean = false
       var showAll: Boolean = false
       var verbose: Boolean = false
+      var collapseVB: Boolean = false
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
@@ -310,7 +310,7 @@ object PatternExtractor {
       opt("d", "duplicates", "keep duplicate extractions", { duplicates = true })
       opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
       opt("r", "reverb", "show which extractions are reverb extractions", { showReverb = true })
-      opt("t", "template", "template file for templated extractor", { s: String => templateFilePath = Option(s) })
+      opt("collapse-vb", "collapse 'VB.*' to 'VB' in the graph", { collapseVB = true })
 
       opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { showAll = true })
       opt("v", "verbose", "", { verbose = true })
@@ -387,7 +387,10 @@ object PatternExtractor {
           val dependencies = Dependencies.deserialize(dependencyString)
           val text = if (parts.length > 1) Some(parts(0)) else None
 
-          val dgraph = DependencyGraph(text, dependencies)
+          val rawDgraph = DependencyGraph(text, dependencies)
+          val dgraph = if (parser.collapseVB) rawDgraph.simplifyPostags.simplifyVBPostags
+          else rawDgraph.simplifyPostags
+
           if (text.isDefined) logger.debug("text: " + text.get)
           logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
 
