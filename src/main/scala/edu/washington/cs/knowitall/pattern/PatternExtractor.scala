@@ -2,6 +2,7 @@ package edu.washington.cs.knowitall
 package pattern
 
 import scala.io.Source
+import scala.util.matching.Regex
 import scala.collection
 import scopt.OptionParser
 import edu.washington.cs.knowitall.collection.immutable.Interval
@@ -40,10 +41,19 @@ class Extraction(
     (that.arg2.contains(this.arg2) || this.arg2.contains(that.arg2))
 }
 
-case class Template(string: String) {
-  def apply(extr: Extraction) = extr.replaceRelation(string.replaceAll("\\{rel}", extr.rel))
+case class Template(template: String) {
+  import Template._
+  def apply(extr: Extraction, m: Match[DependencyNode]) = {
+    val rel = group.replaceAllIn(template, (gm: Regex.Match) => gm.group(1) match {
+      case "prep" => m.edgeGroups("prep").edge.label.drop(5)
+      case "rel" => extr.rel
+    })
+
+    extr.replaceRelation(rel)
+  }
 }
 object Template {
+  val group = """\{(.*?)}""".r
   def deserialize(string: String) = Template(string)
 }
 
@@ -61,11 +71,10 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
   
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
 
-  override def extract(dgraph: DependencyGraph)(implicit 
+  protected def extractWithMatches(dgraph: DependencyGraph)(implicit
     buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
-    logger.debug("pattern: " + pattern)
-    
+
     // apply pattern and keep valid matches
     val matches = pattern(dgraph.graph)
     if (!matches.isEmpty) logger.debug("matches: " + matches.mkString(", "))
@@ -73,7 +82,17 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
     val filtered = matches.filter(validMatch(dgraph.graph))
     if (!filtered.isEmpty) logger.debug("filtered: " + filtered.mkString(", "))
 
-    val extractions = filtered.flatMap(m => buildExtraction(dgraph, m))
+    for (m <- filtered; extr <- buildExtraction(dgraph, m)) yield {
+      (extr, m)
+    }
+  }
+
+  override def extract(dgraph: DependencyGraph)(implicit 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
+    logger.debug("pattern: " + pattern)
+    
+    val extractions = this.extractWithMatches(dgraph).map(_._1)
     if (!extractions.isEmpty) logger.debug("extractions: " + extractions.mkString(", "))
     
     extractions
@@ -93,8 +112,8 @@ extends GeneralPatternExtractor(pattern, patternCount, maxPatternCount) {
     buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
-    val extractions = super.extract(dgraph)
-    extractions.map(template(_))
+    val extractions = super.extractWithMatches(dgraph)
+    extractions.map{ case (extr, m) => template(extr, m) }
   }
 }
 
@@ -177,11 +196,11 @@ object PatternExtractor {
     !m.bipath.nodes.exists { v =>
       graph.edges(v).exists(_.label == "neg")
 	} && 
-	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.groups("arg1").postag) && VALID_ARG_POSTAG.contains(m.groups("arg2").postag)))
+	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").postag)))
   }
 
   private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[Extraction] = {
-    val groups = m.groups
+    val groups = m.nodeGroups
   
     val rel = groups.get("rel") getOrElse(throw new IllegalArgumentException("no rel: " + m))
     val arg1 = groups.get("arg1") getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
