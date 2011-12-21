@@ -44,10 +44,7 @@ class Extraction(
 case class Template(template: String) {
   import Template._
   def apply(extr: Extraction, m: Match[DependencyNode]) = {
-    val rel = group.replaceAllIn(template, (gm: Regex.Match) => gm.group(1) match {
-      case "prep" => m.edgeGroups("prep").edge.label.drop(5)
-      case "rel" => extr.rel
-    })
+    val rel = group.replaceAllIn(template, (gm: Regex.Match) => m.groups(gm.group(1)).text)
 
     extr.replaceRelation(rel)
   }
@@ -113,6 +110,7 @@ extends GeneralPatternExtractor(pattern, patternCount, maxPatternCount) {
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     val extractions = super.extractWithMatches(dgraph)
+
     extractions.map{ case (extr, m) => template(extr, m) }
   }
 }
@@ -196,15 +194,15 @@ object PatternExtractor {
     !m.bipath.nodes.exists { v =>
       graph.edges(v).exists(_.label == "neg")
 	} && 
-	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").postag)))
+	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag)))
   }
 
   private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[Extraction] = {
     val groups = m.nodeGroups
   
-    val rel = groups.get("rel") getOrElse(throw new IllegalArgumentException("no rel: " + m))
-    val arg1 = groups.get("arg1") getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
-    val arg2 = groups.get("arg2") getOrElse(throw new IllegalArgumentException("no arg2: " + m))
+    val rel = groups.get("rel").map(_.node) getOrElse(throw new IllegalArgumentException("no rel: " + m))
+    val arg1 = groups.get("arg1").map(_.node) getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
+    val arg2 = groups.get("arg2").map(_.node) getOrElse(throw new IllegalArgumentException("no arg2: " + m))
     
     def expand(node: DependencyNode) = {
       // don't restrict to adjacent (by interval) because prep_of, etc.
