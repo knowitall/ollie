@@ -5,6 +5,7 @@ import tool.parse.pattern.Matcher
 import tool.parse.pattern.Pattern
 import tool.parse.pattern.DependencyNodeMatcher
 import tool.parse.pattern.DependencyEdgeMatcher
+import tool.parse.pattern.LabelEdgeMatcher
 import tool.parse.pattern.CaptureNodeMatcher
 import tool.parse.graph.DependencyNode
 import tool.parse.pattern.DependencyPattern
@@ -32,9 +33,14 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
   
   def valid: Boolean = {
     /* check for multiple prep edges */
-    def multiplePreps = this.depEdgeMatchers.count(_.label.contains("prep")) > 1
+    def multiplePreps = this.depEdgeMatchers.collect {
+      case e: LabelEdgeMatcher => e
+    }.count(_.label.contains("prep")) > 1
+
     /* check for a conj_and edge */
-    def conjAnd = this.depEdgeMatchers.exists(_.label == "conj_and")
+    def conjAnd = this.depEdgeMatchers.collect {
+      case e: LabelEdgeMatcher => e
+    }.exists(_.label == "conj_and")
 
     val length = edgeMatchers.length
 
