@@ -67,7 +67,6 @@ object BuildTreePatterns {
           for ((pattern, slots) <- patterns; if pattern.valid) {
             if (!settings.length.isDefined || pattern.nodeMatchers.length <= settings.length.get) {
               writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
-              writer.println(pattern.nodeMatchers.map(_.isInstanceOf[DependencyNodeMatcher]).mkString(", "))
               count += 1
             }
           }
