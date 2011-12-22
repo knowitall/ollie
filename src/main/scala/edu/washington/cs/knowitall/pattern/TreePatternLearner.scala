@@ -182,7 +182,7 @@ object TreePatternLearner {
 
     val filtered = patterns.filter(valid).toList
 
-    val relStrings = rel.split(" ")
+    val relLemmas = rel.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST
 
     // find the best part to replace with rel
     filtered.map { pattern =>
@@ -192,7 +192,7 @@ object TreePatternLearner {
       def replaceRel(zipper: Zipper[Matcher[DependencyNode]]) = {
         // find the rel node
         val relZipper = zipper.findZ(_ match {
-          case nm: DependencyNodeMatcher => !(rel intersect nm.text.get).isEmpty
+          case nm: DependencyNodeMatcher => !(relLemmas intersect nm.text.get.split(" ").toSet).isEmpty
           case _ => false
         }) getOrElse {
           throw new NoRelationNodeException("No relation ("+rel+") in pattern: " + pattern)
