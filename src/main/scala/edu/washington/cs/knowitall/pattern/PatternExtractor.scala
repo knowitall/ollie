@@ -205,11 +205,13 @@ object PatternExtractor {
     val arg2 = groups.get("arg2").map(_.node) getOrElse(throw new IllegalArgumentException("no arg2: " + m))
     
     def expand(node: DependencyNode) = {
+      val labels = 
+        Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
       // don't restrict to adjacent (by interval) because prep_of, etc.
       // remove some nodes that we want to expand across.  In the end,
       // we get the span over the inferiors.
       def cond(e: Graph.Edge[DependencyNode]) = 
-        (e.label == "det" || e.label == "prep_of" || e.label == "amod" || e.label == "num" || e.label == "nn" || e.label == "poss")
+        labels.contains(e.label)
       val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
 
       val lefts = inferiors.takeWhile(_ != node).reverse
