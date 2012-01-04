@@ -25,7 +25,7 @@ object BuildTreePatterns {
 
   class Settings {
     var sourcePath: String = _
-    var destPath: String = _
+    var destPath: Option[String] = None
     var length = Option.empty[Int]
   }
 
@@ -34,7 +34,7 @@ object BuildTreePatterns {
 
     val parser = new OptionParser("buildpats") {
       arg("source", "source", { v: String => settings.sourcePath = v })
-      arg("dest", "dest", { v: String => settings.destPath = v })
+      argOpt("dest", "dest", { v: String => settings.destPath = Some(v) })
       intOpt("l", "length", "<length>", "maximum number of edges in the patterns", { l: Int => settings.length = Some(l) })
     }
     if (parser.parse(args)) {
@@ -45,7 +45,7 @@ object BuildTreePatterns {
  def main(settings: Settings) {
     // file with dependencies
     val source = Source.fromFile(settings.sourcePath)
-    val writer = new PrintWriter(new File(settings.destPath))
+    val writer = settings.destPath.map(dest => new PrintWriter(new File(dest))).getOrElse(new PrintWriter(System.out))
     
     logger.info("chunk size: " + CHUNK_SIZE)
     logger.info("pattern length: " + settings.length)
