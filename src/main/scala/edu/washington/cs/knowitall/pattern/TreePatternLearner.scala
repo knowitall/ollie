@@ -179,7 +179,7 @@ object TreePatternLearner {
         .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false)
       
     val patterns = findPattern(graph, lemmas, replacements, maxLength)
-
+    
     val filtered = patterns.filter(valid).toList
 
     val relLemmas = rel.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST
@@ -204,26 +204,27 @@ object TreePatternLearner {
       }
 
       def replaceSlots(zipper: Zipper[Matcher[DependencyNode]]) = {
-        def replaceSlots(zipper: Zipper[Matcher[DependencyNode]], index: Int): Zipper[Matcher[DependencyNode]] = {
+        def replaceSlots(zipper: Zipper[Matcher[DependencyNode]], labels: List[String], index: Int): (Zipper[Matcher[DependencyNode]], List[String]) = {
           def replaceSlot(zipper: Zipper[Matcher[DependencyNode]]) = {
-            val postag = zipper.focus.asInstanceOf[DependencyNodeMatcher].postag.get
-            Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index+":"+postag), zipper.rights)
+            val node = zipper.focus.asInstanceOf[DependencyNodeMatcher]
+            val postag = node.postag.get
+            (Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index+":"+postag), zipper.rights),
+                node.text.get)
           }
 
           zipper.findZ(_.isInstanceOf[DependencyNodeMatcher]) match {
-            case Some(z) => replaceSlots(replaceSlot(z), index + 1)
-            case None => zipper
+            case Some(z) => val (zipper, label) = replaceSlot(z)
+                    replaceSlots(zipper, label :: labels, index + 1)
+            case None => (zipper, labels)
           }
         }
 
-        replaceSlots(zipper, 0)
+        replaceSlots(zipper, List(), 0)
       }
 
       val zipper = pattern.matchers.toZipper.get
       val relZipper = replaceRel(zipper)
-      val slotZipper = replaceSlots(relZipper)
-
-      val slotLabels: List[String] = pattern.matchers.collect{ case m: DependencyNodeMatcher => m.text.get }
+      val (slotZipper, slotLabels) = replaceSlots(relZipper)
 
       (new ExtractorPattern(slotZipper.toStream.toList), slotLabels)
     }
