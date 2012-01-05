@@ -41,6 +41,11 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     def conjAnd = this.depEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e
     }.exists(_.label == "conj_and")
+    
+    /* check for a conj_and edge */
+    def conjOr = this.depEdgeMatchers.collect {
+      case e: LabelEdgeMatcher => e
+    }.exists(_.label == "conj_or")
 
     val length = edgeMatchers.length
 
@@ -52,8 +57,12 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
       logger.debug("invalid: multiple preps: " + this.toString)
       false
     }
-    else if (length == 2 && conjAnd) {
+    else if (conjAnd) {
       logger.debug("invalid: conj_and: " + this.toString)
+      false
+    }
+    else if (conjOr) {
+      logger.debug("invalid: conj_or: " + this.toString)
       false
     }
     else {
