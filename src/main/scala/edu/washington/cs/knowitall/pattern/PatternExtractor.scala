@@ -313,8 +313,11 @@ object PatternExtractor {
     val parser = new OptionParser("applypat") {
       var patternFilePath: Option[String] = None
       var ldaDirectoryPath: Option[String] = None
+      
       var sentenceFilePath: String = null
       var extractorType: String = null
+      
+      var confidenceThreshold = 0.0;
 
       var showReverb: Boolean = false
       var duplicates: Boolean = false
@@ -325,6 +328,7 @@ object PatternExtractor {
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
+      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => confidenceThreshold = t })
 
       opt("d", "duplicates", "keep duplicate extractions", { duplicates = true })
       opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
@@ -431,9 +435,10 @@ object PatternExtractor {
               // todo: organize patterns by a reverse-lookup on edges
               // optimization: make sure the dependency graph contains all the edges
               if (extractor.pattern.edgeMatchers.forall(matcher => dependencies.exists(matcher.canMatch(_))));
-              extr <- extractor.extract(dgraph) 
+              extr <- extractor.extract(dgraph);
+              val conf = extractor.confidence(extr);
+              if conf >= parser.confidenceThreshold
             ) yield {
-              val conf = extractor.confidence(extr)
               val reverbMatches = reverbExtractions.find(_.softMatch(extr))
               logger.debug("reverb match: " + reverbMatches.toString)
               val extra = reverbMatches.map("\treverb:" + _.toString)
