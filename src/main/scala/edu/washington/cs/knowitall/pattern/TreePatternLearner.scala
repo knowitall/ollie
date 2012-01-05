@@ -208,7 +208,7 @@ object TreePatternLearner {
           def replaceSlot(zipper: Zipper[Matcher[DependencyNode]]) = {
             val node = zipper.focus.asInstanceOf[DependencyNodeMatcher]
             val postag = node.postag.get
-            (Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index+":"+postag), zipper.rights),
+            (Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index), zipper.rights),
                 node.text.get)
           }
 
