@@ -204,35 +204,88 @@ object PatternExtractor {
     val arg1 = groups.get("arg1").map(_.node) getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
     val arg2 = groups.get("arg2").map(_.node) getOrElse(throw new IllegalArgumentException("no arg2: " + m))
     
-    def expand(node: DependencyNode) = {
-      val labels = 
-        Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
+    def neighborsUntil (node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]) = {
+      val lefts = inferiors.takeWhile(_ != node).reverse
+      val rights = inferiors.dropWhile(_ != node).drop(1)
+
+      val indices = Interval.span(node.indices :: lefts.takeWhile(!until(_)).map(_.indices) ++ rights.takeWhile(!until(_)).map(_.indices))
+
+      // use the original dependencies nodes in case some information
+      // was lost.  For example, of is collapsed into the edge prep_of
+      graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max)
+    }
+    
+    def expandAdjacent(node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
+      def takeAdjacent(interval: Interval, nodes: List[DependencyNode], pool: List[DependencyNode]): List[DependencyNode] = pool match {
+        // can we add the top node?
+        case head :: tail if (head.indices borders interval) && !until.contains(head) => 
+          takeAdjacent(interval union head.indices, head :: nodes, tail)
+        // otherwise abort
+        case _ => nodes
+      }
+      
+      // it might be possible to simply have an adjacency restriction
+      // in this condition
+      def cond(e: Graph.Edge[DependencyNode]) = 
+        labels.contains(e.label)
+      val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
+      
+      // split into nodes left and right of node
+      val lefts = inferiors.takeWhile(_ != node).reverse
+      val rights = inferiors.dropWhile(_ != node).drop(1)
+      
+      // take adjacent nodes from each list
+      val withLefts = takeAdjacent(node.indices, List(node), lefts)
+      val expanded = takeAdjacent(node.indices, withLefts, rights)
+      
+      expanded.sortBy(_.indices)
+    }
+    
+    def expand(node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
       // don't restrict to adjacent (by interval) because prep_of, etc.
       // remove some nodes that we want to expand across.  In the end,
       // we get the span over the inferiors.
       def cond(e: Graph.Edge[DependencyNode]) = 
         labels.contains(e.label)
       val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
+      neighborsUntil(node, inferiors, until)
+    }
 
-      val lefts = inferiors.takeWhile(_ != node).reverse
-      val rights = inferiors.dropWhile(_ != node).drop(1)
+    def simpleExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
+      val labels = 
+        Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
+      expand(node, until, labels)
+    }
 
-      val indices = Interval.span(node.indices :: lefts.takeWhile(_ != rel).map(_.indices) ++ rights.takeWhile(_ != rel).map(_.indices))
-
-      // use the original dependencies nodes in case some information
-      // was lost.  For example, of is collapsed into the edge prep_of
-      graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max)//.map(_.text).mkString(" ")
+    def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
+      val labels = 
+        Set("det", "amod", "num", "nn", "poss", "quantmod")
+      expand(node, until, labels)
+    }
+    
+    /**
+     * Expand over adjacent advmod edges.
+     */
+    def relationExpandVerb(node: DependencyNode, until: Set[DependencyNode]) = {
+      expandAdjacent(node, until, Set("advmod"))
+    }
+    
+    def expandRelation(node: DependencyNode) = {
+      if (node.isNoun) relationExpandNoun(node, Set(arg1, arg2))
+      else if (node.isVerb) relationExpandVerb(node, Set(arg1, arg2))
+      else List(node)
     }
 
     def makeString(nodes: List[DependencyNode]) = nodes.map(_.text).mkString(" ")
     
-    val expandedArg1 = if (expandArgument) expand(arg1) else List(arg1)
-    val expandedArg2 = if (expandArgument) expand(arg2) else List(arg2)
+    val expandedArg1 = if (expandArgument) simpleExpandNoun(arg1, Set(rel)) else List(arg1)
+    val expandedArg2 = if (expandArgument) simpleExpandNoun(arg2, Set(rel)) else List(arg2)
+    val expandedRel = if (expandArgument) expandRelation(rel) else List(rel)
     if (Interval.span(expandedArg1.map(_.indices)) intersects Interval.span(expandedArg2.map(_.indices))) {
       logger.debug("invalid: arguments overlap: " + makeString(expandedArg1) + ", " + makeString(expandedArg2))
       None
     }
-    else Some(new Extraction(makeString(expandedArg1), rel.text, Some(rel.text.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), makeString(expandedArg2)))
+    else Some(new Extraction(makeString(expandedArg1), makeString(expandedRel), Some(makeString(expandedRel).split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), makeString(expandedArg2)))
   }
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
