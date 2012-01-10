@@ -60,8 +60,9 @@ object BuildTreePatterns {
 
         // todo: push stemming forward in the process
         try {
-          val dependencies = Dependencies.deserialize(deps).map(_.lemmatize(MorphaStemmer.instance))
-          val graph = DependencyGraph(dependencies).normalize
+          val graph = DependencyGraph.deserialize(deps).map { node =>
+            node.lemmatize(MorphaStemmer.instance)
+          }.normalize
 
           val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
           for ((pattern, slots) <- patterns; if pattern.valid) {
