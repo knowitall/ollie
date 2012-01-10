@@ -182,7 +182,7 @@ object LdaPatternExtractor {
 
 object PatternExtractor {
   val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
-  val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS")
+  val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD")
   val logger = LoggerFactory.getLogger(this.getClass)
   
   def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
@@ -209,7 +209,7 @@ object PatternExtractor {
       val rights = inferiors.dropWhile(_ != node).drop(1)
 
       val indices = Interval.span(node.indices :: lefts.takeWhile(!until(_)).map(_.indices) ++ rights.takeWhile(!until(_)).map(_.indices))
-
+      
       // use the original dependencies nodes in case some information
       // was lost.  For example, of is collapsed into the edge prep_of
       graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max)
