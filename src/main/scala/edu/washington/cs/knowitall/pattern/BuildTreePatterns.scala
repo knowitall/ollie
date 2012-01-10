@@ -27,6 +27,7 @@ object BuildTreePatterns {
     var sourcePath: String = _
     var destPath: Option[String] = None
     var length = Option.empty[Int]
+    var parallel = false
   }
 
   def main(args: Array[String]) {
@@ -35,6 +36,7 @@ object BuildTreePatterns {
     val parser = new OptionParser("buildpats") {
       arg("source", "source", { v: String => settings.sourcePath = v })
       argOpt("dest", "dest", { v: String => settings.destPath = Some(v) })
+      opt("p", "parallel", "run multithreaded", { settings.parallel = true })
       intOpt("l", "length", "<length>", "maximum number of edges in the patterns", { l: Int => settings.length = Some(l) })
     }
     if (parser.parse(args)) {
@@ -54,7 +56,9 @@ object BuildTreePatterns {
     for (lines <- source.getLines.grouped(CHUNK_SIZE)) {
       @volatile var count = 0
 
-      val ms = time(lines.par.foreach { line =>
+      val group = if (settings.parallel) lines.par else lines
+
+      val ms = time(group.foreach { line =>
         val Array(rel, arg1, arg2, lemmaString, text, _/*lemmas*/, _/*postags*/, _/*chunks*/, deps) = line.split("\t")
         val lemmas = lemmaString.split("\\s+").toSet
 
