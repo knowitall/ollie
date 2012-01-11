@@ -47,6 +47,16 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
       case e: LabelEdgeMatcher => e
     }.exists(_.label == "conj_or")
 
+    /* check if ends with slot */
+    def slotAtEnd = {
+      def isSlot(node: NodeMatcher[_]) = node match {
+        case m: CaptureNodeMatcher[_] => m.alias.startsWith("slot")
+        case _ => false
+      }
+      
+      !this.nodeMatchers.isEmpty && (isSlot(this.nodeMatchers.head) || isSlot(this.nodeMatchers.last))
+    }
+
     val length = edgeMatchers.length
 
     if (symmetric) {
@@ -63,6 +73,10 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     }
     else if (conjOr) {
       logger.debug("invalid: conj_or: " + this.toString)
+      false
+    }
+    else if (slotAtEnd) {
+      logger.debug("invalid: ends with slot: " + this.toString)
       false
     }
     else {
