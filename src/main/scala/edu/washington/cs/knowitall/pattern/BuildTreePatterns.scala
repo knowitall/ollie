@@ -77,8 +77,9 @@ object BuildTreePatterns {
           }
         }
         catch {
-          case e: DependencySerializationException => logger.warn("match exception on Dependency deserialization (likely a non-printable character): " + deps)
           case e: NoRelationNodeException => logger.warn(e.toString)
+          case e: DependencyGraph.SerializationException => 
+            logger.error("Couldn't deserialize graph: " + deps, e)
         }
       })
 
