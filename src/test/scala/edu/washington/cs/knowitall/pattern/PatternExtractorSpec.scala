@@ -38,7 +38,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps).normalize
       val extractions = new GeneralPatternExtractor(pattern, 1, 1).extract(graph)
       extractions.size must_== 4
-      extractions.map(_.toString) must contain("(European Union, agreed, the United States)")
+      extractions.map(_.toString) must contain("(European Union; agreed; the United States)")
     }
   }
 
@@ -51,14 +51,14 @@ object PatternExtractorSpec extends Specification {
       val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >prep_in> {arg2}")
       val extractions = new GeneralPatternExtractor(pattern, 1, 1).extract(graph)
       extractions.size must_== 1
-      extractions.map(_.toString) must contain("(Angels, appear, the Bible story)")
+      extractions.map(_.toString) must contain("(Angels; appear; the Bible story)")
     }
 
     "(Angels, appear, the Bible) is found with a postag constraint" in {
       val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel:VB} >prep_in> {arg2}")
       val extractions = new GeneralPatternExtractor(pattern, 1, 1).extract(graph)
       extractions.size must_== 1
-      extractions.map(_.toString) must contain("(Angels, appear, the Bible story)")
+      extractions.map(_.toString) must contain("(Angels; appear; the Bible story)")
     }
 
     "(Angels, appear, the Bible) is not found with the wrong postag constraint" in {
@@ -75,7 +75,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{rel} <nn< {arg1} >nn> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; US)"))
     }
 
     "adjective descriptor appositive relnoun" in {
@@ -84,7 +84,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} >appos> {rel} >nn> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; US)"))
     }
 
     "appositive relnoun" in {
@@ -93,7 +93,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} >appos> {rel} >prep_of> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, the US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; the US)"))
     }
 
     "possessive relnoun" in {
@@ -102,7 +102,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} >appos> {rel} >prep_of> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, the US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; the US)"))
     }
 
     "possessive appositive relnoun" in {
@@ -111,7 +111,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} <appos< {rel} >poss> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, The US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; The US)"))
     }
 
     "reverse possessive appositive relnoun" in {
@@ -120,7 +120,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} >appos> {rel} >poss> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, the US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; the US)"))
     }
 
     "possessive is relnoun" in {
@@ -129,7 +129,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} >nsubj> {rel} >poss> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, The US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; The US)"))
     }
 
     "is possessive relnoun" in {
@@ -138,7 +138,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >poss> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, the US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; the US)"))
     }
 
     "of is relnoun" in {
@@ -147,7 +147,7 @@ object PatternExtractorSpec extends Specification {
       val graph = DependencyGraph(deps) // don't normalize
       val pattern = DependencyPattern.deserialize("{arg1} >nsubj> {rel} >prep_of> {arg2}")
       val extractor = new SpecificPatternExtractor("be the president of", List("president"), pattern, 1, 1)
-      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama, be the president of, the US)"))
+      extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; be the president of; the US)"))
     }
   }
 
@@ -157,7 +157,7 @@ object PatternExtractorSpec extends Specification {
     val graph = DependencyGraph(deps)
     val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >prep_towards> {arg2}")
     val extractor = new GeneralPatternExtractor(pattern, 1, 1)
-    extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(The people, fled chaotically, the barn)"))
+    extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(The people; fled chaotically; the barn)"))
   }
   
   testAvoidNeg

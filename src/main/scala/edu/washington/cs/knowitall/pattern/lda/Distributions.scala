@@ -19,11 +19,11 @@ class Distributions(relp: Array[Array[Int]], relt: Array[Array[Int]], val relati
   val relationCount = relp.size
   def relationCount(r: Int) = relt(r).size
 
-  def patterns: Iterable[String] = patternEncoding.keys
-  def patternCodes: Iterable[Int] = patternDecoding.keys
+  def patterns: Iterable[String] = patternEncoding.keys.toSeq.sorted
+  def patternCodes: Seq[Int] = patternDecoding.keys.toSeq.sorted
   // assert (patternCodes == patternDecoding.keys)
-  def relations: Iterable[String] = relationEncoding.keys
-  def relationCodes: Iterable[Int] = relationDecoding.keys
+  def relations: Iterable[String] = relationEncoding.keys.toSeq.sorted
+  def relationCodes: Seq[Int] = relationDecoding.keys.toSeq.sorted
   // assert (relationCodes == relationDecoding.keys)
 
   def relationByPattern = rel_pat

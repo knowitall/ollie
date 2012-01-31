@@ -31,9 +31,8 @@ class Extraction(
   def canEqual(that: Any) = that.isInstanceOf[Extraction]
   override def hashCode = arg1.hashCode + 39 * (rel.hashCode + 39 * arg2.hashCode)
 
-  override def toString() =
-    Iterable(arg1, rel, arg2).mkString("(", ", ", ")")
-    
+  override def toString() = Iterable(arg1, rel, arg2).mkString("(", "; ", ")")
+
   def replaceRelation(relation: String) = new Extraction(this.arg1, relation, relLemmas, this.arg2)
   def softMatch(that: Extraction) = 
     (that.arg1.contains(this.arg1) || this.arg1.contains(that.arg1)) &&
@@ -182,7 +181,7 @@ object LdaPatternExtractor {
 
 object PatternExtractor {
   val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
-  val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD")
+  val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
   
   def confidence(extr: Extraction, count: Int, maxCount: Int): Double = {
@@ -250,11 +249,52 @@ object PatternExtractor {
       val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
       neighborsUntil(node, inferiors, until)
     }
+    
+    /**
+     *  Return the components next to the node.
+     *  @param  node  components will be found adjacent to this node
+     *  @param  labels  components may be connected by edges with any of these labels
+     *  @param  without  components may not include any of these nodes
+     **/
+    def components(node: DependencyNode, labels: Set[String], without: Set[DependencyNode]) = {
+      // nodes across an allowed label to a subcomponent
+      val across = graph.graph.neighbors(node, (dedge: DirectedEdge[_]) => dedge.dir match {
+        case Direction.Down if labels.contains(dedge.edge.label) => true
+        case _ => false
+      })
+      
+      val components = across.flatMap { start =>
+        // get inferiors without passing back to node
+        val inferiors = graph.graph.inferiors(start, 
+            (e: Graph.Edge[DependencyNode]) => 
+              // make sure we don't cycle out of the component
+              e.dest != node && 
+              // make sure we don't descend into another component
+              // i.e. "John M. Synge who came to us with his play direct
+              // from the Aran Islands , where the material for most of
+              // his later works was gathered"
+              !labels.contains(e.label))
+            
+        // make sure none of the without nodes are in the component
+        if (without.forall(!inferiors.contains(_))) {
+          val span = Interval.span(inferiors.map(_.indices).toSeq)
+          Some(graph.nodes.filter(node => span.superset(node.indices)))
+        }
+        else None
+      }
+      
+      // TODO: remove first toList.  This is a hack that resolves a NPE
+      // because some node has a null postag.
+      components.flatten.toList
+    }
 
     def simpleExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
       val labels = 
         Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
-      expand(node, until, labels)
+      
+      val expansion = expand(node, until, labels)
+      if (expansion.exists(_.isProperNoun)) expansion
+      else (expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until)).sortBy(_.indices)
     }
 
     def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
@@ -285,7 +325,7 @@ object PatternExtractor {
       logger.debug("invalid: arguments overlap: " + makeString(expandedArg1) + ", " + makeString(expandedArg2))
       None
     }
-    else Some(new Extraction(makeString(expandedArg1), makeString(expandedRel), Some(makeString(expandedRel).split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), makeString(expandedArg2)))
+    else Some(new Extraction(makeString(expandedArg1), makeString(expandedRel), Some(makeString(expandedRel).split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- PatternExtractor.LEMMA_BLACKLIST), makeString(expandedArg2)))
   }
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
@@ -434,7 +474,12 @@ object PatternExtractor {
       case class Result(conf: Double, extr: Extraction, text: String) extends Ordered[Result] {
         override def toString = text
         
-        override def compare(that: Result) = this.conf.compare(that.conf)
+        override def compare(that: Result) = {
+          val conf = this.conf.compare(that.conf)
+
+          if (conf == 0) (this.extr.toString + text).compareTo(that.extr.toString + text)
+          else conf
+        }
       }
       
       val chunker = if (parser.showReverb) Some(new OpenNlpSentenceChunker) else None
