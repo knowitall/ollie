@@ -293,7 +293,7 @@ object PatternExtractor {
         Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
       
       val expansion = expand(node, until, labels)
-      if (expansion.exists(_.isProperNoun)) expansion
+      if (expansion.exists(_.isProperNoun)) expansion.sortBy(_.indices)
       else (expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until)).sortBy(_.indices)
     }
 
