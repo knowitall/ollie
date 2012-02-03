@@ -293,7 +293,7 @@ object PatternExtractor {
         Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
       
       val expansion = expand(node, until, labels)
-      if (expansion.exists(_.isProperNoun)) expansion
+      if (expansion.exists(_.isProperNoun)) expansion.sortBy(_.indices)
       else (expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until)).sortBy(_.indices)
     }
 
@@ -505,20 +505,19 @@ object PatternExtractor {
           require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
 
           try {
-            val dependencyString = parts.last
-            val dependencies = Dependencies.deserialize(dependencyString)
+            val pickled = parts.last
             val text = if (parts.length > 1) Some(parts(0)) else None
 
-            val rawDgraph = DependencyGraph(text, dependencies)
+            val rawDgraph = DependencyGraph.deserialize(pickled)
             val dgraph = if (parser.collapseVB) rawDgraph.simplifyPostags.simplifyVBPostags
             else rawDgraph.simplifyPostags
 
             if (text.isDefined) logger.debug("text: " + text.get)
-            logger.debug("graph: " + Dependencies.serialize(dgraph.dependencies))
+            logger.debug("graph: " + dgraph.serialize)
 
             if (parser.verbose) {
               if (text.isDefined) println("text: " + text.get)
-              println("deps: " + dependencyString)
+              println("deps: " + dgraph.serialize)
             }
             
             require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
@@ -532,7 +531,7 @@ object PatternExtractor {
               extractor <- extractors;
               // todo: organize patterns by a reverse-lookup on edges
               // optimization: make sure the dependency graph contains all the edges
-              if (extractor.pattern.edgeMatchers.forall(matcher => dependencies.exists(matcher.canMatch(_))));
+              if (extractor.pattern.edgeMatchers.forall(matcher => dgraph.dependencies.exists(matcher.canMatch(_))));
               extr <- extractor.extract(dgraph);
               val conf = extractor.confidence(extr);
               if conf >= parser.confidenceThreshold
@@ -543,7 +542,7 @@ object PatternExtractor {
 
               val resultText =
                 if (parser.verbose) "extraction: "+("%1.6f" format conf)+" " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
-                else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + dependencyString + extra.getOrElse("")
+                else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + pickled + extra.getOrElse("")
               Result(conf, extr, resultText)
             }
             
