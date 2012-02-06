@@ -161,7 +161,7 @@ object TreePatternLearner {
             throw new InvalidBipathException("invalid: invalid arg postag '"+zipper.focus+"': "+bip)
 
           // make replacements
-          Scalaz.zipper(zipperMatch.lefts, new ArgumentMatcher(rep), zipperMatch.rights)
+          zipperMatch.update(new ArgumentMatcher(rep))
       })} catch {
         case e: InvalidBipathException => logger.debug(e.getMessage); None
       }
@@ -199,7 +199,7 @@ object TreePatternLearner {
 
         // replace rel
         val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag.get
-        Scalaz.zipper[Matcher[DependencyNode]](relZipper.lefts, new CaptureNodeMatcher("rel:"+postag), relZipper.rights)
+        relZipper.update(new CaptureNodeMatcher("rel:"+postag))
       }
 
       def replaceSlots(zipper: Zipper[Matcher[DependencyNode]]) = {
