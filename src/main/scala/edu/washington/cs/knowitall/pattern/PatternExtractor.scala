@@ -561,7 +561,7 @@ object PatternExtractor {
             if (parser.verbose) println()
           }
           catch {
-            case e: DependencyGraph.SerializationException => logger.warn(e.getMessage)
+            case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
           }
         }
       } finally {

@@ -45,6 +45,11 @@ object BuildTreePatterns {
   }
  
  def main(settings: Settings) {
+   def validGraph(graph: DependencyGraph) = {
+     // make sure there is a verb
+     graph.nodes.exists(node => "(?i)^VB".r.findFirstIn(node.text).isDefined)
+   }
+   
     // file with dependencies
     val source = Source.fromFile(settings.sourcePath)
     val writer = settings.destPath.map(dest => new PrintWriter(new File(dest))).getOrElse(new PrintWriter(System.out))
@@ -68,18 +73,23 @@ object BuildTreePatterns {
             node.lemmatize(MorphaStemmer.instance)
           }.normalize
 
-          val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
-          for ((pattern, slots) <- patterns; if pattern.valid) {
-            if (!settings.length.isDefined || pattern.nodeMatchers.length <= settings.length.get) {
-              writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
-              count += 1
+          if (!validGraph(graph)) {
+            logger.warn("Invalid graph (no verb?): " + graph.text + "\t" + graph.serialize)
+          }
+          else {
+            val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
+            for ((pattern, slots) <- patterns; if pattern.valid) {
+              if (!settings.length.isDefined || pattern.nodeMatchers.length <= settings.length.get) {
+                writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
+                count += 1
+              }
             }
           }
         }
         catch {
           case e: NoRelationNodeException => logger.warn(e.toString)
           case e: DependencyGraph.SerializationException => 
-            logger.error("Couldn't deserialize graph: " + deps, e)
+            logger.error("could not deserialize graph: " + deps, e)
         }
       })
 
