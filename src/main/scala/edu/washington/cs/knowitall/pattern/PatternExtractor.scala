@@ -43,7 +43,11 @@ class Extraction(
 case class Template(template: String) {
   import Template._
   def apply(extr: Extraction, m: Match[DependencyNode]) = {
-    val rel = group.replaceAllIn(template, (gm: Regex.Match) => m.groups(gm.group(1)).text)
+    // horrible escape is required.  See JavaDoc for Match.replaceAll
+    // or https://issues.scala-lang.org/browse/SI-5437
+    val rel = group.replaceAllIn(template, (gm: Regex.Match) => m.groups(gm.group(1)).text.
+      replaceAll("""\\""", """\\\\""").
+      replaceAll("""\$""", """\\\$"""))
 
     extr.replaceRelation(rel)
   }
