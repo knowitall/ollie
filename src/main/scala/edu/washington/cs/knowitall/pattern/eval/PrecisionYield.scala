@@ -16,9 +16,10 @@ object PrecisionYield {
 
     if (parser.parse(args)) {
       val scores = Score.loadScoredFile(parser.scoredFile).sortBy(_.confidence).reverse
+      val input = scores.map(scored => (scored.confidence, scored.score))
       
-      for ((yld, pr) <- Analysis.precisionYield(scores.map(_.score))) {
-        println(yld + "\t" + pr)
+      for ((conf, yld, pr) <- Analysis.precisionYieldMeta(input)) {
+        println(conf + "\t" + yld + "\t" + pr)
       }
     }
   }
