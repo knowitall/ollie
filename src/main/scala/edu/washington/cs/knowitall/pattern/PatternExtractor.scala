@@ -305,8 +305,8 @@ object PatternExtractor {
         Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
       
       val expansion = expand(node, until, labels)
-      if (expansion.exists(_.isProperNoun)) expansion.sortBy(_.indices)
-      else (expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until)).sortBy(_.indices)
+      if (expansion.exists(_.isProperNoun)) expansion
+      else expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until)
     }
 
     def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
@@ -328,12 +328,12 @@ object PatternExtractor {
       else List(node)
     }
 
-    def makeString(nodes: List[DependencyNode]) = nodes.map(_.text).mkString(" ")
+    def makeString(nodes: Iterable[DependencyNode]) = nodes.iterator.map(_.text).mkString(" ")
     
-    val expandedArg1 = if (expandArgument) simpleExpandNoun(arg1, Set(rel)) else List(arg1)
-    val expandedArg2 = if (expandArgument) simpleExpandNoun(arg2, Set(rel)) else List(arg2)
+    val expandedArg1 = if (expandArgument) simpleExpandNoun(arg1, Set(rel)) else SortedSet(arg1)
+    val expandedArg2 = if (expandArgument) simpleExpandNoun(arg2, Set(rel)) else SortedSet(arg2)
     val expandedRel = if (expandArgument) expandRelation(rel) else List(rel)
-    if (Interval.span(expandedArg1.map(_.indices)) intersects Interval.span(expandedArg2.map(_.indices))) {
+    if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
       logger.debug("invalid: arguments overlap: " + makeString(expandedArg1) + ", " + makeString(expandedArg2))
       None
     }
