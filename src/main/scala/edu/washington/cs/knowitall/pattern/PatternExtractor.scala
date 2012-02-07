@@ -54,10 +54,12 @@ object Template {
 }
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
+  
   def extract(dgraph: DependencyGraph)(implicit 
     buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[Extraction]
   def confidence(extr: Extraction): Double
+  def confidence: Option[Double] // independent confidence
 
   override def toString = pattern.toString
 }
@@ -95,8 +97,11 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
   }
 
   override def confidence(extr: Extraction): Double = {
-    patternCount.toDouble / maxPatternCount.toDouble
+    this.confidence.get
   }
+  
+  override def confidence: Option[Double] = 
+    Some(patternCount.toDouble / maxPatternCount.toDouble)
 }
 object GeneralPatternExtractor {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -174,6 +179,9 @@ extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.pa
     val r = dist.relationEncoding(extr.rel)
     dist.prob(r)(patternCode)
   }
+  
+  // the confidence is not independent of the extraction
+  override def confidence: Option[Double] = None
 }
 object LdaPatternExtractor {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -444,7 +452,7 @@ object PatternExtractor {
       
       logger.info("reading patterns")
       // sort by inverse count so frequent patterns appear first 
-      val extractors = ((parser.extractorType, distributions) match {
+      val extractors: List[PatternExtractor] = ((parser.extractorType, distributions) match {
         case ("lda", Some(distributions)) => loadLdaExtractorsFromDistributions(distributions)
         case ("general", Some(distributions)) => loadGeneralExtractorsFromDistributions(distributions)
         case ("template", None) => 
@@ -527,15 +535,40 @@ object PatternExtractor {
               logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
             }
             
-            val results = for (
+            def confidenceOverThreshold(extractor: PatternExtractor, threshold: Double) = {
+              extractor.confidence match { 
+                // there is an independent confidence so do the check
+                case Some(conf) => conf >= parser.confidenceThreshold
+                // there is no independent confidence, so we need to continue
+                // and compare the dependent confidence
+                case None => true 
+              }
+            }
+            
+            /**
+              * Quick checks to see if an extraction is possible.  This
+              * is an optimization, so the checks should be considerably
+              * faster than running the extractors.
+              */
+            def possibleExtraction(extractor: PatternExtractor, dgraph: DependencyGraph) = {
+              extractor.pattern.edgeMatchers.forall { matcher => 
+                dgraph.dependencies.exists(matcher.canMatch(_))
+              }
+            }
+            
+            val results = for {
               extractor <- extractors;
               // todo: organize patterns by a reverse-lookup on edges
-              // optimization: make sure the dependency graph contains all the edges
-              if (extractor.pattern.edgeMatchers.forall(matcher => dgraph.dependencies.exists(matcher.canMatch(_))));
+              
+              // optimizations
+              if (confidenceOverThreshold(extractor, parser.confidenceThreshold));
+              if (possibleExtraction(extractor, dgraph));
+              
+              // extraction
               extr <- extractor.extract(dgraph);
               val conf = extractor.confidence(extr);
               if conf >= parser.confidenceThreshold
-            ) yield {
+          } yield {
               val reverbMatches = reverbExtractions.find(_.softMatch(extr))
               logger.debug("reverb match: " + reverbMatches.toString)
               val extra = reverbMatches.map("\treverb:" + _.toString)
