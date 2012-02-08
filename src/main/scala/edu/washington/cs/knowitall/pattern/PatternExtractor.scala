@@ -345,8 +345,20 @@ object PatternExtractor {
     /**
      * Expand over adjacent advmod edges.
      */
-    def relationExpandVerb(node: DependencyNode, until: Set[DependencyNode]) = {
-      expandAdjacent(node, until, Set("advmod"))
+    def relationExpandVerb(node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
+      // count the adjacent dobj edges.  We will only expand across
+      // dobj components if there is exactly one adjacent dobj edge.
+      // This edge may already be used, but in that case we won't 
+      // expand over it because of the until set.
+      val dobjCount = graph.graph.edges(node).count(_.label == "dobj")
+      val iobjCount = graph.graph.edges(node).count(_.label == "iobj")
+      
+      var attachLabels = Set[String]()
+      if (dobjCount == 1) attachLabels += "dobj"
+      if (iobjCount == 1) { println("iobj"); attachLabels += "iobj" }
+      
+      // how many dobj edges are there
+      expandAdjacent(node, until, Set("advmod")) ++ components(node, attachLabels, until, true)
     }
     
     def expandRelation(node: DependencyNode) = {
