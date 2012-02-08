@@ -4,7 +4,7 @@ package pattern
 import scala.io.Source
 import scala.util.matching.Regex
 import scala.collection
-import scala.collection.immutable.SortedSet
+import scala.collection.SortedSet
 import scopt.OptionParser
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import tool.stem.MorphaStemmer
@@ -26,8 +26,11 @@ class Extraction(
     val relLemmas: Option[Set[String]], 
     val arg2: String) {
 
-  def this(arg1: String, rel: String, arg2: String) = this(arg1, rel, None, arg2)
-
+  def this(arg1: String, rel: String, arg2: String) = this(arg1, 
+      rel, 
+      Some(rel.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- PatternExtractor.LEMMA_BLACKLIST), 
+      arg2)
+      
   override def equals(that: Any) = that match {
     case that: Extraction => (that canEqual this) && that.arg1 == this.arg1 && that.rel == this.rel && that.arg2 == this.arg2
     case _ => false
@@ -44,12 +47,32 @@ class Extraction(
     (that.arg2.contains(this.arg2) || this.arg2.contains(that.arg2))
 }
 
+class DetailedExtraction(
+    arg1Nodes: SortedSet[DependencyNode], 
+    relNodes: SortedSet[DependencyNode], 
+    arg2Nodes: SortedSet[DependencyNode])
+extends Extraction(
+    DetailedExtraction.nodesToString(arg1Nodes),
+    DetailedExtraction.nodesToString(relNodes), 
+    DetailedExtraction.nodesToString(arg2Nodes)) {
+}
+
+object DetailedExtraction {
+  def nodesToString(nodes: Iterable[DependencyNode]) = nodes.iterator.map(_.text).mkString(" ")
+}
+
 case class Template(template: String) {
   import Template._
   def apply(extr: Extraction, m: Match[DependencyNode]) = {
+    def matchGroup(name: String): String = name match {
+      case "rel" => extr.rel
+      case "arg1" => extr.arg1
+      case "arg2" => extr.arg2
+      case _ => m.groups(name).text
+    }
     // horrible escape is required.  See JavaDoc for Match.replaceAll
     // or https://issues.scala-lang.org/browse/SI-5437
-    val rel = group.replaceAllIn(template, (gm: Regex.Match) => m.groups(gm.group(1)).text.
+    val rel = group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1)).
       replaceAll("""\\""", """\\\\""").
       replaceAll("""\$""", """\\\$"""))
 
@@ -253,7 +276,7 @@ object PatternExtractor {
       val withLefts = takeAdjacent(node.indices, List(node), lefts)
       val expanded = takeAdjacent(node.indices, withLefts, rights)
       
-      expanded.sortBy(_.indices)
+      SortedSet(expanded: _*)
     }
     
     def expand(node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
@@ -272,7 +295,7 @@ object PatternExtractor {
      *  @param  labels  components may be connected by edges with any of these labels
      *  @param  without  components may not include any of these nodes
      **/
-    def components(node: DependencyNode, labels: Set[String], without: Set[DependencyNode]) = {
+    def components(node: DependencyNode, labels: Set[String], without: Set[DependencyNode], nested: Boolean) = {
       // nodes across an allowed label to a subcomponent
       val across = graph.graph.neighbors(node, (dedge: DirectedEdge[_]) => dedge.dir match {
         case Direction.Down if labels.contains(dedge.edge.label) => true
@@ -288,8 +311,8 @@ object PatternExtractor {
               // make sure we don't descend into another component
               // i.e. "John M. Synge who came to us with his play direct
               // from the Aran Islands , where the material for most of
-              // his later works was gathered"
-              !labels.contains(e.label))
+              // his later works was gathered" if nested is false
+              (nested || !labels.contains(e.label)))
             
         // make sure none of the without nodes are in the component
         if (without.forall(!inferiors.contains(_))) {
@@ -310,7 +333,7 @@ object PatternExtractor {
       
       val expansion = expand(node, until, labels)
       if (expansion.exists(_.isProperNoun)) expansion
-      else expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until)
+      else expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until, false)
     }
 
     def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
@@ -329,19 +352,17 @@ object PatternExtractor {
     def expandRelation(node: DependencyNode) = {
       if (node.isNoun) relationExpandNoun(node, Set(arg1, arg2))
       else if (node.isVerb) relationExpandVerb(node, Set(arg1, arg2))
-      else List(node)
+      else SortedSet(node)
     }
 
-    def makeString(nodes: Iterable[DependencyNode]) = nodes.iterator.map(_.text).mkString(" ")
-    
     val expandedArg1 = if (expandArgument) simpleExpandNoun(arg1, Set(rel)) else SortedSet(arg1)
     val expandedArg2 = if (expandArgument) simpleExpandNoun(arg2, Set(rel)) else SortedSet(arg2)
-    val expandedRel = if (expandArgument) expandRelation(rel) else List(rel)
+    val expandedRel = if (expandArgument) expandRelation(rel) else SortedSet(rel)
     if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
-      logger.debug("invalid: arguments overlap: " + makeString(expandedArg1) + ", " + makeString(expandedArg2))
+      logger.info("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
       None
     }
-    else Some(new Extraction(makeString(expandedArg1), makeString(expandedRel), Some(makeString(expandedRel).split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- PatternExtractor.LEMMA_BLACKLIST), makeString(expandedArg2)))
+    else Some(new DetailedExtraction(expandedArg1, expandedRel, expandedArg2))
   }
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
