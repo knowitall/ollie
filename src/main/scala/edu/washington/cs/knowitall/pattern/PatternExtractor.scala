@@ -4,17 +4,21 @@ package pattern
 import scala.io.Source
 import scala.util.matching.Regex
 import scala.collection
+import scala.collection.immutable.SortedSet
 import scopt.OptionParser
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import tool.stem.MorphaStemmer
 import tool.parse.graph._
 import tool.parse.pattern._
 import org.slf4j.LoggerFactory
+import edu.washington.cs.knowitall.common.Resource._
 import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.util.DefaultObjects
 import edu.washington.cs.knowitall.extractor.ReVerbExtractor
 import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
 import edu.washington.cs.knowitall.normalization.RelationString
+import java.io.File
+import java.io.PrintWriter
 
 class Extraction(
     val arg1: String, 
@@ -418,6 +422,7 @@ object PatternExtractor {
     val parser = new OptionParser("applypat") {
       var patternFilePath: Option[String] = None
       var ldaDirectoryPath: Option[String] = None
+      var outputFile: Option[File] = None
       
       var sentenceFilePath: String = null
       var extractorType: String = null
@@ -434,6 +439,7 @@ object PatternExtractor {
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => confidenceThreshold = t })
+      opt("o", "output", "output file (otherwise stdout)", { path => outputFile = Some(new File(path)) })
 
       opt("d", "duplicates", "keep duplicate extractions", { duplicates = true })
       opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
@@ -510,99 +516,98 @@ object PatternExtractor {
       }
       
       logger.info("performing extractions")
-      val sentenceSource = Source.fromFile(parser.sentenceFilePath)
-      try {
-        for (line <- sentenceSource.getLines) {
-          val parts = line.split("\t")
-          require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
+      using(parser.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
+        using(Source.fromFile(parser.sentenceFilePath)) { sentenceSource =>
+          for (line <- sentenceSource.getLines) {
+            val parts = line.split("\t")
+            require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
 
-          try {
-            val pickled = parts.last
-            val text = if (parts.length > 1) Some(parts(0)) else None
+            try {
+              val pickled = parts.last
+              val text = if (parts.length > 1) Some(parts(0)) else None
 
-            val rawDgraph = DependencyGraph.deserialize(pickled)
-            val dgraph = if (parser.collapseVB) rawDgraph.simplifyPostags.simplifyVBPostags
-            else rawDgraph.simplifyPostags
+              val rawDgraph = DependencyGraph.deserialize(pickled)
+              val dgraph = if (parser.collapseVB) rawDgraph.simplifyPostags.simplifyVBPostags
+              else rawDgraph.simplifyPostags
 
-            if (text.isDefined) logger.debug("text: " + text.get)
-            logger.debug("graph: " + dgraph.serialize)
+              if (text.isDefined) logger.debug("text: " + text.get)
+              logger.debug("graph: " + dgraph.serialize)
 
-            if (parser.verbose) {
-              if (text.isDefined) println("text: " + text.get)
-              println("deps: " + dgraph.serialize)
-            }
-            
-            require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
-            val reverbExtractions = if (!parser.showReverb) Nil else reverbExtract(text.get)
-            if (parser.showReverb) {
-              if (parser.verbose) println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-              logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-            }
-            
-            def confidenceOverThreshold(extractor: PatternExtractor, threshold: Double) = {
-              extractor.confidence match { 
-                // there is an independent confidence so do the check
-                case Some(conf) => conf >= parser.confidenceThreshold
-                // there is no independent confidence, so we need to continue
-                // and compare the dependent confidence
-                case None => true 
+              if (parser.verbose) {
+                if (text.isDefined) writer.println("text: " + text.get)
+                writer.println("deps: " + dgraph.serialize)
               }
-            }
-            
-            /**
-              * Quick checks to see if an extraction is possible.  This
-              * is an optimization, so the checks should be considerably
-              * faster than running the extractors.
-              */
-            def possibleExtraction(extractor: PatternExtractor, dgraph: DependencyGraph) = {
-              extractor.pattern.edgeMatchers.forall { matcher => 
-                dgraph.dependencies.exists(matcher.canMatch(_))
-              }
-            }
-            
-            val results = for {
-              extractor <- extractors;
-              // todo: organize patterns by a reverse-lookup on edges
-              
-              // optimizations
-              if (confidenceOverThreshold(extractor, parser.confidenceThreshold));
-              if (possibleExtraction(extractor, dgraph));
-              
-              // extraction
-              extr <- extractor.extract(dgraph);
-              val conf = extractor.confidence(extr);
-              if conf >= parser.confidenceThreshold
-          } yield {
-              val reverbMatches = reverbExtractions.find(_.softMatch(extr))
-              logger.debug("reverb match: " + reverbMatches.toString)
-              val extra = reverbMatches.map("\treverb:" + _.toString)
 
-              val resultText =
-                if (parser.verbose) "extraction: "+("%1.6f" format conf)+" " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
-                else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + pickled + extra.getOrElse("")
-              Result(conf, extr, resultText)
-            }
-            
-            if (parser.duplicates) {
-              for (result <- results.sorted(Ordering[Result].reverse)) {
-                println(result)
+              require(!parser.showReverb || text.isDefined, "original sentence text required to show reverb extractions")
+              val reverbExtractions = if (!parser.showReverb) Nil else reverbExtract(text.get)
+              if (parser.showReverb) {
+                if (parser.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+                logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
               }
-            }
-            else {
-              val maxes = for (results <- results.groupBy(_.extr)) yield (results._2.max)
-              for (result <- maxes.toSeq.sorted(Ordering[Result].reverse)) {
-                println(result)
-              }
-            }
 
-            if (parser.verbose) println()
-          }
-          catch {
-            case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
+              def confidenceOverThreshold(extractor: PatternExtractor, threshold: Double) = {
+                extractor.confidence match {
+                  // there is an independent confidence so do the check
+                  case Some(conf) => conf >= parser.confidenceThreshold
+                  // there is no independent confidence, so we need to continue
+                  // and compare the dependent confidence
+                  case None => true
+                }
+              }
+
+              /**
+                * Quick checks to see if an extraction is possible.  This
+                * is an optimization, so the checks should be considerably
+                * faster than running the extractors.
+                */
+              def possibleExtraction(extractor: PatternExtractor, dgraph: DependencyGraph) = {
+                extractor.pattern.edgeMatchers.forall { matcher =>
+                  dgraph.dependencies.exists(matcher.canMatch(_))
+                }
+              }
+
+              val results = for {
+                extractor <- extractors;
+                // todo: organize patterns by a reverse-lookup on edges
+
+                // optimizations
+                if (confidenceOverThreshold(extractor, parser.confidenceThreshold));
+                if (possibleExtraction(extractor, dgraph));
+
+                // extraction
+                extr <- extractor.extract(dgraph);
+                val conf = extractor.confidence(extr);
+                if conf >= parser.confidenceThreshold
+              } yield {
+                val reverbMatches = reverbExtractions.find(_.softMatch(extr))
+                logger.debug("reverb match: " + reverbMatches.toString)
+                val extra = reverbMatches.map("\treverb:" + _.toString)
+
+                val resultText =
+                  if (parser.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
+                  else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + pickled + extra.getOrElse("")
+                Result(conf, extr, resultText)
+              }
+
+              if (parser.duplicates) {
+                for (result <- results.sorted(Ordering[Result].reverse)) {
+                  writer.println(result)
+                }
+              }
+              else {
+                val maxes = for (results <- results.groupBy(_.extr)) yield (results._2.max)
+                for (result <- maxes.toSeq.sorted(Ordering[Result].reverse)) {
+                  writer.println(result)
+                }
+              }
+
+              if (parser.verbose) writer.println()
+            }
+            catch {
+              case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
+            }
           }
         }
-      } finally {
-        sentenceSource.close
       }
     }
   }
