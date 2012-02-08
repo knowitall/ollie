@@ -41,8 +41,9 @@ object Score {
       // output updated gold set
       parser.goldOutputFile match {
         case Some(file) => 
-          val writer = new PrintWriter(file)
-          golden.foreach { case (k, v) => writer.println((if (v) 1 else 0) + "\t" + k) }
+          using(new PrintWriter(file)) { writer =>
+            golden.foreach { case (k, v) => writer.println((if (v) 1 else 0) + "\t" + k) }
+          }
         case None =>
       }
     }
