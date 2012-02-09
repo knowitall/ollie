@@ -507,6 +507,8 @@ object PatternExtractor {
     }
     
     if (parser.parse(args)) {
+      logger.info("args: " + args.mkString(" "))
+      
       // optionally load the distributions
       val distributions = parser.ldaDirectoryPath.map {
         logger.info("loading distributions")

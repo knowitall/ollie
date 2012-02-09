@@ -40,6 +40,7 @@ object BuildTreePatterns {
       intOpt("l", "length", "<length>", "maximum number of edges in the patterns", { l: Int => settings.length = Some(l) })
     }
     if (parser.parse(args)) {
+      logger.debug("info: " + args.mkString(" "))
       main(settings)
     }
   }
