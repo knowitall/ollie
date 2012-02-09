@@ -3,8 +3,6 @@ package pattern
 
 import scala.io.Source
 import scala.util.matching.Regex
-import scala.collection
-import scala.collection.SortedSet
 import scopt.OptionParser
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import tool.stem.MorphaStemmer
@@ -19,6 +17,8 @@ import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
 import edu.washington.cs.knowitall.normalization.RelationString
 import java.io.File
 import java.io.PrintWriter
+import scala.collection.SortedSet
+import scala.collection.Set
 
 class Extraction(
     val arg1: String, 
@@ -50,11 +50,17 @@ class Extraction(
 class DetailedExtraction(
     arg1Nodes: SortedSet[DependencyNode], 
     relNodes: SortedSet[DependencyNode], 
+    relText: String,
     arg2Nodes: SortedSet[DependencyNode])
 extends Extraction(
     DetailedExtraction.nodesToString(arg1Nodes),
-    DetailedExtraction.nodesToString(relNodes), 
+    relText, 
     DetailedExtraction.nodesToString(arg2Nodes)) {
+  
+  def this(arg1Nodes: SortedSet[DependencyNode], 
+    relNodes: SortedSet[DependencyNode], 
+    arg2Nodes: SortedSet[DependencyNode]) = 
+    this(arg1Nodes, relNodes, DetailedExtraction.nodesToString(relNodes), arg2Nodes)
 }
 
 object DetailedExtraction {
@@ -242,7 +248,7 @@ object PatternExtractor {
     val arg1 = groups.get("arg1").map(_.node) getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
     val arg2 = groups.get("arg2").map(_.node) getOrElse(throw new IllegalArgumentException("no arg2: " + m))
     
-    def neighborsUntil (node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]) = {
+    def neighborsUntil (node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
       val lefts = inferiors.takeWhile(_ != node).reverse
       val rights = inferiors.dropWhile(_ != node).drop(1)
 
@@ -289,6 +295,13 @@ object PatternExtractor {
       neighborsUntil(node, inferiors, until)
     }
     
+    def augment(node: DependencyNode, without: Set[DependencyNode], pred: Graph.Edge[DependencyNode]=>Boolean): List[SortedSet[DependencyNode]] = {
+      // don't restrict to adjacent (by interval) because prep_of, etc.
+      // remove some nodes that we want to expand across.  In the end,
+      // we get the span over the inferiors.
+      graph.graph.successors(node, pred).map(SortedSet[DependencyNode]() ++ graph.graph.inferiors(_)).toList
+    }
+    
     /**
      *  Return the components next to the node.
      *  @param  node  components will be found adjacent to this node
@@ -313,7 +326,7 @@ object PatternExtractor {
               // from the Aran Islands , where the material for most of
               // his later works was gathered" if nested is false
               (nested || !labels.contains(e.label)))
-            
+
         // make sure none of the without nodes are in the component
         if (without.forall(!inferiors.contains(_))) {
           val span = Interval.span(inferiors.map(_.indices).toSeq)
@@ -321,9 +334,7 @@ object PatternExtractor {
         }
         else None
       }
-      
-      // TODO: remove first toList.  This is a hack that resolves a NPE
-      // because some node has a null postag.
+
       components.flatten.toList
     }
 
@@ -336,16 +347,16 @@ object PatternExtractor {
       else expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until, false)
     }
 
-    def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
+    def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]): List[SortedSet[DependencyNode]] = {
       val labels = 
         Set("det", "amod", "num", "nn", "poss", "quantmod")
-      expand(node, until, labels)
+      List(expand(node, until, labels))
     }
     
     /**
      * Expand over adjacent advmod edges.
      */
-    def relationExpandVerb(node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
+    def relationExpandVerb(node: DependencyNode, until: Set[DependencyNode]): List[SortedSet[DependencyNode]] = {
       // count the adjacent dobj edges.  We will only expand across
       // dobj components if there is exactly one adjacent dobj edge.
       // This edge may already be used, but in that case we won't 
@@ -358,23 +369,32 @@ object PatternExtractor {
       if (iobjCount == 1) { println("iobj"); attachLabels += "iobj" }
       
       // how many dobj edges are there
-      expandAdjacent(node, until, Set("advmod")) ++ components(node, attachLabels, until, true)
+      SortedSet(node) :: (augment(node, until, (edge: Graph.Edge[DependencyNode])=>edge.label=="advmod" && edge.dest.postag=="RB") :+
+          SortedSet[DependencyNode]() ++ components(node, attachLabels, until, true)
+      ).filter (!_.isEmpty)
     }
     
-    def expandRelation(node: DependencyNode) = {
-      if (node.isNoun) relationExpandNoun(node, Set(arg1, arg2))
-      else if (node.isVerb) relationExpandVerb(node, Set(arg1, arg2))
-      else SortedSet(node)
+    def expandRelation(node: DependencyNode): (SortedSet[DependencyNode], String) = {
+      val expansion = 
+        if (node.isNoun) relationExpandNoun(node, Set(arg1, arg2))
+        else if (node.isVerb) relationExpandVerb(node, Set(arg1, arg2))
+        else List(SortedSet(node))
+        
+      val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
+      
+      // perform a more complicated node->text transformation
+      val texts = sorted.map(DetailedExtraction.nodesToString(_))
+      (expansion.reduce(_ ++ _), texts.mkString(" "))
     }
 
     val expandedArg1 = if (expandArgument) simpleExpandNoun(arg1, Set(rel)) else SortedSet(arg1)
     val expandedArg2 = if (expandArgument) simpleExpandNoun(arg2, Set(rel)) else SortedSet(arg2)
-    val expandedRel = if (expandArgument) expandRelation(rel) else SortedSet(rel)
+    val (expandedRelNodes, expandedRelText) = if (expandArgument) expandRelation(rel) else (SortedSet(rel), rel.text)
     if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
       logger.info("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
       None
     }
-    else Some(new DetailedExtraction(expandedArg1, expandedRel, expandedArg2))
+    else Some(new DetailedExtraction(expandedArg1, expandedRelNodes, expandedRelText, expandedArg2))
   }
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
