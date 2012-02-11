@@ -49,19 +49,27 @@ class Extraction(
 }
 
 class DetailedExtraction(
-    arg1Nodes: SortedSet[DependencyNode], 
-    relNodes: SortedSet[DependencyNode], 
-    relText: String,
-    arg2Nodes: SortedSet[DependencyNode])
+    val `match`: Match[DependencyNode],
+    val arg1Nodes: SortedSet[DependencyNode], 
+    val relNodes: SortedSet[DependencyNode], 
+    val relText: String,
+    val arg2Nodes: SortedSet[DependencyNode])
 extends Extraction(
     DetailedExtraction.nodesToString(arg1Nodes),
     relText, 
     DetailedExtraction.nodesToString(arg2Nodes)) {
   
-  def this(arg1Nodes: SortedSet[DependencyNode], 
+  def this(mch: Match[DependencyNode], 
+    arg1Nodes: SortedSet[DependencyNode], 
     relNodes: SortedSet[DependencyNode], 
     arg2Nodes: SortedSet[DependencyNode]) = 
-    this(arg1Nodes, relNodes, DetailedExtraction.nodesToString(relNodes), arg2Nodes)
+    this(mch, arg1Nodes, relNodes, DetailedExtraction.nodesToString(relNodes), arg2Nodes)
+
+  def nodes = arg1Nodes ++ relNodes ++ arg2Nodes
+  def edges = `match`.bipath.path
+
+  override def replaceRelation(relation: String) = 
+    new DetailedExtraction(`match`, this.arg1Nodes, relNodes, relation, arg2Nodes)
 }
 
 object DetailedExtraction {
@@ -70,7 +78,7 @@ object DetailedExtraction {
 
 case class Template(template: String) {
   import Template._
-  def apply(extr: Extraction, m: Match[DependencyNode]) = {
+  def apply(extr: DetailedExtraction, m: Match[DependencyNode]) = {
     def matchGroup(name: String): String = name match {
       case "rel" => extr.rel
       case "arg1" => extr.arg1
@@ -92,10 +100,9 @@ object Template {
 }
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
-  
   def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
-    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[Extraction]
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[DetailedExtraction], 
+    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[DetailedExtraction]
   def confidence(extr: Extraction): Double
   def confidence: Option[Double] // independent confidence
 
@@ -108,7 +115,7 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
 
   protected def extractWithMatches(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[DetailedExtraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     // apply pattern and keep valid matches
@@ -124,7 +131,7 @@ class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount
   }
 
   override def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[DetailedExtraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     logger.debug("pattern: " + pattern)
     
@@ -148,7 +155,7 @@ object GeneralPatternExtractor {
 class TemplatePatternExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
 extends GeneralPatternExtractor(pattern, patternCount, maxPatternCount) {
   override def extract(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[DetailedExtraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     val extractions = super.extractWithMatches(dgraph)
@@ -172,7 +179,7 @@ extends GeneralPatternExtractor(pattern, patternCount, relationCount) {
       dist.relationByPattern(dist.relationEncoding(relation))._2)
 
   override def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[DetailedExtraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     val extractions = super.extract(dgraph)
     extractions.withFilter{ extr =>
@@ -189,7 +196,7 @@ extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.pa
   def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternEncoding(pattern.toString), dist)
 
   override def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[Extraction], 
+    buildExtraction: (DependencyGraph, Match[DependencyNode])=>Option[DetailedExtraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     val p = dist.patternEncoding(pattern.toString)
 
@@ -242,7 +249,7 @@ object PatternExtractor {
 	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag)))
   }
 
-  private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[Extraction] = {
+  private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[DetailedExtraction] = {
     val groups = m.nodeGroups
   
     val rel = groups.get("rel").map(_.node) getOrElse(throw new IllegalArgumentException("no rel: " + m))
@@ -395,7 +402,7 @@ object PatternExtractor {
       logger.info("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
       None
     }
-    else Some(new DetailedExtraction(expandedArg1, expandedRelNodes, expandedRelText, expandedArg2))
+    else Some(new DetailedExtraction(m, expandedArg1, expandedRelNodes, expandedRelText, expandedArg2))
   }
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
