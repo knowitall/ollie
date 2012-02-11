@@ -1,6 +1,7 @@
 package edu.washington.cs.knowitall
 package pattern
 
+import java.io.File
 import scala.io.Source
 import scala.util.matching.Regex
 import scopt.OptionParser
@@ -400,8 +401,8 @@ object PatternExtractor {
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
   implicit def implicitValidMatch = this.validMatch(false) _
 
-  def loadGeneralExtractorsFromFile(patternFilePath: String): List[GeneralPatternExtractor] = {
-    val patternSource = Source.fromFile(patternFilePath)
+  def loadGeneralExtractorsFromFile(patternFile: File): List[GeneralPatternExtractor] = {
+    val patternSource = Source.fromFile(patternFile)
     val patterns: List[(Pattern[DependencyNode], Int)] = try {
       // parse the file
       patternSource.getLines.map { line =>
@@ -423,8 +424,8 @@ object PatternExtractor {
     }).toList
   }
 
-  def loadTemplateExtractorsFromFile(patternFilePath: String): List[GeneralPatternExtractor] = {
-    val patternSource = Source.fromFile(patternFilePath)
+  def loadTemplateExtractorsFromFile(patternFile: File): List[GeneralPatternExtractor] = {
+    val patternSource = Source.fromFile(patternFile)
     val patterns: List[(Template, Pattern[DependencyNode], Int)] = try {
       // parse the file
       patternSource.getLines.map { line =>
@@ -470,10 +471,36 @@ object PatternExtractor {
         dist)
     }).toList
   }
+
+  def loadExtractors(extractorType: String, patternFile: File): List[PatternExtractor] = 
+    loadExtractors(extractorType, None, Some(patternFile))
+
+  def loadExtractors(extractorType: String, 
+    distributions: Option[Distributions], 
+    patternFile: Option[File]): List[PatternExtractor] =
+  {
+    logger.info("reading patterns")
+
+    // sort by inverse count so frequent patterns appear first 
+    ((extractorType, distributions) match {
+      case ("lda", Some(distributions)) => loadLdaExtractorsFromDistributions(distributions)
+      case ("general", Some(distributions)) => loadGeneralExtractorsFromDistributions(distributions)
+      case ("template", None) => 
+        loadTemplateExtractorsFromFile(
+          patternFile.getOrElse(
+            throw new IllegalArgumentException("pattern template file (--patterns) required for the template extractor.")))
+      case ("specific", Some(distributions)) => loadSpecificExtractorsFromDistributions(distributions)
+      case ("general", None) => 
+        loadGeneralExtractorsFromFile(
+          patternFile.getOrElse(
+            throw new IllegalArgumentException("pattern file (--patterns) required for the general extractor.")))
+      case _ => throw new IllegalArgumentException("invalid parameters")
+    }).toList
+  }
   
   def main(args: Array[String]) {
     val parser = new OptionParser("applypat") {
-      var patternFilePath: Option[String] = None
+      var patternFile: Option[File] = None
       var ldaDirectoryPath: Option[String] = None
       var outputFile: Option[File] = None
       
@@ -489,7 +516,7 @@ object PatternExtractor {
       var verbose: Boolean = false
       var collapseVB: Boolean = false
 
-      opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFilePath = Option(v) })
+      opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFile = Option(new File(v)) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => confidenceThreshold = t })
       opt("o", "output", "output file (otherwise stdout)", { path => outputFile = Some(new File(path)) })
@@ -515,22 +542,7 @@ object PatternExtractor {
         Distributions.fromDirectory(_)
       }
       
-      logger.info("reading patterns")
-      // sort by inverse count so frequent patterns appear first 
-      val extractors: List[PatternExtractor] = ((parser.extractorType, distributions) match {
-        case ("lda", Some(distributions)) => loadLdaExtractorsFromDistributions(distributions)
-        case ("general", Some(distributions)) => loadGeneralExtractorsFromDistributions(distributions)
-        case ("template", None) => 
-          loadTemplateExtractorsFromFile(
-            parser.patternFilePath.getOrElse(
-              throw new IllegalArgumentException("pattern template file (--patterns) required for the template extractor.")))
-        case ("specific", Some(distributions)) => loadSpecificExtractorsFromDistributions(distributions)
-        case ("general", None) => 
-          loadGeneralExtractorsFromFile(
-            parser.patternFilePath.getOrElse(
-              throw new IllegalArgumentException("pattern file (--patterns) required for the general extractor.")))
-        case _ => throw new IllegalArgumentException("invalid parameters")
-      }).toList
+      val extractors = loadExtractors(parser.extractorType, distributions, parser.patternFile)
       
       /*
       logger.info("building reverse lookup")
