@@ -374,7 +374,7 @@ object PatternExtractor {
       
       var attachLabels = Set[String]()
       if (dobjCount == 1) attachLabels += "dobj"
-      if (iobjCount == 1) { println("iobj"); attachLabels += "iobj" }
+      if (iobjCount == 1) attachLabels += "iobj"
       
       // how many dobj edges are there
       SortedSet(node) :: (augment(node, until, (edge: Graph.Edge[DependencyNode])=>edge.label=="advmod" && edge.dest.postag=="RB") :+
