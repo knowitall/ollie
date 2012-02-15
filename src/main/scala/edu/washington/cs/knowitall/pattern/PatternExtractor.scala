@@ -76,7 +76,7 @@ object DetailedExtraction {
   def nodesToString(nodes: Iterable[DependencyNode]) = nodes.iterator.map(_.text).mkString(" ")
 }
 
-case class Template(template: String) {
+case class Template(template: String, be: Boolean) {
   import Template._
   def apply(extr: DetailedExtraction, m: Match[DependencyNode]) = {
     def matchGroup(name: String): String = name match {
@@ -85,9 +85,15 @@ case class Template(template: String) {
       case "arg2" => extr.arg2
       case _ => m.groups(name).text
     }
+
+    val prefix = if (be && ((extr.relNodes -- m.bipath.nodes) count (_.postag.startsWith("VB"))) == 0) {
+      "be "
+    }
+    else ""
+
     // horrible escape is required.  See JavaDoc for Match.replaceAll
     // or https://issues.scala-lang.org/browse/SI-5437
-    val rel = group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1)).
+    val rel = prefix + group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1)).
       replaceAll("""\\""", """\\\\""").
       replaceAll("""\$""", """\\\$"""))
 
@@ -96,7 +102,14 @@ case class Template(template: String) {
 }
 object Template {
   val group = """\{(.*?)}""".r
-  def deserialize(string: String) = Template(string)
+  def deserialize(string: String) = {
+    if (string.startsWith("be ")) {
+      Template(string.drop(3), true)
+    }
+    else {
+      Template(string, false)
+    }
+  }
 }
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
@@ -241,7 +254,7 @@ object PatternExtractor {
     count.toDouble / maxCount.toDouble
   }
   
-  private def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
+  def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
     // no neighboring neg edges
     !m.bipath.nodes.exists { v =>
       graph.edges(v).exists(_.label == "neg")
@@ -249,7 +262,7 @@ object PatternExtractor {
 	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag)))
   }
 
-  private def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[DetailedExtraction] = {
+  def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[DetailedExtraction] = {
     val groups = m.nodeGroups
   
     val rel = groups.get("rel").map(_.node) getOrElse(throw new IllegalArgumentException("no rel: " + m))
@@ -371,13 +384,17 @@ object PatternExtractor {
       // expand over it because of the until set.
       val dobjCount = graph.graph.edges(node).count(_.label == "dobj")
       val iobjCount = graph.graph.edges(node).count(_.label == "iobj")
-      
+
       var attachLabels = Set[String]()
       if (dobjCount == 1) attachLabels += "dobj"
       if (iobjCount == 1) attachLabels += "iobj"
+
+      def pred(edge: Graph.Edge[DependencyNode]) = edge.label=="advmod" && edge.dest.postag=="RB" ||
+        edge.label=="aux"
       
       // how many dobj edges are there
-      SortedSet(node) :: (augment(node, until, (edge: Graph.Edge[DependencyNode])=>edge.label=="advmod" && edge.dest.postag=="RB") :+
+      SortedSet(node) :: 
+        (augment(node, until, pred) :+
           SortedSet[DependencyNode]() ++ components(node, attachLabels, until, true)
       ).filter (!_.isEmpty)
     }

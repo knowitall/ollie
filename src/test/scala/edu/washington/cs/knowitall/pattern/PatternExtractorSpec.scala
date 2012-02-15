@@ -35,10 +35,10 @@ object PatternExtractorSpec extends Specification {
         collapseNounGroups()
     val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >nsubj> {arg2}")
 
-    "(European Union, agreed, the United States) is found because of an index rewrite" in {
+    "(European Union, had agreed, the United States) is found because of an index rewrite" in {
       val extractions = new GeneralPatternExtractor(pattern, 1, 1).extract(graph)
       extractions.size must_== 4
-      extractions.map(_.toString) must contain("(European Union; agreed; the United States)")
+      extractions.map(_.toString) must contain("(European Union; had agreed; the United States)")
     }
   }
 
