@@ -72,7 +72,7 @@ object BuildTreePatterns {
         try {
           val graph = DependencyGraph.deserialize(deps).map { node =>
             node.lemmatize(MorphaStemmer.instance)
-          }.normalize
+          }.collapseNounGroups().collapseNNPOf.simplifyPostags
 
           if (!validGraph(graph)) {
             logger.warn("Invalid graph (no verb?): " + graph.text + "\t" + graph.serialize)
