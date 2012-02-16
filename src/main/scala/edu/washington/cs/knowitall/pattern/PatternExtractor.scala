@@ -302,7 +302,8 @@ object PatternExtractor {
   def expand(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
     // don't restrict to adjacent (by interval) because prep_of, etc.
     // remove some nodes that we want to expand across.  In the end,
-    // we get the span over the inferiors.
+    // we get the span over the inferiors.  Do go beneath until
+    // nodes because we need them for neighborsUntil.
     def cond(e: Graph.Edge[DependencyNode]) = 
       labels.contains(e.label)
     val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
@@ -362,42 +363,29 @@ object PatternExtractor {
   }
 
   def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): (SortedSet[DependencyNode], String) = {
-    def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]): List[SortedSet[DependencyNode]] = {
-      val labels = 
-        Set("det", "amod", "num", "nn", "poss", "quantmod")
-      List(expand(graph, node, until, labels))
-    }
+    val nounLabels = 
+      Set("det", "amod", "num", "nn", "poss", "quantmod")
+
+    // count the adjacent dobj edges.  We will only expand across
+    // dobj components if there is exactly one adjacent dobj edge.
+    // This edge may already be used, but in that case we won't 
+    // expand over it because of the until set.
+    val dobjCount = graph.graph.edges(node).count(_.label == "dobj")
+    val iobjCount = graph.graph.edges(node).count(_.label == "iobj")
+
+    var attachLabels = Set[String]()
+    if (dobjCount == 1) attachLabels += "dobj"
+    if (iobjCount == 1) attachLabels += "iobj"
+
+    def pred(edge: Graph.Edge[DependencyNode]) = edge.label=="advmod" && edge.dest.postag=="RB" ||
+      edge.label=="aux" || edge.label=="cop" || edge.label=="auxpass"
     
-    /**
-     * Expand over adjacent advmod edges.
-     */
-    def relationExpandVerb(node: DependencyNode, until: Set[DependencyNode]): List[SortedSet[DependencyNode]] = {
-      // count the adjacent dobj edges.  We will only expand across
-      // dobj components if there is exactly one adjacent dobj edge.
-      // This edge may already be used, but in that case we won't 
-      // expand over it because of the until set.
-      val dobjCount = graph.graph.edges(node).count(_.label == "dobj")
-      val iobjCount = graph.graph.edges(node).count(_.label == "iobj")
-
-      var attachLabels = Set[String]()
-      if (dobjCount == 1) attachLabels += "dobj"
-      if (iobjCount == 1) attachLabels += "iobj"
-
-      def pred(edge: Graph.Edge[DependencyNode]) = edge.label=="advmod" && edge.dest.postag=="RB" ||
-        edge.label=="aux"
-      
-      // how many dobj edges are there
-      SortedSet(node) :: 
-        (augment(graph, node, until, pred) :+
-          SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)
-      ).filter (!_.isEmpty)
-    }
+    // how many dobj edges are there
+    val expansion = expand(graph, node, until, nounLabels) :: 
+      (augment(graph, node, until, pred) :+
+        SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)
+    ).filter (!_.isEmpty)
   
-    val expansion = 
-      if (node.isNoun) relationExpandNoun(node, until)
-      else if (node.isVerb) relationExpandVerb(node, until)
-      else List(SortedSet(node))
-      
     val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
     
     // perform a more complicated node->text transformation
