@@ -262,116 +262,110 @@ object PatternExtractor {
 	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag)))
   }
 
-  def buildExtraction(expandArgument: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[DetailedExtraction] = {
-    val groups = m.nodeGroups
+  def neighborsUntil(graph: DependencyGraph, node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
+    val lefts = inferiors.takeWhile(_ != node).reverse
+    val rights = inferiors.dropWhile(_ != node).drop(1)
+
+    val indices = Interval.span(node.indices :: lefts.takeWhile(!until(_)).map(_.indices) ++ rights.takeWhile(!until(_)).map(_.indices))
+    
+    // use the original dependencies nodes in case some information
+    // was lost.  For example, of is collapsed into the edge prep_of
+    graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max)
+  }
   
-    val rel = groups.get("rel").map(_.node) getOrElse(throw new IllegalArgumentException("no rel: " + m))
-    val arg1 = groups.get("arg1").map(_.node) getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
-    val arg2 = groups.get("arg2").map(_.node) getOrElse(throw new IllegalArgumentException("no arg2: " + m))
-    
-    def neighborsUntil (node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
-      val lefts = inferiors.takeWhile(_ != node).reverse
-      val rights = inferiors.dropWhile(_ != node).drop(1)
-
-      val indices = Interval.span(node.indices :: lefts.takeWhile(!until(_)).map(_.indices) ++ rights.takeWhile(!until(_)).map(_.indices))
-      
-      // use the original dependencies nodes in case some information
-      // was lost.  For example, of is collapsed into the edge prep_of
-      graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max)
+  def expandAdjacent(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
+    def takeAdjacent(interval: Interval, nodes: List[DependencyNode], pool: List[DependencyNode]): List[DependencyNode] = pool match {
+      // can we add the top node?
+      case head :: tail if (head.indices borders interval) && !until.contains(head) => 
+        takeAdjacent(interval union head.indices, head :: nodes, tail)
+      // otherwise abort
+      case _ => nodes
     }
     
-    def expandAdjacent(node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
-      def takeAdjacent(interval: Interval, nodes: List[DependencyNode], pool: List[DependencyNode]): List[DependencyNode] = pool match {
-        // can we add the top node?
-        case head :: tail if (head.indices borders interval) && !until.contains(head) => 
-          takeAdjacent(interval union head.indices, head :: nodes, tail)
-        // otherwise abort
-        case _ => nodes
+    // it might be possible to simply have an adjacency restriction
+    // in this condition
+    def cond(e: Graph.Edge[DependencyNode]) = 
+      labels.contains(e.label)
+    val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
+    
+    // split into nodes left and right of node
+    val lefts = inferiors.takeWhile(_ != node).reverse
+    val rights = inferiors.dropWhile(_ != node).drop(1)
+    
+    // take adjacent nodes from each list
+    val withLefts = takeAdjacent(node.indices, List(node), lefts)
+    val expanded = takeAdjacent(node.indices, withLefts, rights)
+    
+    SortedSet(expanded: _*)
+  }
+  
+  def expand(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
+    // don't restrict to adjacent (by interval) because prep_of, etc.
+    // remove some nodes that we want to expand across.  In the end,
+    // we get the span over the inferiors.
+    def cond(e: Graph.Edge[DependencyNode]) = 
+      labels.contains(e.label)
+    val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
+    neighborsUntil(graph, node, inferiors, until)
+  }
+  
+  def augment(graph: DependencyGraph, node: DependencyNode, without: Set[DependencyNode], pred: Graph.Edge[DependencyNode]=>Boolean): List[SortedSet[DependencyNode]] = {
+    // don't restrict to adjacent (by interval) because prep_of, etc.
+    // remove some nodes that we want to expand across.  In the end,
+    // we get the span over the inferiors.
+    graph.graph.successors(node, pred).map(SortedSet[DependencyNode]() ++ graph.graph.inferiors(_)).toList
+  }
+  
+  /**
+   *  Return the components next to the node.
+   *  @param  node  components will be found adjacent to this node
+   *  @param  labels  components may be connected by edges with any of these labels
+   *  @param  without  components may not include any of these nodes
+   **/
+  def components(graph: DependencyGraph, node: DependencyNode, labels: Set[String], without: Set[DependencyNode], nested: Boolean) = {
+    // nodes across an allowed label to a subcomponent
+    val across = graph.graph.neighbors(node, (dedge: DirectedEdge[_]) => dedge.dir match {
+      case Direction.Down if labels.contains(dedge.edge.label) => true
+      case _ => false
+    })
+    
+    val components = across.flatMap { start =>
+      // get inferiors without passing back to node
+      val inferiors = graph.graph.inferiors(start, 
+          (e: Graph.Edge[DependencyNode]) => 
+            // make sure we don't cycle out of the component
+            e.dest != node && 
+            // make sure we don't descend into another component
+            // i.e. "John M. Synge who came to us with his play direct
+            // from the Aran Islands , where the material for most of
+            // his later works was gathered" if nested is false
+            (nested || !labels.contains(e.label)))
+
+      // make sure none of the without nodes are in the component
+      if (without.forall(!inferiors.contains(_))) {
+        val span = Interval.span(inferiors.map(_.indices).toSeq)
+        Some(graph.nodes.filter(node => span.superset(node.indices)))
       }
-      
-      // it might be possible to simply have an adjacency restriction
-      // in this condition
-      def cond(e: Graph.Edge[DependencyNode]) = 
-        labels.contains(e.label)
-      val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
-      
-      // split into nodes left and right of node
-      val lefts = inferiors.takeWhile(_ != node).reverse
-      val rights = inferiors.dropWhile(_ != node).drop(1)
-      
-      // take adjacent nodes from each list
-      val withLefts = takeAdjacent(node.indices, List(node), lefts)
-      val expanded = takeAdjacent(node.indices, withLefts, rights)
-      
-      SortedSet(expanded: _*)
+      else None
     }
+
+    components.flatten.toList
+  }
+
+  def expandArgument(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
+    val labels = 
+      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
     
-    def expand(node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
-      // don't restrict to adjacent (by interval) because prep_of, etc.
-      // remove some nodes that we want to expand across.  In the end,
-      // we get the span over the inferiors.
-      def cond(e: Graph.Edge[DependencyNode]) = 
-        labels.contains(e.label)
-      val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
-      neighborsUntil(node, inferiors, until)
-    }
-    
-    def augment(node: DependencyNode, without: Set[DependencyNode], pred: Graph.Edge[DependencyNode]=>Boolean): List[SortedSet[DependencyNode]] = {
-      // don't restrict to adjacent (by interval) because prep_of, etc.
-      // remove some nodes that we want to expand across.  In the end,
-      // we get the span over the inferiors.
-      graph.graph.successors(node, pred).map(SortedSet[DependencyNode]() ++ graph.graph.inferiors(_)).toList
-    }
-    
-    /**
-     *  Return the components next to the node.
-     *  @param  node  components will be found adjacent to this node
-     *  @param  labels  components may be connected by edges with any of these labels
-     *  @param  without  components may not include any of these nodes
-     **/
-    def components(node: DependencyNode, labels: Set[String], without: Set[DependencyNode], nested: Boolean) = {
-      // nodes across an allowed label to a subcomponent
-      val across = graph.graph.neighbors(node, (dedge: DirectedEdge[_]) => dedge.dir match {
-        case Direction.Down if labels.contains(dedge.edge.label) => true
-        case _ => false
-      })
-      
-      val components = across.flatMap { start =>
-        // get inferiors without passing back to node
-        val inferiors = graph.graph.inferiors(start, 
-            (e: Graph.Edge[DependencyNode]) => 
-              // make sure we don't cycle out of the component
-              e.dest != node && 
-              // make sure we don't descend into another component
-              // i.e. "John M. Synge who came to us with his play direct
-              // from the Aran Islands , where the material for most of
-              // his later works was gathered" if nested is false
-              (nested || !labels.contains(e.label)))
+    val expansion = expand(graph, node, until, labels)
+    if (expansion.exists(_.isProperNoun)) expansion
+    else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref"), until, false)
+  }
 
-        // make sure none of the without nodes are in the component
-        if (without.forall(!inferiors.contains(_))) {
-          val span = Interval.span(inferiors.map(_.indices).toSeq)
-          Some(graph.nodes.filter(node => span.superset(node.indices)))
-        }
-        else None
-      }
-
-      components.flatten.toList
-    }
-
-    def simpleExpandNoun(node: DependencyNode, until: Set[DependencyNode]) = {
-      val labels = 
-        Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
-      
-      val expansion = expand(node, until, labels)
-      if (expansion.exists(_.isProperNoun)) expansion
-      else expansion ++ components(node, Set("rcmod", "infmod", "partmod", "ref"), until, false)
-    }
-
+  def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): (SortedSet[DependencyNode], String) = {
     def relationExpandNoun(node: DependencyNode, until: Set[DependencyNode]): List[SortedSet[DependencyNode]] = {
       val labels = 
         Set("det", "amod", "num", "nn", "poss", "quantmod")
-      List(expand(node, until, labels))
+      List(expand(graph, node, until, labels))
     }
     
     /**
@@ -394,27 +388,33 @@ object PatternExtractor {
       
       // how many dobj edges are there
       SortedSet(node) :: 
-        (augment(node, until, pred) :+
-          SortedSet[DependencyNode]() ++ components(node, attachLabels, until, true)
+        (augment(graph, node, until, pred) :+
+          SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)
       ).filter (!_.isEmpty)
     }
-    
-    def expandRelation(node: DependencyNode): (SortedSet[DependencyNode], String) = {
-      val expansion = 
-        if (node.isNoun) relationExpandNoun(node, Set(arg1, arg2))
-        else if (node.isVerb) relationExpandVerb(node, Set(arg1, arg2))
-        else List(SortedSet(node))
-        
-      val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
+  
+    val expansion = 
+      if (node.isNoun) relationExpandNoun(node, until)
+      else if (node.isVerb) relationExpandVerb(node, until)
+      else List(SortedSet(node))
       
-      // perform a more complicated node->text transformation
-      val texts = sorted.map(DetailedExtraction.nodesToString(_))
-      (expansion.reduce(_ ++ _), texts.mkString(" "))
-    }
+    val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
+    
+    // perform a more complicated node->text transformation
+    val texts = sorted.map(DetailedExtraction.nodesToString(_))
+    (expansion.reduce(_ ++ _), texts.mkString(" "))
+  }
 
-    val expandedArg1 = if (expandArgument) simpleExpandNoun(arg1, Set(rel)) else SortedSet(arg1)
-    val expandedArg2 = if (expandArgument) simpleExpandNoun(arg2, Set(rel)) else SortedSet(arg2)
-    val (expandedRelNodes, expandedRelText) = if (expandArgument) expandRelation(rel) else (SortedSet(rel), rel.text)
+  def buildExtraction(expand: Boolean)(graph: DependencyGraph, m: Match[DependencyNode]): Option[DetailedExtraction] = {
+    val groups = m.nodeGroups
+  
+    val rel = groups.get("rel").map(_.node) getOrElse(throw new IllegalArgumentException("no rel: " + m))
+    val arg1 = groups.get("arg1").map(_.node) getOrElse(throw new IllegalArgumentException("no arg1: " + m)) 
+    val arg2 = groups.get("arg2").map(_.node) getOrElse(throw new IllegalArgumentException("no arg2: " + m))    
+
+    val expandedArg1 = if (expand) expandArgument(graph, arg1, Set(rel)) else SortedSet(arg1)
+    val expandedArg2 = if (expand) expandArgument(graph, arg2, Set(rel)) else SortedSet(arg2)
+    val (expandedRelNodes, expandedRelText) = if (expand) expandRelation(graph, rel, Set(arg1, arg2)) else (SortedSet(rel), rel.text)
     if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
       logger.info("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
       None
