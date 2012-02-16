@@ -48,7 +48,7 @@ object BuildTreePatterns {
  def main(settings: Settings) {
    def validGraph(graph: DependencyGraph) = {
      // make sure there is a verb
-     graph.nodes.exists(node => "(?i)^VB".r.findFirstIn(node.text).isDefined)
+     graph.nodes.exists(node => "(?i)^VB".r.findFirstIn(node.postag).isDefined)
    }
    
     // file with dependencies
