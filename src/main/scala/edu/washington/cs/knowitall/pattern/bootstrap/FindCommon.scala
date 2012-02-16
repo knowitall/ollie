@@ -1,5 +1,7 @@
 package edu.washington.cs.knowitall.pattern.bootstrap
 
+import scala.util.matching.Regex
+
 object FindCommon {
   // tags allowed in proper arguments
   val properPostags = Set("DT", "IN", "NNP", "NNPS")
@@ -7,10 +9,13 @@ object FindCommon {
     lemmas.forall(properPostags.contains(_)) && lemmas.exists(lemma => lemma == "NNP" || lemma == "NNPS")
 
   def stripPostag(target: String, part: Seq[(String, String, String)]) = {
-    part.filter { case (pos, tok, lem) => !target.matches(pos) }
+    part.filter { case (pos, tok, lem) => target != pos }
+  }
+  def stripPostag(target: Regex, part: Seq[(String, String, String)]) = {
+    part.filter { case (pos, tok, lem) => !target.pattern.matcher(pos).matches}
   }
   def stripLemma(target: String, part: Seq[(String, String, String)]) = {
-    part.filter { case (pos, tok, lem) => !target.matches(lem) }
+    part.filter { case (pos, tok, lem) => target != lem }
   }
   
   def cleanArg(part: Seq[(String, String, String)]) = stripPostag("DT", part)

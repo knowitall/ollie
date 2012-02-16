@@ -24,29 +24,36 @@ object FindTargetExtractions {
 
   val lemmaBlacklist = Set("the", "that", "of")
 
-  /** args(0): extractions formatted like the clean clueweb
-    * args(1): a file of target relations
-    * args(2): a file of permissible args */
   def main(args: Array[String]) {
 
     val parser = new OptionParser("findextr") {
       var extractionFilePath: String = _
-      var relationFilePath: String = _
+      var relationFilePath: Option[String] = None
       var argumentFilePath: String = _
 
-      opt("e", "extractions", "<file>", "extraction file", { v: String => require(v != null); extractionFilePath = v })
-      opt("r", "relations", "<file>", "relation file", { v: String => require(v != null); relationFilePath = v })
-      opt("a", "arguments", "<file>", "argument file", { v: String => require(v != null); argumentFilePath = v })
+      arg("extractions", "extraction file", { v: String => require(v != null); extractionFilePath = v })
+      arg("arguments", "argument file", { v: String => require(v != null); argumentFilePath = v })
+      opt("r", "relations", "<file>", "relation file", { v: String => require(v != null); relationFilePath = Some(v) })
     }
 
     if (parser.parse(args)) {
       // read in the argument files
-      val extractions = Source.fromFile(parser.extractionFilePath)
+      val extractions = Source.fromFile(parser.extractionFilePath, "UTF8")
       logger.info("loading targets")
-      val relationsRows = Source.fromFile(parser.relationFilePath).getLines.map(line => line.split("\t")).toList
-      val targets = relationsRows.map(_(0))
-      val relationLemmas = relationsRows.map(row => (row(0), row(1).split(" "))).toMap
-      logger.info("5 targets: " + targets.take(5).mkString(", "))
+      val relationsRows = parser.relationFilePath.map(Source.fromFile(_).getLines.map(line => line.split("\t")).toList)
+      val targets = relationsRows.map(_ map (_(0)))
+      val relationLemmaLookup = relationsRows.map(_.map(row => (row(0), row(1).split(" "))).toMap)
+      def relationLemmas(relation: String): Seq[String] = {
+        relationLemmaLookup match {
+          case Some(lookup) => lookup(relation)
+          case None => relation.split(" ") filterNot PatternExtractor.LEMMA_BLACKLIST
+        }
+      }
+
+      targets match {
+        case Some(targets) => logger.info("5 targets: " + targets.take(5).mkString(", "))
+        case None => logger.info("No target restriction")
+      }
       logger.info("loading arguments")
       val arguments = Source.fromFile(parser.argumentFilePath).getLines.map(line => line.split("\t")(0)).toSet
       logger.info("5 arguments: " + arguments.take(5).mkString(", "))
@@ -71,7 +78,7 @@ object FindTargetExtractions {
 
           val (arg1cleanPostags, arg1cleanStrings, arg1cleanLemmas) = cleanArg(arg1).unzip3
           val (arg2cleanPostags, arg2cleanStrings, arg2cleanLemmas) = cleanArg(arg2).unzip3
-          val (relcleanPostags, relcleanStrings, relcleanLemmas) = stripPostag("DT", rel).unzip3
+          val (relcleanPostags, relcleanStrings, relcleanLemmas) = stripPostag("JJS?".r, stripPostag("DT", rel)).unzip3
 
           val relcleanLemmaString = relcleanLemmas.mkString(" ")
           val arg1cleanLemmaString = arg1cleanLemmas.mkString(" ")
@@ -80,10 +87,10 @@ object FindTargetExtractions {
           // ensure the extraction parts are relatively small
           if (relationLemma.length < 64 && 
             // ensure the normalized relation string is a target
-            targets.contains(relcleanLemmaString) &&
+            targets.map(_ contains relcleanLemmaString).getOrElse(true) &&
             // ensure arguments are proper
-            proper(arg1Postag.split("\\s+")) &&
-            proper(arg2Postag.split("\\s+")) &&
+            (proper(arg1Postag.split("\\s+")) ||
+            proper(arg2Postag.split("\\s+"))) &&
             arg1cleanLemmaString != arg2cleanLemmaString &&
             // ensure the args are permissible
             arguments.contains(arg1cleanLemmaString) && arguments.contains(arg2cleanLemmaString) &&
