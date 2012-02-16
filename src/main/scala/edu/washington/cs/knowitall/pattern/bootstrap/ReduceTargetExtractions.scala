@@ -18,20 +18,35 @@ object ReduceTargetExtractions {
       val Array(rel, arg1, arg2, lemmas, _*) = line.split("\t")
 
       val seed = (rel, arg1, arg2, lemmas)
-      seedCounts += seed -> (seedCounts(seed) + 1)
 
-      relationCounts += rel -> (relationCounts(rel) + 1)
+      // make sure the relation contains at least on of the lemmas
+      // this excludes, for example, "be in"
+      if (rel.split(" ").exists (lemmas contains _)) {
+        seedCounts += seed -> (seedCounts(seed) + 1)
+        relationCounts += rel -> (relationCounts(rel) + 1)
+      }
     }
 
     // keep relations with more than 15 seeds
-    val relations = 
-      (for ((rel, count) <- relationCounts; if (count > 15)) yield (rel)).toSet
+    // and more than 0 lemmas
+    val relations: Set[String] = 
+      (for {
+        (rel, count) <- relationCounts; 
+        if (count > 15)
+      } yield (rel))(scala.collection.breakOut)
     logger.info("keeping " + relations.size + "/" + relationCounts.size + " relations")
 
     // keep seeds that occur more than once
+    val seeds =
+      for {
+        (seed @ (rel, arg1, arg2, lemmas), count) <- seedCounts; 
+        if count > 1 && relations.contains(rel)
+      } yield (seed)
+    
+    logger.info("keeping " + seeds.size + "/" + seedCounts.size + " seeds")
+
     logger.info("printing seeds to keep")
-    for ((seed @ (rel, arg1, arg2, lemmas), count) <- seedCounts; 
-      if count > 1 && relations.contains(rel)) {
+    for (seed <- seeds) {
       println(seed.productIterator.mkString("\t"))
     }
   }
