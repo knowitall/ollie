@@ -2,249 +2,45 @@ package edu.washington.cs.knowitall
 package pattern
 
 import java.io.File
+import java.io.PrintWriter
+
+import scala.Option.option2Iterable
+import scala.collection.JavaConversions.asScalaBuffer
+import scala.collection.JavaConversions.iterableAsScalaIterable
+import scala.collection.Set
+import scala.collection.SortedSet
 import scala.io.Source
-import scala.util.matching.Regex
-import scopt.OptionParser
-import edu.washington.cs.knowitall.collection.immutable.Interval
-import tool.stem.MorphaStemmer
-import tool.parse.graph._
-import tool.parse.pattern._
+
 import org.slf4j.LoggerFactory
-import edu.washington.cs.knowitall.common.Resource._
-import edu.washington.cs.knowitall.pattern.lda.Distributions
-import edu.washington.cs.knowitall.util.DefaultObjects
+
+import edu.washington.cs.knowitall.collection.immutable.Interval
+import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.extractor.ReVerbExtractor
 import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
 import edu.washington.cs.knowitall.normalization.RelationString
-import java.io.File
-import java.io.PrintWriter
-import scala.collection.SortedSet
-import scala.collection.Set
+import edu.washington.cs.knowitall.pattern.lda.Distributions
+import edu.washington.cs.knowitall.tool.parse.graph.DirectedEdge
+import edu.washington.cs.knowitall.tool.parse.graph.Graph
+import edu.washington.cs.knowitall.tool.parse.pattern.Match
+import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
 
-class Extraction(
-    val arg1: String, 
-    val rel: String, 
-    val relLemmas: Option[Set[String]], 
-    val arg2: String) {
-
-  def this(arg1: String, rel: String, arg2: String) = this(arg1, 
-      rel, 
-      Some(rel.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- PatternExtractor.LEMMA_BLACKLIST), 
-      arg2)
-      
-  override def equals(that: Any) = that match {
-    case that: Extraction => (that canEqual this) && that.arg1 == this.arg1 && that.rel == this.rel && that.arg2 == this.arg2
-    case _ => false
-  }
-  def canEqual(that: Any) = that.isInstanceOf[Extraction]
-  override def hashCode = arg1.hashCode + 39 * (rel.hashCode + 39 * arg2.hashCode)
-
-  override def toString() = Iterable(arg1, rel, arg2).mkString("(", "; ", ")")
-
-  def replaceRelation(relation: String) = new Extraction(this.arg1, relation, relLemmas, this.arg2)
-  def softMatch(that: Extraction) = 
-    (that.arg1.contains(this.arg1) || this.arg1.contains(that.arg1)) &&
-    this.relLemmas == that.relLemmas &&
-    (that.arg2.contains(this.arg2) || this.arg2.contains(that.arg2))
-}
-
-class DetailedExtraction(
-    val extractor: PatternExtractor,
-    val `match`: Match[DependencyNode],
-    val arg1Nodes: SortedSet[DependencyNode], 
-    val relNodes: SortedSet[DependencyNode], 
-    val relText: String,
-    val arg2Nodes: SortedSet[DependencyNode])
-extends Extraction(
-    DetailedExtraction.nodesToString(arg1Nodes),
-    relText, 
-    DetailedExtraction.nodesToString(arg2Nodes)) {
-  
-  def this(extractor: PatternExtractor, mch: Match[DependencyNode], 
-    arg1Nodes: SortedSet[DependencyNode], 
-    relNodes: SortedSet[DependencyNode], 
-    arg2Nodes: SortedSet[DependencyNode]) = 
-    this(extractor, mch, arg1Nodes, relNodes, DetailedExtraction.nodesToString(relNodes), arg2Nodes)
-
-  def nodes = arg1Nodes ++ relNodes ++ arg2Nodes
-  def edges = `match`.bipath.path
-
-  override def replaceRelation(relation: String) = 
-    new DetailedExtraction(extractor, `match`, this.arg1Nodes, relNodes, relation, arg2Nodes)
-}
-
-object DetailedExtraction {
-  def nodesToString(nodes: Iterable[DependencyNode]) = nodes.iterator.map(_.text).mkString(" ")
-}
-
-case class Template(template: String, be: Boolean) {
-  import Template._
-  def apply(extr: DetailedExtraction, m: Match[DependencyNode]) = {
-    def matchGroup(name: String): String = name match {
-      case "rel" => extr.rel
-      case "arg1" => extr.arg1
-      case "arg2" => extr.arg2
-      case _ => m.groups(name).text
-    }
-
-    val prefix = if (be && ((extr.relNodes -- m.bipath.nodes) count (_.postag.startsWith("VB"))) == 0) {
-      "be "
-    }
-    else ""
-
-    // horrible escape is required.  See JavaDoc for Match.replaceAll
-    // or https://issues.scala-lang.org/browse/SI-5437
-    val rel = prefix + group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1)).
-      replaceAll("""\\""", """\\\\""").
-      replaceAll("""\$""", """\\\$"""))
-
-    extr.replaceRelation(rel)
-  }
-}
-object Template {
-  val group = """\{(.*?)}""".r
-  def deserialize(string: String) = {
-    if (string.startsWith("be ")) {
-      Template(string.drop(3), true)
-    }
-    else {
-      Template(string, false)
-    }
-  }
-}
-
-abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
-  def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
-    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[DetailedExtraction]
-  def confidence(extr: Extraction): Double
-  def confidence: Option[Double] // independent confidence
-
-  override def toString = pattern.toString
-}
-
-class GeneralPatternExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
-  import GeneralPatternExtractor._
-  
-  def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
-
-  protected def extractWithMatches(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
-    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
-
-    // apply pattern and keep valid matches
-    val matches = pattern(dgraph.graph)
-    if (!matches.isEmpty) logger.debug("matches: " + matches.mkString(", "))
-
-    val filtered = matches.filter(validMatch(dgraph.graph))
-    if (!filtered.isEmpty) logger.debug("filtered: " + filtered.mkString(", "))
-
-    for (m <- filtered; extr <- buildExtraction(dgraph, m, this)) yield {
-      (extr, m)
-    }
-  }
-
-  override def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
-    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
-    logger.debug("pattern: " + pattern)
-    
-    val extractions = this.extractWithMatches(dgraph).map(_._1)
-    if (!extractions.isEmpty) logger.debug("extractions: " + extractions.mkString(", "))
-    
-    extractions
-  }
-
-  override def confidence(extr: Extraction): Double = {
-    this.confidence.get
-  }
-  
-  override def confidence: Option[Double] = 
-    Some(patternCount.toDouble / maxPatternCount.toDouble)
-}
-object GeneralPatternExtractor {
-  val logger = LoggerFactory.getLogger(this.getClass)
-}
-
-class TemplatePatternExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
-extends GeneralPatternExtractor(pattern, patternCount, maxPatternCount) {
-  override def extract(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
-    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
-
-    val extractions = super.extractWithMatches(dgraph)
-
-    extractions.map{ case (extr, m) => template(extr, m) }
-  }
-}
-
-class SpecificPatternExtractor(val relation: String, 
-  val relationLemmas: List[String], 
-  pattern: Pattern[DependencyNode], patternCount: Int, relationCount: Int) 
-extends GeneralPatternExtractor(pattern, patternCount, relationCount) {
-
-  def this(relation: String, 
-    pattern: Pattern[DependencyNode], dist: Distributions) =
-    this(relation, 
-      // todo: hack
-      (relation.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST).toList,
-      pattern, 
-      dist.relationByPattern(dist.relationEncoding(relation))._1(dist.patternEncoding(pattern.toString)),
-      dist.relationByPattern(dist.relationEncoding(relation))._2)
-
-  override def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
-    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
-    val extractions = super.extract(dgraph)
-    extractions.withFilter{ extr =>
-      val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
-      relationLemmas.forall(extrRelationLemmas.contains(_))
-    }.map(_.replaceRelation(relation))
-  }
-}
-
-class LdaPatternExtractor private (pattern: Pattern[DependencyNode], private val patternCode: Int, val dist: Distributions) 
-extends GeneralPatternExtractor(pattern, dist.patternCount(patternCode), dist.patternCount) {
-  import LdaPatternExtractor._
-  
-  def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternEncoding(pattern.toString), dist)
-
-  override def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
-    validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
-    val p = dist.patternEncoding(pattern.toString)
-
-    super.extract(dgraph).flatMap { extr =>
-      // find relation string that intersects with extraction relation string
-      val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
-      val rels = dist.relationLemmas.filter{case (relation, lemmas) => extrRelationLemmas.forall(exr => lemmas.contains(exr))}.map(_._1)
-      if (!rels.isEmpty) logger.debug("matching relstrings: " + rels.mkString(", "))
-
-      // replace the relation
-      if (rels.isEmpty) {
-	    logger.debug("extraction discarded, no matching relstrings")
-	    None
-      }
-      else {
-	    val bestRel = rels.maxBy(rel => dist.prob(dist.relationEncoding(rel))(p))
-        val replaced = extr.replaceRelation(bestRel)
-        logger.debug("replaced extraction: " + replaced)
-        Some(replaced)
-      }
-    }
-  }
-
-  override def confidence(extr: Extraction) = {
-    val r = dist.relationEncoding(extr.rel)
-    dist.prob(r)(patternCode)
-  }
-  
-  // the confidence is not independent of the extraction
-  override def confidence: Option[Double] = None
-}
-object LdaPatternExtractor {
-  val logger = LoggerFactory.getLogger(this.getClass)
-}
+import extract.DetailedExtraction
+import extract.Extraction
+import extract.GeneralExtractor
+import extract.LdaExtractor
+import extract.PatternExtractor
+import extract.SpecificExtractor
+import extract.Template
+import extract.TemplateExtractor
+import scopt.OptionParser
+import tool.parse.graph.DependencyGraph
+import tool.parse.graph.DependencyNode
+import tool.parse.graph.Direction
+import tool.parse.graph.Graph
+import tool.parse.pattern.DependencyPattern
+import tool.parse.pattern.Match
+import tool.parse.pattern.Pattern
+import tool.stem.MorphaStemmer
 
 object PatternExtractor {
   val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
@@ -428,7 +224,7 @@ object PatternExtractor {
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
   implicit def implicitValidMatch = this.validMatch(false) _
 
-  def loadGeneralExtractorsFromFile(patternFile: File): List[GeneralPatternExtractor] = {
+  def loadGeneralExtractorsFromFile(patternFile: File): List[GeneralExtractor] = {
     val patternSource = Source.fromFile(patternFile)
     val patterns: List[(Pattern[DependencyNode], Int)] = try {
       // parse the file
@@ -447,11 +243,11 @@ object PatternExtractor {
 
     val maxCount = patterns.maxBy(_._2)._2
     (for ((p, count) <- patterns) yield {
-      new GeneralPatternExtractor(p, count, maxCount)
+      new GeneralExtractor(p, count, maxCount)
     }).toList
   }
 
-  def loadTemplateExtractorsFromFile(patternFile: File): List[GeneralPatternExtractor] = {
+  def loadTemplateExtractorsFromFile(patternFile: File): List[GeneralExtractor] = {
     val patternSource = Source.fromFile(patternFile)
     val patterns: List[(Template, Pattern[DependencyNode], Int)] = try {
       // parse the file
@@ -473,27 +269,27 @@ object PatternExtractor {
 
     val maxCount = patterns.maxBy(_._3)._3
     (for ((template, pattern, count) <- patterns) yield {
-      new TemplatePatternExtractor(template, pattern, count, maxCount)
+      new TemplateExtractor(template, pattern, count, maxCount)
     }).toList
   }
   
-  def loadLdaExtractorsFromDistributions(dist: Distributions): List[LdaPatternExtractor] = {
+  def loadLdaExtractorsFromDistributions(dist: Distributions): List[LdaExtractor] = {
     (for (p <- dist.patternCodes) yield {
-      new LdaPatternExtractor(DependencyPattern.deserialize(dist.patternDecoding(p)), dist)
+      new LdaExtractor(DependencyPattern.deserialize(dist.patternDecoding(p)), dist)
     }).toList
   }
 
-  def loadGeneralExtractorsFromDistributions(dist: Distributions): List[GeneralPatternExtractor] = {
+  def loadGeneralExtractorsFromDistributions(dist: Distributions): List[GeneralExtractor] = {
     (for (p <- dist.patternCodes) yield {
-      new GeneralPatternExtractor(DependencyPattern.deserialize(dist.patternDecoding(p)), dist)
+      new GeneralExtractor(DependencyPattern.deserialize(dist.patternDecoding(p)), dist)
     }).toList
   }
 
-  def loadSpecificExtractorsFromDistributions(dist: Distributions): List[GeneralPatternExtractor] = {
+  def loadSpecificExtractorsFromDistributions(dist: Distributions): List[GeneralExtractor] = {
     (for (p <- dist.patternCodes; 
       val pattern = DependencyPattern.deserialize(dist.patternDecoding(p));
       r <- dist.relationsForPattern(p)) yield {
-      new SpecificPatternExtractor(dist.relationDecoding(r),
+      new SpecificExtractor(dist.relationDecoding(r),
         pattern, 
         dist)
     }).toList
@@ -685,7 +481,7 @@ object PatternExtractor {
 
               if (parser.duplicates) {
                 for (result <- results.sorted(Ordering[Result].reverse)) {
-                  writer.println(result)
+                  writer.println(result.toString)
                 }
               }
               else {
