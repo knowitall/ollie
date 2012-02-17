@@ -255,11 +255,7 @@ object PatternExtractor {
   }
   
   def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
-    // no neighboring neg edges
-    !m.bipath.nodes.exists { v =>
-      graph.edges(v).exists(_.label == "neg")
-	} && 
-	(!restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag)))
+    !restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag))
   }
 
   def neighborsUntil(graph: DependencyGraph, node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
@@ -356,10 +352,28 @@ object PatternExtractor {
   def expandArgument(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
     val labels = 
       Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
-    
-    val expansion = expand(graph, node, until, labels)
-    if (expansion.exists(_.isProperNoun)) expansion
-    else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref"), until, false)
+
+
+    def expandNode(node: DependencyNode) = {
+      val expansion = expand(graph, node, until, labels)
+      if (expansion.exists(_.isProperNoun)) expansion
+      else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref", "prepc_of"), until, false)
+    }
+
+    // expand over any conjunction/disjunction edges
+    val nodes = graph.graph.connected(node, (dedge: DirectedEdge[_]) =>
+      dedge.edge.label == "conj_and" || dedge.edge.label == "conj_or")
+
+    if (nodes.size == 1) {
+      // there are no conjunctive edges
+      expandNode(node)
+    }
+    else {
+      val flat = nodes.map(expandNode).flatten
+      val span = Interval.span(flat.map(_.indices).toSeq)
+      // take the nodes that cover all the nodes found
+      graph.nodes.filter(node => span.superset(node.indices))
+    }
   }
 
   def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): (SortedSet[DependencyNode], String) = {
@@ -378,7 +392,7 @@ object PatternExtractor {
     if (iobjCount == 1) attachLabels += "iobj"
 
     def pred(edge: Graph.Edge[DependencyNode]) = edge.label=="advmod" && edge.dest.postag=="RB" ||
-      edge.label=="aux" || edge.label=="cop" || edge.label=="auxpass"
+      edge.label=="aux" || edge.label=="cop" || edge.label=="auxpass" || edge.label=="prt"
     
     // how many dobj edges are there
     val expansion = expand(graph, node, until, nounLabels) :: 
