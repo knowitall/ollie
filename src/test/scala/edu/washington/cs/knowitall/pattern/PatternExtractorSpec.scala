@@ -12,7 +12,7 @@ import tool.parse.graph.Dependencies
 import tool.stem.MorphaStemmer
 import tool.parse.pattern.DependencyPattern
 
-import PatternExtractor._
+import Extractor._
 import pattern.extract._
 
 @RunWith(classOf[JUnitSuiteRunner])

@@ -47,6 +47,8 @@ case class Template(template: String, be: Boolean) {
 
     extr.replaceRelation(rel)
   }
+
+  override def toString = (if (be) "be " else "") + template
 }
 
 object Template {
