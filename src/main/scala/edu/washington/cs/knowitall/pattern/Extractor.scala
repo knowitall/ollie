@@ -42,7 +42,7 @@ import tool.parse.pattern.Match
 import tool.parse.pattern.Pattern
 import tool.stem.MorphaStemmer
 
-object PatternExtractor {
+object Extractor {
   val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -148,7 +148,7 @@ object PatternExtractor {
 
   def expandArgument(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
     val labels = 
-      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod")
+      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod", "neg")
 
 
     def expandNode(node: DependencyNode) = {
@@ -175,7 +175,7 @@ object PatternExtractor {
 
   def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): (SortedSet[DependencyNode], String) = {
     val nounLabels = 
-      Set("det", "amod", "num", "nn", "poss", "quantmod")
+      Set("det", "amod", "num", "nn", "poss", "quantmod", "neg")
 
     // count the adjacent dobj edges.  We will only expand across
     // dobj components if there is exactly one adjacent dobj edge.
@@ -401,7 +401,7 @@ object PatternExtractor {
           val rs = new RelationString(extr.getRelation.getText, extr.getRelation.getTokens.map(MorphaStemmer.instance.lemmatize(_)).mkString(" "), extr.getRelation.getPosTags.mkString(" "))
           rs.correctNormalization()
           
-          new Extraction(extr.getArgument1.getText, extr.getRelation.getText, Some(rs.getNormPred.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST), extr.getArgument2.getText)
+          new Extraction(extr.getArgument1.getText, extr.getRelation.getText, Some(rs.getNormPred.split(" ").toSet -- Extractor.LEMMA_BLACKLIST), extr.getArgument2.getText)
         }
       }
       

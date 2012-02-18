@@ -22,7 +22,7 @@ extends GeneralExtractor(pattern, patternCount, relationCount) {
     pattern: Pattern[DependencyNode], dist: Distributions) =
     this(relation, 
       // todo: hack
-      (relation.split(" ").toSet -- PatternExtractor.LEMMA_BLACKLIST).toList,
+      (relation.split(" ").toSet -- Extractor.LEMMA_BLACKLIST).toList,
       pattern, 
       dist.relationByPattern(dist.relationEncoding(relation))._1(dist.patternEncoding(pattern.toString)),
       dist.relationByPattern(dist.relationEncoding(relation))._2)
