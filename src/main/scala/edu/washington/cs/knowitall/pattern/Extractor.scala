@@ -1,18 +1,16 @@
 package edu.washington.cs.knowitall
+
 package pattern
 
 import java.io.File
 import java.io.PrintWriter
-
 import scala.Option.option2Iterable
 import scala.collection.JavaConversions.asScalaBuffer
 import scala.collection.JavaConversions.iterableAsScalaIterable
 import scala.collection.Set
 import scala.collection.SortedSet
 import scala.io.Source
-
 import org.slf4j.LoggerFactory
-
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.extractor.ReVerbExtractor
@@ -23,7 +21,6 @@ import edu.washington.cs.knowitall.tool.parse.graph.DirectedEdge
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
 import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
-
 import extract.DetailedExtraction
 import extract.Extraction
 import extract.GeneralExtractor
@@ -41,6 +38,8 @@ import tool.parse.pattern.DependencyPattern
 import tool.parse.pattern.Match
 import tool.parse.pattern.Pattern
 import tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.pattern.extract.Postprocess
+import edu.washington.cs.knowitall.pattern.extract.PatternExtractorType
 
 object Extractor {
   val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
@@ -223,55 +222,6 @@ object Extractor {
 
   implicit def implicitBuildExtraction = this.buildExtraction(true)_
   implicit def implicitValidMatch = this.validMatch(false) _
-
-  def loadGeneralExtractorsFromFile(patternFile: File): List[GeneralExtractor] = {
-    val patternSource = Source.fromFile(patternFile)
-    val patterns: List[(Pattern[DependencyNode], Int)] = try {
-      // parse the file
-      patternSource.getLines.map { line =>
-        line.split("\t") match {
-          // full information specified
-          case Array(pat, count) => (DependencyPattern.deserialize(pat), count.toInt)
-          // assume a count of 1 if nothing is specified
-          case Array(pat) => logger.warn("warning: pattern has no count: " + pat); (DependencyPattern.deserialize(pat), 1)
-          case _ => throw new IllegalArgumentException("file can't have more than two columns")
-        }
-      }.toList
-    } finally {
-      patternSource.close
-    }
-
-    val maxCount = patterns.maxBy(_._2)._2
-    (for ((p, count) <- patterns) yield {
-      new GeneralExtractor(p, count, maxCount)
-    }).toList
-  }
-
-  def loadTemplateExtractorsFromFile(patternFile: File): List[GeneralExtractor] = {
-    val patternSource = Source.fromFile(patternFile)
-    val patterns: List[(Template, Pattern[DependencyNode], Int)] = try {
-      // parse the file
-      patternSource.getLines.map { line =>
-        line.split("\t") match {
-          // full information specified
-          case Array(template, pat, count) => 
-            (Template.deserialize(template), DependencyPattern.deserialize(pat), count.toInt)
-          // assume a count of 1 if nothing is specified
-          case Array(template, pat) => 
-            logger.warn("warning: pattern has no count: " + pat); 
-            (Template.deserialize(template), DependencyPattern.deserialize(pat), 1)
-          case _ => throw new IllegalArgumentException("file can't have more than two columns")
-        }
-      }.toList
-    } finally {
-      patternSource.close
-    }
-
-    val maxCount = patterns.maxBy(_._3)._3
-    (for ((template, pattern, count) <- patterns) yield {
-      new TemplateExtractor(template, pattern, count, maxCount)
-    }).toList
-  }
   
   def loadLdaExtractorsFromDistributions(dist: Distributions): List[LdaExtractor] = {
     (for (p <- dist.patternCodes) yield {
@@ -294,11 +244,11 @@ object Extractor {
         dist)
     }).toList
   }
-
-  def loadExtractors(extractorType: String, patternFile: File): List[PatternExtractor] = 
+  
+  def loadExtractors(extractorType: PatternExtractorType, patternFile: File): List[PatternExtractor] = 
     loadExtractors(extractorType, None, Some(patternFile))
 
-  def loadExtractors(extractorType: String, 
+  def loadExtractors(extractorType: PatternExtractorType, 
     distributions: Option[Distributions], 
     patternFile: Option[File]): List[PatternExtractor] =
   {
@@ -306,15 +256,15 @@ object Extractor {
 
     // sort by inverse count so frequent patterns appear first 
     ((extractorType, distributions) match {
-      case ("lda", Some(distributions)) => loadLdaExtractorsFromDistributions(distributions)
-      case ("general", Some(distributions)) => loadGeneralExtractorsFromDistributions(distributions)
-      case ("template", None) => 
-        loadTemplateExtractorsFromFile(
+      case (LdaExtractor, Some(distributions)) => loadLdaExtractorsFromDistributions(distributions)
+      case (GeneralExtractor, Some(distributions)) => loadGeneralExtractorsFromDistributions(distributions)
+      case (TemplateExtractor, None) => 
+        TemplateExtractor.fromFile(
           patternFile.getOrElse(
             throw new IllegalArgumentException("pattern template file (--patterns) required for the template extractor.")))
-      case ("specific", Some(distributions)) => loadSpecificExtractorsFromDistributions(distributions)
-      case ("general", None) => 
-        loadGeneralExtractorsFromFile(
+      case (SpecificExtractor, Some(distributions)) => loadSpecificExtractorsFromDistributions(distributions)
+      case (GeneralExtractor, None) => 
+        GeneralExtractor.fromFile(
           patternFile.getOrElse(
             throw new IllegalArgumentException("pattern file (--patterns) required for the general extractor.")))
       case _ => throw new IllegalArgumentException("invalid parameters")
@@ -328,7 +278,7 @@ object Extractor {
       var outputFile: Option[File] = None
       
       var sentenceFilePath: String = null
-      var extractorType: String = null
+      var extractorType: PatternExtractorType = null
       
       var confidenceThreshold = 0.0;
 
@@ -352,7 +302,7 @@ object Extractor {
       opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { showAll = true })
       opt("v", "verbose", "", { verbose = true })
 
-      arg("type", "type of extractor", { v: String => extractorType = v })
+      arg("type", "type of extractor", { v: String => extractorType = PatternExtractorType(v) })
       arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
     }
     
@@ -379,7 +329,7 @@ object Extractor {
       implicit def implicitBuildExtraction = this.buildExtraction(parser.expandArguments)_
       implicit def implicitValidMatch = this.validMatch(!parser.showAll)_
       
-      case class Result(conf: Double, extr: Extraction, text: String) extends Ordered[Result] {
+      case class Result(conf: Double, extr: DetailedExtraction, text: String) extends Ordered[Result] {
         override def toString = text
         
         override def compare(that: Result) = {
@@ -478,6 +428,8 @@ object Extractor {
                   else ("%1.6f" format conf) + "\t" + extr + "\t" + extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + pickled + extra.getOrElse("")
                 Result(conf, extr, resultText)
               }
+              
+              Postprocess.recombine(results.map(_.extr).toSet) foreach println
 
               if (parser.duplicates) {
                 for (result <- results.sorted(Ordering[Result].reverse)) {

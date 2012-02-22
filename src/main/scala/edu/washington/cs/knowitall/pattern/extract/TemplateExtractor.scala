@@ -3,14 +3,17 @@ package pattern
 package extract
 
 import scala.util.matching.Regex
-
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
-
+import edu.washington.cs.knowitall.common.Resource.using
 import Template.group
+import tool.parse.pattern.DependencyPattern
+import java.io.File
+import org.slf4j.LoggerFactory
+import scala.io.Source
 
 class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
 extends GeneralExtractor(pattern, patternCount, maxPatternCount) {
@@ -21,6 +24,30 @@ extends GeneralExtractor(pattern, patternCount, maxPatternCount) {
     val extractions = super.extractWithMatches(dgraph)
 
     extractions.map{ case (extr, m) => template(extr, m) }
+  }
+}
+
+case object TemplateExtractor extends PatternExtractorType {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  
+  override def fromLines(lines: Iterator[String]): List[PatternExtractor] = {
+    val patterns: List[(Template, Pattern[DependencyNode], Int)] = lines.map { line =>
+      line.split("\t") match {
+        // full information specified
+        case Array(template, pat, count) =>
+          (Template.deserialize(template), DependencyPattern.deserialize(pat), count.toInt)
+        // assume a count of 1 if nothing is specified
+        case Array(template, pat) =>
+          logger.warn("warning: pattern has no count: " + pat);
+          (Template.deserialize(template), DependencyPattern.deserialize(pat), 1)
+        case _ => throw new IllegalArgumentException("file can't have more than two columns")
+      }
+    }.toList
+
+    val maxCount = patterns.maxBy(_._3)._3
+    (for ((template, pattern, count) <- patterns) yield {
+      new TemplateExtractor(template, pattern, count, maxCount)
+    }).toList
   }
 }
 

@@ -3,20 +3,22 @@ package pattern
 package extract
 
 import scala.Option.option2Iterable
-
 import org.slf4j.LoggerFactory
-
+import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
 import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
-
 import GeneralExtractor.logger
 import tool.parse.graph.DependencyGraph
 import tool.parse.graph.DependencyNode
 import tool.parse.graph.Graph
 import tool.parse.pattern.Match
 import tool.parse.pattern.Pattern
+import java.io.File
+import scala.io.Source
+import tool.parse.pattern.DependencyPattern
+
 
 class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
   import GeneralExtractor._
@@ -57,6 +59,24 @@ class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, 
   override def confidence: Option[Double] = 
     Some(patternCount.toDouble / maxPatternCount.toDouble)
 }
-object GeneralExtractor {
+
+case object GeneralExtractor extends PatternExtractorType {
   val logger = LoggerFactory.getLogger(this.getClass)
+    
+  def fromLines(lines: Iterator[String]): List[GeneralExtractor] = {
+    val patterns: List[(Pattern[DependencyNode], Int)] = lines.map { line =>
+        line.split("\t") match {
+          // full information specified
+          case Array(pat, count) => (DependencyPattern.deserialize(pat), count.toInt)
+          // assume a count of 1 if nothing is specified
+          case Array(pat) => logger.warn("warning: pattern has no count: " + pat); (DependencyPattern.deserialize(pat), 1)
+          case _ => throw new IllegalArgumentException("file can't have more than two columns")
+        }
+      }.toList
+
+    val maxCount = patterns.maxBy(_._2)._2
+    (for ((p, count) <- patterns) yield {
+      new GeneralExtractor(p, count, maxCount)
+    }).toList
+  }
 }

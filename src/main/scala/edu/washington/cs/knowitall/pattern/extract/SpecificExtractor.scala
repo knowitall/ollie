@@ -3,15 +3,14 @@ package pattern
 package extract
 
 import scala.Array.canBuildFrom
-
 import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
-
 import tool.stem.MorphaStemmer
+import org.apache.commons.lang.NotImplementedException
 
 class SpecificExtractor(val relation: String, 
   val relationLemmas: List[String], 
@@ -36,4 +35,8 @@ extends GeneralExtractor(pattern, patternCount, relationCount) {
       relationLemmas.forall(extrRelationLemmas.contains(_))
     }.map(_.replaceRelation(relation))
   }
+}
+
+case object SpecificExtractor extends PatternExtractorType {
+  def fromLines(lines: Iterator[String]) = throw new NotImplementedException
 }

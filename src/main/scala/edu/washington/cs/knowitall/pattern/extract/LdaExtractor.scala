@@ -4,18 +4,16 @@ package extract
 
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
-
 import org.slf4j.LoggerFactory
-
 import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
-
 import LdaExtractor.logger
 import tool.stem.MorphaStemmer
+import org.apache.commons.lang.NotImplementedException
 
 class LdaExtractor private (pattern: Pattern[DependencyNode], private val patternCode: Int, val dist: Distributions) 
 extends GeneralExtractor(pattern, dist.patternCount(patternCode), dist.patternCount) {
@@ -57,6 +55,7 @@ extends GeneralExtractor(pattern, dist.patternCount(patternCode), dist.patternCo
   override def confidence: Option[Double] = None
 }
 
-object LdaExtractor {
+case object LdaExtractor extends PatternExtractorType {
   val logger = LoggerFactory.getLogger(this.getClass)
+  def fromLines(lines: Iterator[String]) = throw new NotImplementedException
 }
