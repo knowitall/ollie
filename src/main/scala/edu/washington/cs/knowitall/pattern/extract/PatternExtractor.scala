@@ -29,6 +29,8 @@ abstract class PatternExtractorType {
     
   }
   def fromLines(lines: Iterator[String]): Seq[PatternExtractor]
+  
+  def name = this.getClass.getSimpleName
 }
 
 object PatternExtractorType {
