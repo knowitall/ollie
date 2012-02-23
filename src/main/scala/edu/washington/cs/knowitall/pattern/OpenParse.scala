@@ -16,7 +16,7 @@ import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.extractor.ReVerbExtractor
 import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
 import edu.washington.cs.knowitall.normalization.RelationString
-import edu.washington.cs.knowitall.pattern.extract.{ Postprocess, PatternExtractorType }
+import edu.washington.cs.knowitall.pattern.extract.{ ExtendedExtraction, PatternExtractorType }
 import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.tool.parse.graph.DirectedEdge
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
@@ -368,7 +368,8 @@ object OpenParse {
                 logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
               }
 
-              val results = for ((conf, extr) <- extractor.extract(dgraph)) yield {
+              val extractions = extractor.extract(dgraph)
+              val results = for ((conf, extr) <- extractions) yield {
                 val reverbMatches = reverbExtractions.find(_.softMatch(extr))
                 logger.debug("reverb match: " + reverbMatches.toString)
                 val extra = reverbMatches.map("\treverb:" + _.toString)
@@ -379,7 +380,7 @@ object OpenParse {
                 Result(conf, extr, resultText)
               }
 
-              Postprocess.recombine(results.map(_.extr).toSet) foreach println
+              ExtendedExtraction.from(extractions) foreach println
 
               if (parser.verbose) writer.println()
             }
