@@ -22,14 +22,14 @@ import edu.washington.cs.knowitall.tool.parse.graph.DirectedEdge
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
 
-import Extractor.{ logger, expandRelation, expandArgument, VALID_ARG_POSTAG }
+import OpenParse.{ logger, expandRelation, expandArgument, VALID_ARG_POSTAG }
 import extract.{ TemplateExtractor, SpecificExtractor, PatternExtractor, LdaExtractor, GeneralExtractor, Extraction, DetailedExtraction }
 import scopt.OptionParser
 import tool.parse.graph.{ Direction, DependencyNode, DependencyGraph }
 import tool.parse.pattern.DependencyPattern
 import tool.stem.MorphaStemmer
 
-object Extractor {
+object OpenParse {
   val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -321,7 +321,7 @@ object Extractor {
 
       // create a standalone extractor
       val configuration = parser.configuration
-      val extractor = new Extractor(extractors, configuration)
+      val extractor = new OpenParse(extractors, configuration)
 
       // create items necessary for reverb
       val chunker = if (parser.showReverb) Some(new OpenNlpSentenceChunker) else None
@@ -338,7 +338,7 @@ object Extractor {
             val rs = new RelationString(extr.getRelation.getText, extr.getRelation.getTokens.map(MorphaStemmer.instance.lemmatize(_)).mkString(" "), extr.getRelation.getPosTags.mkString(" "))
             rs.correctNormalization()
 
-            new Extraction(extr.getArgument1.getText, extr.getRelation.getText, Some(rs.getNormPred.split(" ").toSet -- Extractor.LEMMA_BLACKLIST), extr.getArgument2.getText)
+            new Extraction(extr.getArgument1.getText, extr.getRelation.getText, Some(rs.getNormPred.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST), extr.getArgument2.getText)
           }
         }.getOrElse(Nil)
       }
@@ -401,11 +401,11 @@ object Extractor {
     val keepDuplicates: Boolean = false)
 }
 
-class Extractor(extractors: Seq[PatternExtractor], configuration: Extractor.Configuration) {
-  import Extractor._
+class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Configuration) {
+  import OpenParse._
   
   def this(extractors: Seq[PatternExtractor]) = 
-    this(extractors, new Extractor.Configuration())
+    this(extractors, new OpenParse.Configuration())
 
   def simplifyGraph(dgraph: DependencyGraph) = {
     var graph = dgraph

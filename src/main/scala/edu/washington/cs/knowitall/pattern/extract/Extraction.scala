@@ -19,7 +19,7 @@ class Extraction(
 
   def this(arg1: String, rel: String, arg2: String) = this(arg1, 
       rel, 
-      Some(rel.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- Extractor.LEMMA_BLACKLIST), 
+      Some(rel.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST), 
       arg2)
       
   override def equals(that: Any) = that match {

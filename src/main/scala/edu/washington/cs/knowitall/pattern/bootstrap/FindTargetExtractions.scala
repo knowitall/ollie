@@ -46,7 +46,7 @@ object FindTargetExtractions {
       def relationLemmas(relation: String): Seq[String] = {
         relationLemmaLookup match {
           case Some(lookup) => lookup(relation)
-          case None => relation.split(" ") filterNot Extractor.LEMMA_BLACKLIST
+          case None => relation.split(" ") filterNot OpenParse.LEMMA_BLACKLIST
         }
       }
 

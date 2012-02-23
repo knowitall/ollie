@@ -157,7 +157,7 @@ object TreePatternLearner {
             }
 
           // ensure valid postags
-          if (!Extractor.VALID_ARG_POSTAG.contains(zipperMatch.focus.asInstanceOf[DependencyNodeMatcher].postag.get))
+          if (!OpenParse.VALID_ARG_POSTAG.contains(zipperMatch.focus.asInstanceOf[DependencyNodeMatcher].postag.get))
             throw new InvalidBipathException("invalid: invalid arg postag '"+zipper.focus+"': "+bip)
 
           // make replacements
@@ -181,7 +181,7 @@ object TreePatternLearner {
     
     val filtered = patterns.filter(valid).toList
 
-    val relLemmas = rel.split(" ").toSet -- Extractor.LEMMA_BLACKLIST
+    val relLemmas = rel.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST
 
     // find the best part to replace with rel
     filtered.map { pattern =>
