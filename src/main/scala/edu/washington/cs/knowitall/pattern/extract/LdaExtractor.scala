@@ -28,7 +28,7 @@ extends GeneralExtractor(pattern, dist.patternCount(patternCode), dist.patternCo
 
     super.extract(dgraph).flatMap { extr =>
       // find relation string that intersects with extraction relation string
-      val extrRelationLemmas = extr.rel.split(" ").map(MorphaStemmer.instance.lemmatize(_))
+      val extrRelationLemmas = extr.rel.text.split(" ").map(MorphaStemmer.instance.lemmatize(_))
       val rels = dist.relationLemmas.filter{case (relation, lemmas) => extrRelationLemmas.forall(exr => lemmas.contains(exr))}.map(_._1)
       if (!rels.isEmpty) logger.debug("matching relstrings: " + rels.mkString(", "))
 
@@ -47,7 +47,7 @@ extends GeneralExtractor(pattern, dist.patternCount(patternCode), dist.patternCo
   }
 
   override def confidence(extr: Extraction) = {
-    val r = dist.relationEncoding(extr.rel)
+    val r = dist.relationEncoding(extr.relText)
     dist.prob(r)(patternCode)
   }
   

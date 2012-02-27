@@ -3,6 +3,7 @@ package edu.washington.cs.knowitall.pattern.extract
 import scala.collection.immutable
 import edu.washington.cs.knowitall.tool.postag.PosTagger
 import edu.washington.cs.knowitall.collection.immutable.Interval
+import edu.washington.cs.knowitall.pattern.extract.Extraction._
 
 class ExtractionPart(val string: String, val interval: Interval) extends Ordered[ExtractionPart] {
   override def compare(that: ExtractionPart) = 
@@ -30,10 +31,10 @@ class AnnotatedSuffix(
 extends Suffix(string, interval, confidence) {
   def this(suffix: Suffix, annotation: String) = 
     this(suffix.string, suffix.interval, suffix.confidence, annotation)
-  override def toString = annotation + ": " + super.toString
+  override def toString = annotation + "/" + super.toString
 }
 
-class ExtendedExtraction(val arg1: ExtractionPart, val rel: ExtractionPart, val suffixes: Seq[Suffix]) {
+class ExtendedExtraction(val arg1: ExtractionPart, val rel: ExtractionPart, val suffixes: Seq[Suffix], val clausals: Seq[ClausalComponent] = Seq.empty, val modifiers: Seq[AdverbialModifier] = Seq.empty) {
   override def toString =
     "(" + arg1.string + ", " + rel.string + ", " + suffixes.map(_.string).mkString(", ") + ")"
 }
@@ -46,28 +47,31 @@ object ExtendedExtraction {
   def from(extrs: Seq[(Double, DetailedExtraction)]) = {
     // keep extractions that end with a one-word preposition
     val prepositionEnding = extrs.filter { case (conf, extr) =>
-      PosTagger.simplePrepositions(extr.rel drop (1 + extr.rel lastIndexOf ' '))
+      PosTagger.simplePrepositions(extr.rel.text drop (1 + extr.rel.text lastIndexOf ' '))
     }
       
     // break off the preposition
     val split: Seq[(String, String, (Double, DetailedExtraction))] = prepositionEnding.map { case (conf, extr) =>
-      val preps = PosTagger.prepositions.filter(extr.rel endsWith _)
+      val preps = PosTagger.prepositions.filter(extr.rel.text endsWith _)
       val longest = preps.maxBy(_.length)
-      (extr.rel.dropRight(longest.length + 1), longest, (conf, extr))
+      (extr.rel.text.dropRight(longest.length + 1), longest, (conf, extr))
     }
     
     split groupBy { case (rel, longest, (conf, extr)) =>
-      (extr.arg1, rel)
+      (extr.arg1.text, rel)
     } filter (_._2.size > 1) map { case ((arg1, rel), extrs) =>
       val suffixes: immutable.SortedSet[Suffix] = extrs.map { case (rel, prep, (conf, extr)) =>
-        new Suffix(prep + " " + extr.arg2, Interval.span(extr.arg2Nodes.map(_.indices)), conf)
+        new Suffix(prep + " " + extr.arg2.text, Interval.span(extr.arg2.nodes.map(_.indices)), conf)
       }(scala.collection.breakOut)
       
       val first = extrs.head._3._2
-      val argument1 = new ExtractionPart(arg1, Interval.span(first.arg1Nodes.map(_.indices)))
-      val relation = new ExtractionPart(rel, Interval.span(first.relNodes.map(_.indices)))
+      val argument1 = new ExtractionPart(arg1, Interval.span(first.arg1.nodes.map(_.indices)))
+      val relation = new ExtractionPart(rel, Interval.span(first.rel.nodes.map(_.indices)))
       
-      new ExtendedExtraction(argument1, relation, suffixes.toSeq)
+      val modifiers = extrs.flatMap(_._3._2.modifier).toSet.toSeq
+      val clausals = extrs.flatMap(_._3._2.clausal).toSet.toSeq
+      
+      new ExtendedExtraction(argument1, relation, suffixes.toSeq, modifiers=modifiers, clausals=clausals)
     }
   }
 }

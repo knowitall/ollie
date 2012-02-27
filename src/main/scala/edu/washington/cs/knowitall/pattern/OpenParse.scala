@@ -1,12 +1,11 @@
 package edu.washington.cs.knowitall
 package pattern
 
-import java.io.{ PrintWriter, File }
+import java.io.{PrintWriter, File}
 
 import scala.Option.option2Iterable
-import scala.collection.JavaConversions.{ iterableAsScalaIterable, asScalaBuffer }
-import scala.collection.Set
-import scala.collection.SortedSet
+import scala.collection.JavaConversions.{iterableAsScalaIterable, asScalaBuffer}
+import scala.collection.{SortedSet, Set}
 import scala.io.Source
 
 import org.slf4j.LoggerFactory
@@ -16,16 +15,16 @@ import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.extractor.ReVerbExtractor
 import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
 import edu.washington.cs.knowitall.normalization.RelationString
-import edu.washington.cs.knowitall.pattern.extract.{ ExtendedExtraction, PatternExtractorType }
+import edu.washington.cs.knowitall.pattern.extract.Extraction.{Part, AdverbialModifier, ClausalComponent}
+import edu.washington.cs.knowitall.pattern.extract.{SimpleExtraction, ExtendedExtraction, PatternExtractorType}
 import edu.washington.cs.knowitall.pattern.lda.Distributions
-import edu.washington.cs.knowitall.tool.parse.graph.DirectedEdge
-import edu.washington.cs.knowitall.tool.parse.graph.Graph
+import edu.washington.cs.knowitall.tool.parse.graph.{Graph, DirectedEdge}
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
 
-import OpenParse.{ logger, expandRelation, expandArgument, VALID_ARG_POSTAG }
-import extract.{ TemplateExtractor, SpecificExtractor, PatternExtractor, LdaExtractor, GeneralExtractor, Extraction, DetailedExtraction }
+import OpenParse.{logger, expandRelation, expandArgument, VALID_ARG_POSTAG}
+import extract.{TemplateExtractor, SpecificExtractor, PatternExtractor, LdaExtractor, GeneralExtractor, Extraction, DetailedExtraction}
 import scopt.OptionParser
-import tool.parse.graph.{ Direction, DependencyNode, DependencyGraph }
+import tool.parse.graph.{Direction, DependencyNode, DependencyGraph}
 import tool.parse.pattern.DependencyPattern
 import tool.stem.MorphaStemmer
 
@@ -37,7 +36,30 @@ object OpenParse {
   implicit def implicitBuildExtraction = buildExtraction(true) _
   implicit def implicitValidMatch = validMatch(true) _
   
+  private val attributionPattern = DependencyPattern.deserialize("{old} <ccomp< {rel} >nsubj> {arg}")
+  private val conditionalPattern = DependencyPattern.deserialize("{old} <ccomp< {rel} >nsubj> {arg}")
   def buildExtraction(expand: Boolean)(graph: DependencyGraph, m: Match[DependencyNode], ex: PatternExtractor): Option[DetailedExtraction] = {
+    def clausalComponent(node: DependencyNode, until: Set[DependencyNode]) = {
+      attributionPattern.apply(graph.graph, node) match {
+        case List(m) => 
+          val rel = m.nodeGroups("rel").node
+          val arg = m.nodeGroups("arg").node
+          
+          val Part(expandedRelNodes, expandedRelText) = expandRelation(graph, rel, until + arg)
+          val expandedArg = expandArgument(graph, arg, until + rel)
+          
+          Some(ClausalComponent(Part(expandedRelNodes, expandedRelText), Part(expandedArg, DetailedExtraction.nodesToString(expandedArg))))
+        case _ => None
+      }
+    }
+    
+    def adverbialModifier(node: DependencyNode, until: Set[DependencyNode]): Option[AdverbialModifier] = {
+      val neighbors = graph.graph.neighbors(node, dedge => dedge.dir == Direction.Down && dedge.edge.label == "advcl")
+      val clause: SortedSet[DependencyNode] = neighbors.flatMap(graph.graph.inferiors(_))(scala.collection.breakOut)
+      if (clause.isEmpty) None
+      else Some(AdverbialModifier(Part(clause, DetailedExtraction.nodesToString(clause))))
+    }
+    
     val groups = m.nodeGroups
 
     val rel = groups.get("rel").map(_.node) getOrElse (throw new IllegalArgumentException("no rel: " + m))
@@ -46,12 +68,17 @@ object OpenParse {
 
     val expandedArg1 = if (expand) expandArgument(graph, arg1, Set(rel)) else SortedSet(arg1)
     val expandedArg2 = if (expand) expandArgument(graph, arg2, Set(rel)) else SortedSet(arg2)
-    val (expandedRelNodes, expandedRelText) = if (expand) expandRelation(graph, rel, Set(arg1, arg2)) else (SortedSet(rel), rel.text)
+    val Part(expandedRelNodes, expandedRelText) = if (expand) expandRelation(graph, rel, Set(arg1, arg2)) else (SortedSet(rel), rel.text)
+    
+    val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
+    val clausal = clausalComponent(rel, nodes)
+    val modifier = adverbialModifier(rel, nodes)
+    
     if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
       logger.info("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
       None
     }
-    else Some(new DetailedExtraction(ex, m, expandedArg1, expandedRelNodes, expandedRelText, expandedArg2))
+    else Some(new DetailedExtraction(ex, m, new Part(expandedArg1), Part(expandedRelNodes, expandedRelText), new Part(expandedArg2), clausal=clausal, modifier=modifier))
   }
 
   def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
@@ -175,7 +202,7 @@ object OpenParse {
     }
   }
 
-  def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): (SortedSet[DependencyNode], String) = {
+  def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): Part = {
     val nounLabels =
       Set("det", "amod", "num", "nn", "poss", "quantmod", "neg")
 
@@ -202,7 +229,7 @@ object OpenParse {
 
     // perform a more complicated node->text transformation
     val texts = sorted.map(DetailedExtraction.nodesToString(_))
-    (expansion.reduce(_ ++ _), texts.mkString(" "))
+    Part(expansion.reduce(_ ++ _), texts.mkString(" "))
   }
 
   def loadLdaExtractorsFromDistributions(dist: Distributions): List[LdaExtractor] = {
@@ -338,7 +365,7 @@ object OpenParse {
             val rs = new RelationString(extr.getRelation.getText, extr.getRelation.getTokens.map(MorphaStemmer.instance.lemmatize(_)).mkString(" "), extr.getRelation.getPosTags.mkString(" "))
             rs.correctNormalization()
 
-            new Extraction(extr.getArgument1.getText, extr.getRelation.getText, Some(rs.getNormPred.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST), extr.getArgument2.getText)
+            new SimpleExtraction(extr.getArgument1.getText, extr.getRelation.getText, rs.getNormPred.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST, extr.getArgument2.getText)
           }
         }.getOrElse(Nil)
       }
@@ -379,8 +406,6 @@ object OpenParse {
                   else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + pickled + extra.getOrElse("")
                 Result(conf, extr, resultText)
               }
-
-              ExtendedExtraction.from(extractions) foreach println
 
               if (parser.verbose) writer.println()
             }
@@ -474,7 +499,21 @@ class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Conf
       extrs
     }
     else {
-      (for (group <- extrs.groupBy(_._2)) yield (group._2.maxBy(_._1))).toSeq
+      // toSet to remove exact duplicates
+      val set = extrs.toSet
+      
+      val reduced = set filterNot { case (thisConf, thisExtr) =>
+        set exists { case (thatConf, thatExtr) =>
+          // the relations are identical
+          thisExtr.rel == thatExtr.rel &&
+          // this confidence is lower than that
+          thisConf < thatConf &&
+          // one of the other argument is a substring of the other
+          (thatExtr.arg1Text.contains(thisExtr.arg1Text) || thatExtr.arg2Text.contains(thisExtr.arg2Text))
+        }
+      }
+      
+      reduced.toSeq
     }
 
     reduced.sortBy { case (conf, extr) => (-conf, extr.toString) }

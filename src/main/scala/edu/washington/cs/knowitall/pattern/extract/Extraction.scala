@@ -11,58 +11,91 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
 import tool.parse.pattern.Match
 
-class Extraction(
-    val arg1: String, 
-    val rel: String, 
-    val relLemmas: Option[Set[String]], 
-    val arg2: String) {
+import Extraction._
 
-  def this(arg1: String, rel: String, arg2: String) = this(arg1, 
-      rel, 
-      Some(rel.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST), 
-      arg2)
-      
+abstract class Extraction(val relLemmas: Set[String]) {
+  def arg1Text: String
+  def relText: String
+  def arg2Text: String
+  
+  def this(relText: String) = this(relText.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST)
+
   override def equals(that: Any) = that match {
-    case that: Extraction => (that canEqual this) && that.arg1 == this.arg1 && that.rel == this.rel && that.arg2 == this.arg2
+    case that: Extraction => (that canEqual this) && that.arg1Text == this.arg1Text && that.relText == this.relText && that.arg2Text == this.arg2Text
     case _ => false
   }
   def canEqual(that: Any) = that.isInstanceOf[Extraction]
-  override def hashCode = arg1.hashCode + 39 * (rel.hashCode + 39 * arg2.hashCode)
+  override def hashCode = arg1Text.hashCode + 39 * (relText.hashCode + 39 * arg2Text.hashCode)
 
-  override def toString() = Iterable(arg1, rel, arg2).mkString("(", "; ", ")")
+  override def toString() = Iterable(arg1Text, relText, arg2Text).mkString("(", "; ", ")")
 
-  def replaceRelation(relation: String) = new Extraction(this.arg1, relation, relLemmas, this.arg2)
   def softMatch(that: Extraction) = 
-    (that.arg1.contains(this.arg1) || this.arg1.contains(that.arg1)) &&
+    (that.arg1Text.contains(this.arg1Text) || this.arg1Text.contains(that.arg1Text)) &&
     this.relLemmas == that.relLemmas &&
-    (that.arg2.contains(this.arg2) || this.arg2.contains(that.arg2))
+    (that.arg2Text.contains(this.arg2Text) || this.arg2Text.contains(that.arg2Text))
+}
+
+class SimpleExtraction (
+    override val arg1Text: String, 
+    override val relText: String, 
+    relLemmas: Set[String], 
+    override val arg2Text: String) 
+extends Extraction(relLemmas) {
+  
+  def this(arg1Text: String, relText: String, arg2Text: String) = this(arg1Text, 
+      relText, 
+      relText.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST, 
+      arg2Text)
+      
+  def replaceRelation(relation: String) = 
+    new SimpleExtraction(this.arg1Text, this.relText, this.relLemmas, this.arg2Text)
 }
 
 class DetailedExtraction(
     val extractor: PatternExtractor,
     val `match`: Match[DependencyNode],
-    val arg1Nodes: SortedSet[DependencyNode], 
-    val relNodes: SortedSet[DependencyNode], 
-    val relText: String,
-    val arg2Nodes: SortedSet[DependencyNode])
-extends Extraction(
-    DetailedExtraction.nodesToString(arg1Nodes),
-    relText, 
-    DetailedExtraction.nodesToString(arg2Nodes)) {
+    val arg1: Part, 
+    val rel: Part, 
+    val arg2: Part,
+    val clausal: Option[ClausalComponent] = None,
+    val modifier: Option[AdverbialModifier] = None)
+extends Extraction(rel.text) {
+  
+  override def arg1Text = arg1.text
+  override def relText = rel.text
+  override def arg2Text = arg2.text
   
   def this(extractor: PatternExtractor, mch: Match[DependencyNode], 
     arg1Nodes: SortedSet[DependencyNode], 
     relNodes: SortedSet[DependencyNode], 
     arg2Nodes: SortedSet[DependencyNode]) = 
-    this(extractor, mch, arg1Nodes, relNodes, DetailedExtraction.nodesToString(relNodes), arg2Nodes)
+    this(extractor, mch, new Part(arg1Nodes), new Part(relNodes), new Part(arg2Nodes))
 
-  def nodes = arg1Nodes ++ relNodes ++ arg2Nodes
+  def nodes = arg1.nodes ++ rel.nodes ++ arg2.nodes
   def edges = `match`.bipath.path
 
-  override def replaceRelation(relation: String) = 
-    new DetailedExtraction(extractor, `match`, this.arg1Nodes, relNodes, relation, arg2Nodes)
+  def replaceRelation(relation: String) = 
+    new DetailedExtraction(extractor, `match`, this.arg1, Part(this.rel.nodes, relation), this.arg2, this.clausal, this.modifier)
 }
 
 object DetailedExtraction {
   def nodesToString(nodes: Iterable[DependencyNode]) = nodes.iterator.map(_.text).mkString(" ")
+}
+
+object Extraction {
+  case class Part(nodes: SortedSet[DependencyNode], text: String) {
+    def this(nodes: SortedSet[DependencyNode]) = {
+      this(nodes, DetailedExtraction.nodesToString(nodes))
+    }
+    
+    def this(nodes: Iterable[DependencyNode]) = {
+      this(SortedSet[DependencyNode]() ++ nodes, DetailedExtraction.nodesToString(nodes))
+    }
+  }
+  case class ClausalComponent(rel: Part, arg: Part) {
+    def text = arg.text + " " + rel.text
+  }
+  case class AdverbialModifier(contents: Part) {
+    def text = contents.text
+  }
 }

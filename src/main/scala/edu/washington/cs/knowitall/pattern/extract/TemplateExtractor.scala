@@ -55,13 +55,13 @@ case class Template(template: String, be: Boolean) {
   import Template._
   def apply(extr: DetailedExtraction, m: Match[DependencyNode]) = {
     def matchGroup(name: String): String = name match {
-      case "rel" => extr.rel
-      case "arg1" => extr.arg1
-      case "arg2" => extr.arg2
+      case "rel" => extr.relText
+      case "arg1" => extr.arg1Text
+      case "arg2" => extr.arg2Text
       case _ => m.groups(name).text
     }
 
-    val prefix = if (be && ((extr.relNodes -- m.bipath.nodes) count (_.postag.startsWith("VB"))) == 0) {
+    val prefix = if (be && ((extr.rel.nodes -- m.bipath.nodes) count (_.postag.startsWith("VB"))) == 0) {
       "be "
     }
     else ""
