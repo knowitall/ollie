@@ -68,9 +68,10 @@ case class Template(template: String, be: Boolean) {
 
     // horrible escape is required.  See JavaDoc for Match.replaceAll
     // or https://issues.scala-lang.org/browse/SI-5437
-    val rel = prefix + group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1)).
-      replaceAll("""\\""", """\\\\""").
-      replaceAll("""\$""", """\\\$"""))
+    val rel = prefix + group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1))
+      .replaceAll("_", " ")
+      .replaceAll("""\\""", """\\\\""")
+      .replaceAll("""\$""", """\\\$"""))
 
     extr.replaceRelation(rel)
   }
