@@ -36,7 +36,7 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     def multiplePreps = this.depEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e
     }.count(_.label.contains("prep")) > 1
-
+    
     /* check for a conj_and edge */
     def conjAnd = this.depEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e

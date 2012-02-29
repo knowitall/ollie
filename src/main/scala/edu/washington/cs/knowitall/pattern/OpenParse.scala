@@ -409,8 +409,12 @@ object OpenParse {
 
                 val resultText =
                   if (parser.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
-                  else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + ("" /: text)((_, s) => s + "\t") + pickled + extra.getOrElse("")
+                  else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled + extra.getOrElse("")
                 Result(conf, extr, resultText)
+              }
+              
+              for (result <- results) {
+                writer.println(result)
               }
 
               if (parser.verbose) writer.println()
