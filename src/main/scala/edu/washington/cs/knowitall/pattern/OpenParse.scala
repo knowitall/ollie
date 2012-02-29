@@ -220,9 +220,15 @@ object OpenParse {
     def pred(edge: Graph.Edge[DependencyNode]) = edge.label == "advmod" && edge.dest.postag == "RB" ||
       edge.label == "aux" || edge.label == "cop" || edge.label == "auxpass" || edge.label == "prt"
 
+    val expandNounLabels = expand(graph, node, until, nounLabels)
     // how many dobj edges are there
-    val expansion = expand(graph, node, until, nounLabels) ::
-      (augment(graph, node, until, pred) :+
+    val expansion = expandNounLabels ::
+      // make sure that we don't use a label that was
+      // already captured by expandNounlabels.  This
+      // can happen when a verb edges goes between two
+      // noun labels.
+      ((augment(graph, node, until, pred).map(_--expandNounLabels)) :+
+      // add subcomponents
         SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)).filter(!_.isEmpty)
 
     val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
