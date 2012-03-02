@@ -40,7 +40,7 @@ case object TemplateExtractor extends PatternExtractorType {
         case Array(template, pat) =>
           logger.warn("warning: pattern has no count: " + pat);
           (Template.deserialize(template), DependencyPattern.deserialize(pat), 1)
-        case _ => throw new IllegalArgumentException("file can't have more than two columns")
+        case _ => throw new IllegalArgumentException("line must have two or three columns: " +line)
       }
     }.toList
 

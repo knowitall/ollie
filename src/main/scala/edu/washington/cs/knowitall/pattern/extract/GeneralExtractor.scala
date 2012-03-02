@@ -70,7 +70,7 @@ case object GeneralExtractor extends PatternExtractorType {
           case Array(pat, count) => (DependencyPattern.deserialize(pat), count.toInt)
           // assume a count of 1 if nothing is specified
           case Array(pat) => logger.warn("warning: pattern has no count: " + pat); (DependencyPattern.deserialize(pat), 1)
-          case _ => throw new IllegalArgumentException("file can't have more than two columns")
+          case _ => throw new IllegalArgumentException("line must have one or two columns: " + line)
         }
       }.toList
 
