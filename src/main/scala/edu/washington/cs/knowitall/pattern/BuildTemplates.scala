@@ -25,7 +25,7 @@ object BuildTemplates {
     def sourceFile: File
     def destFile: Option[File]
     def templateFile: Option[File]
-    val minCount = 5
+    def minCount: Int
   }
   def main(args: Array[String]) {
     val settings = new Settings {
@@ -33,13 +33,15 @@ object BuildTemplates {
       var destFile: Option[File] = None
       var debug: Option[File] = None
       var templateFile: Option[File] = None
+      var minCount: Int = 5
     }
     
     val parser = new OptionParser("buildtemp") {
-      arg("source", "source", { path: String => settings.sourceFile = new File(path) })
-      argOpt("dest", "dest", { path: String => settings.destFile = Some(new File(path)) })
+      arg("source", "file with source relation, pattern pairs", { path: String => settings.sourceFile = new File(path) })
+      argOpt("dest", "optional parameter to specify output to a file", { path: String => settings.destFile = Some(new File(path)) })
       opt("t", "reltemplates", "relation templates", { path: String => settings.templateFile = Some(new File(path)) })
-      opt("d", "debug", "debug", { path: String => settings.debug = Some(new File(path)) })
+      opt("d", "debug", "directory to output debug files", { path: String => settings.debug = Some(new File(path)) })
+      intOpt("n", "minimum", "minimum frequency for a pattern", { min: Int => settings.minCount = min })
     }
     
     if (parser.parse(args)) {
@@ -81,32 +83,35 @@ object BuildTemplates {
     }
 
     logger.info("Removing bad templates...")
-    val pred: PartialFunction[((String, ExtractorPattern), Int), Boolean] =  
+    val relationOnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] =  
     { case ((rel, pattern), count) =>
-      def relationOnEdge = 
         pattern.nodeMatchers.head.isInstanceOf[RelationMatcher] ||
         pattern.nodeMatchers.tail.isInstanceOf[RelationMatcher]
-      
-      def nnEdge = pattern.edgeMatchers.exists { 
+    }  
+        
+    val nnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
+    { case ((rel, pattern), count) => pattern.depEdgeMatchers.exists { 
         case m: LabelEdgeMatcher => m.label == "nn"
         case _ => false
       }
+    }
       
-      def prepsMatch = {
+    val prepsMatch: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
+    { case ((rel, pattern), count) => 
         val relPrep = rel.split(" ").last
         val edgePreps = pattern.depEdgeMatchers.collect {
           case m: LabelEdgeMatcher if m.label startsWith "prep_" => m.label.drop(5)
         }
         edgePreps.forall(_ == relPrep)
-      }
-      
-      !relationOnEdge && !nnEdge && prepsMatch
     }
-    val filtered = histogram filter pred
+      //!relationOnEdge && !nnEdge && prepsMatch
+    val filtered = histogram filterNot relationOnEdge filterNot nnEdge filter prepsMatch
       
     settings.debug.map { dir =>
 	  output (new File(dir, "filtered-keep.txt"), filtered.toSeq.sortBy(-_._2))
-	  output (new File(dir, "filtered-del.txt"), (histogram.iterator filterNot pred).toSeq.sortBy(-_._2))
+	  output (new File(dir, "filtered-del-edge.txt"), (histogram.iterator filter relationOnEdge).toSeq.sortBy(-_._2))
+	  output (new File(dir, "filtered-del-nn.txt"), (histogram.iterator filter nnEdge).toSeq.sortBy(-_._2))
+	  output (new File(dir, "filtered-del-prepsmatch.txt"), (histogram.iterator filterNot prepsMatch).toSeq.sortBy(-_._2))
     }
     
     logger.info("Generalizing templates...")
@@ -125,7 +130,7 @@ object BuildTemplates {
       }
       ((template, new DependencyPattern(matchers)), count)
     }.histogramFromPartials.filter { case ((template, pat), count) => 
-      count > settings.minCount
+      count >= settings.minCount
     }
     
     settings.debug.map { dir =>
@@ -134,8 +139,10 @@ object BuildTemplates {
     
     logger.info("Removing duplicates...")
     val dedup = generalized.groupBy { case ((template, pat), count) =>
-      val reverse = new DependencyPattern(pat.matchers.reverse)
-      Set(pat, reverse)
+      // set the key to the matchers, without arg1 and arg2,
+      // and the reflection's matchers so we don't have mirrored
+      // patterns
+      Set(pat.matchers.tail.init, pat.reflection.matchers.tail.init)
     }.mapValues(_.maxBy(_._2)).values
     
     settings.debug.map { dir =>
