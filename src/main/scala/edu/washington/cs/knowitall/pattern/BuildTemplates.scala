@@ -117,7 +117,13 @@ object BuildTemplates {
     logger.info("Generalizing templates...")
     val prepRegex = new Regex("\\b(?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+")$")
     val generalized = filtered.iterator.map { case((rel, pattern), count) =>
-      val template = prepRegex.replaceAllIn(templates(rel), "{prep}")
+      val containsPrep = pattern.depEdgeMatchers.exists {
+        case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
+        case _ => false
+      }
+      val template = 
+        if (containsPrep) prepRegex.replaceAllIn(templates(rel), "{prep}")
+        else templates(rel)
       val matchers = pattern.matchers.map {
         case m: DirectedEdgeMatcher[_] => 
           m.matcher match {
