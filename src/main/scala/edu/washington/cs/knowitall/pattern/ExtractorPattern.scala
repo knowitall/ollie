@@ -46,6 +46,11 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     def conjOr = this.depEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e
     }.exists(_.label == "conj_or")
+    
+    /* eliminate all conj edges */
+    def conj = this.depEdgeMatchers.collect {
+      case e: LabelEdgeMatcher => e
+    }.exists(_.label startsWith "conj")
 
     /* check if ends with slot */
     def slotAtEnd = {
@@ -73,6 +78,10 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     }
     else if (conjOr) {
       logger.debug("invalid: conj_or: " + this.toString)
+      false
+    }
+    else if (conj) {
+      logger.debug("invalid: alt conj: " + this.toString)
       false
     }
     else if (slotAtEnd) {
