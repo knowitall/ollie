@@ -68,7 +68,7 @@ object OpenParse {
 
     val expandedArg1 = if (expand) expandArgument(graph, arg1, Set(rel)) else SortedSet(arg1)
     val expandedArg2 = if (expand) expandArgument(graph, arg2, Set(rel)) else SortedSet(arg2)
-    val Part(expandedRelNodes, expandedRelText) = if (expand) expandRelation(graph, rel, Set(arg1, arg2)) else (SortedSet(rel), rel.text)
+    val Part(expandedRelNodes, expandedRelText) = if (expand) expandRelation(graph, rel, expandedArg1 ++ expandedArg2) else (SortedSet(rel), rel.text)
     
     val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
     val clausal = clausalComponent(rel, nodes)
@@ -129,8 +129,16 @@ object OpenParse {
     // nodes because we need them for neighborsUntil.
     def cond(e: Graph.Edge[DependencyNode]) =
       labels.contains(e.label)
-    val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
-    neighborsUntil(graph, node, inferiors, until)
+    val inferiors = graph.graph.inferiors(node, cond)
+    
+    // get all nodes connected by an nn edge
+    val nns = graph.graph.connected(node, dedge => dedge.edge.label == "nn")
+    
+    // order the nodes by their indices
+    val ordered = (inferiors ++ nns).toList.sortBy(_.indices)
+    
+    // get neighbors, moving left and right, until a bad node is it
+    neighborsUntil(graph, node, ordered, until)
   }
 
   def augment(graph: DependencyGraph, node: DependencyNode, without: Set[DependencyNode], pred: Graph.Edge[DependencyNode] => Boolean): List[SortedSet[DependencyNode]] = {
