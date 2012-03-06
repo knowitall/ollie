@@ -52,7 +52,7 @@ object BuildTreePatterns {
    }
    
     // file with dependencies
-    val source = Source.fromFile(settings.sourcePath)
+    val source = Source.fromFile(settings.sourcePath, "UTF-8")
     val writer = settings.destPath.map(dest => new PrintWriter(new File(dest))).getOrElse(new PrintWriter(System.out))
     
     logger.info("chunk size: " + CHUNK_SIZE)
@@ -99,6 +99,8 @@ object BuildTreePatterns {
 
       index += 1
     }
+
+    logger.info("done.")
 
     source.close
     writer.close
