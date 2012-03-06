@@ -108,19 +108,19 @@ object BuildTreePatterns {
 object KeepCommonPatterns {
   def main(args: Array[String]) {
     val min = args(1).toInt
-    System.err.println("minimum pattern size: "+min)
+    System.err.println("minimum pattern ocurrence: "+min)
 
     var rows = 0
     var keepers = 0
 
-    val patterns = collection.mutable.HashMap[String, Int]().withDefaultValue(0)
+    var patterns = collection.immutable.Map[String, Int]().withDefaultValue(0)
     val firstSource = Source.fromFile(args(0))
     for (line <- firstSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       rows += 1
       patterns += pattern -> (patterns(pattern) + 1)
     }
-    firstSource.close
+    firstSource.close()
 
     System.err.println(rows+" rows")
     System.err.println(patterns.size+" unique patterns")
@@ -133,7 +133,75 @@ object KeepCommonPatterns {
         println(line)
       }
     }
-    secondSource.close
+    secondSource.close()
+
+    System.err.println(keepers+" patterns that occur more than "+min+"times") 
+  }
+}
+
+object KeepDiversePatterns {
+  abstract class Settings {
+    def inputFile: File
+    def min: Int
+    def outputFile: Option[File]
+    def debugFile: Option[File]
+  }
+  
+  def main(args: Array[String]) {
+    val settings = new Settings {
+      var inputFile: File = _
+      var min: Int = 5
+      var outputFile: Option[File] = None
+      var debugFile: Option[File] = None
+    }
+
+    val parser = new OptionParser("buildpats") {
+      arg("input", "input file", { path: String => settings.inputFile = new File(path) })
+      intOpt("min", "minimum number of relations per pattern", { string: Int => settings.min })
+      opt("debug", "debug output file", { path: String => settings.debugFile = Some(new File(path)) })
+      opt("output", "output file", { path: String => settings.outputFile = Some(new File(path)) })
+    }
+    if (parser.parse(args)) {
+      run(settings)
+    }
+  }
+    
+  def run(settings: Settings) {
+    val min = settings.min
+    System.err.println("minimum relations per pattern: "+min)
+
+    var rows = 0
+    var keepers = 0
+
+    var patterns = collection.immutable.Map[String, Set[Int]]().withDefaultValue(Set())
+    val firstSource = Source.fromFile(settings.inputFile)
+    for (line <- firstSource.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
+      rows += 1
+      patterns += pattern -> (patterns(pattern) + rel.hashCode)
+    }
+    firstSource.close()
+
+    System.err.println(rows+" rows")
+    System.err.println(patterns.size+" unique patterns")
+    
+    val secondSource = Source.fromFile(settings.inputFile)
+    val outputWriter = settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))
+    val debugWriter = settings.debugFile.map(new PrintWriter(_))
+    for (line <- secondSource.getLines) {
+      val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
+      val size = patterns(pattern).size
+      if (size >= min) {
+        keepers += 1
+        outputWriter.println(line)
+      }
+      else {
+        debugWriter.map(_.println(size+"\t"+pattern))
+      }
+    }
+    debugWriter.map(_.close())
+    outputWriter.close()
+    secondSource.close()
 
     System.err.println(keepers+" patterns that occur more than "+min+"times") 
   }
