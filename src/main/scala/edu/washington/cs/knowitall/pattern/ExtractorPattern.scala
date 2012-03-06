@@ -12,8 +12,8 @@ import tool.parse.pattern.DependencyPattern
 import tool.parse.pattern.NodeMatcher
 import tool.parse.pattern.EdgeMatcher
 import tool.parse.pattern.TrivialNodeMatcher
-
 import org.slf4j.LoggerFactory
+import tool.parse.pattern.DirectedEdgeMatcher
 
 class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends DependencyPattern(matchers) {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -32,25 +32,62 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
   }})
   
   def valid: Boolean = {
+    def existsEdge(pred: LabelEdgeMatcher=>Boolean) = 
+      this.depEdgeMatchers.collect {
+        case e: LabelEdgeMatcher => e
+      }exists(pred)
+      
     /* check for multiple prep edges */
     def multiplePreps = this.depEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e
     }.count(_.label.contains("prep")) > 1
     
     /* check for a conj_and edge */
-    def conjAnd = this.depEdgeMatchers.collect {
-      case e: LabelEdgeMatcher => e
-    }.exists(_.label == "conj_and")
+    def conjAnd = existsEdge(_.label == "conj_and")
     
     /* check for a conj_and edge */
-    def conjOr = this.depEdgeMatchers.collect {
-      case e: LabelEdgeMatcher => e
-    }.exists(_.label == "conj_or")
+    def conjOr = existsEdge(_.label == "conj_or")
     
     /* eliminate all conj edges */
-    def conj = this.depEdgeMatchers.collect {
-      case e: LabelEdgeMatcher => e
-    }.exists(_.label startsWith "conj")
+    def conj = existsEdge(_.label startsWith "conj")
+    
+    def slotBordersNN = {
+      import scalaz._
+      import Scalaz._
+      
+      def isNN(m: Matcher[DependencyNode]) = m match {
+        case e: DirectedEdgeMatcher[_] => 
+          e.matcher match {
+            case m: LabelEdgeMatcher => m.label == "nn"
+          }
+        case _ => false
+      }
+      
+      def isSlot(m: Matcher[DependencyNode]) = m match {
+        case m: SlotMatcher => true
+        case _ => false
+      }
+      
+      def where[T](zipper: Zipper[T])(f: Zipper[T]=>Boolean): Option[Zipper[T]] = {
+        zipper.next flatMap (x => if (f(x)) Some(x) else where(x)(f))
+      }
+      
+      val zipper = this.matchers.toZipper
+      zipper.flatMap(where(_){ z =>
+        def focusedOnNN(z: Option[Zipper[Matcher[DependencyNode]]]) = z.map(z => isNN(z.focus)).getOrElse(false)
+        isSlot(z.focus) && (focusedOnNN(z.previous) || focusedOnNN(z.next))
+      }).isDefined
+    }
+    
+    if (existsEdge(_.label == "dep")) {
+      logger.debug("invalid: dep edge: " + this.toString)
+      return false
+    }
+    
+    if (existsEdge(_.label == "dep")) {
+      logger.debug("invalid: dep edge: " + this.toString)
+      return false
+    }
 
     /* check if ends with slot */
     def slotAtEnd = {
@@ -86,6 +123,10 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     }
     else if (slotAtEnd) {
       logger.debug("invalid: ends with slot: " + this.toString)
+      false
+    }
+    else if (slotBordersNN) {
+      logger.debug("invalid: slot borders nn: " + this.toString)
       false
     }
     else {
