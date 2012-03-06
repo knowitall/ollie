@@ -386,7 +386,7 @@ object OpenParse {
 
       logger.info("performing extractions")
       using(parser.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
-        using(Source.fromFile(parser.sentenceFilePath)) { sentenceSource =>
+        using(Source.fromFile(parser.sentenceFilePath, "UTF-8")) { sentenceSource =>
           for (line <- sentenceSource.getLines) {
             val parts = line.split("\t")
             require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
