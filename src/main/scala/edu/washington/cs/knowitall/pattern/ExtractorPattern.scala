@@ -112,6 +112,19 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
   }
 }
 
+object ExtractorPattern {
+  import scala.io.Source
+  def main(args: Array[String]) {
+    val iter = if (args.length == 0) Source.stdin.getLines else args.iterator
+    for (line <- iter) {
+      val pattern = DependencyPattern.deserialize(line)
+      val extractor = new ExtractorPattern(pattern)
+      def verdict = if (extractor.valid) "valid" else "invalid"
+      println(verdict + ": " + extractor.toString)
+    }
+  }
+}
+
 class ExtractionPartMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
   def this(alias: String) = this(alias, new TrivialNodeMatcher[DependencyNode])
