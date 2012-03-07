@@ -158,6 +158,9 @@ object BuildTemplates {
       ((template, new DependencyPattern(matchers)), count)
     }.histogramFromPartials.filter { case ((template, pat), count) => 
       count >= settings.minCount
+    }.filter { case ((template, pattern), count) =>
+      // remove {rel} {rel} templates for now
+      template.split("\\s+").count(_ == "{rel}") <= 1
     }
     
     settings.debug.map { dir =>
