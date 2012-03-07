@@ -58,7 +58,7 @@ object BuildTemplates {
   }
   
   def run(settings: Settings) {
-    val templates = settings.templateFile.map { templateFile =>
+    val templatesMap = settings.templateFile.map { templateFile =>
       using(Source.fromFile(templateFile)) { source =>
         source.getLines.map { line =>
           val Array(rel, template) = line.split("\t")
@@ -67,12 +67,27 @@ object BuildTemplates {
       }
     }.getOrElse(Map().withDefault((x: String)=>x))
     
+    val prepRegex = new Regex("^(.*?)\\s+((?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
+    def templateFromRel(rel: String) =
+      rel.split("\\s+").iterator.map {
+        case "be" => "be"
+        case s => "{rel}"
+      }.mkString(" ")
+    def buildTemplate(string: String) =
+      templatesMap.get(string).getOrElse {
+        string match {
+          case prepRegex(rel, prep) =>
+            templateFromRel(rel) + " " + prep
+          case rel => templateFromRel(rel)
+        }
+      }
+    
     logger.info("Building histogram...")
     val histogram = 
       using (Source.fromFile(settings.sourceFile)) { source =>
         source.getLines.map { line =>
           val Array(rel, _, _, _, pattern, _*) = line.split("\t")
-          (templates(rel), pattern)
+          (buildTemplate(rel), pattern)
         }.histogram
       }.map { case ((rel, pattern), count) => 
         ((rel, new ExtractorPattern(DependencyPattern.deserialize(pattern))), count) 
@@ -115,15 +130,21 @@ object BuildTemplates {
     }
     
     logger.info("Generalizing templates...")
-    val prepRegex = new Regex("\\b(?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+")$")
     val generalized = filtered.iterator.map { case((rel, pattern), count) =>
       val containsPrep = pattern.depEdgeMatchers.exists {
         case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
         case _ => false
       }
-      val template = 
-        if (containsPrep) prepRegex.replaceAllIn(templates(rel), "{prep}")
-        else templates(rel)
+      
+      val template = rel match {
+        case prepRegex(rel, prep) =>
+          // if the pattern contains a preposition too, substitute
+          // with the capture group name
+          if (containsPrep) buildTemplate(rel)+" {prep}"
+          // otherwise, keep the preposition
+          else buildTemplate(rel)+" "+prep
+        case _ => buildTemplate(rel)
+      }
       val matchers = pattern.matchers.map {
         case m: DirectedEdgeMatcher[_] => 
           m.matcher match {
