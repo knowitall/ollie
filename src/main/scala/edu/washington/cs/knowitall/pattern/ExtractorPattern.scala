@@ -68,15 +68,10 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
         case _ => false
       }
       
-      def where[T](zipper: Zipper[T])(f: Zipper[T]=>Boolean): Option[Zipper[T]] = {
-        zipper.next flatMap (x => if (f(x)) Some(x) else where(x)(f))
-      }
-      
-      val zipper = this.matchers.toZipper
-      zipper.flatMap(where(_){ z =>
+      this.matchers.toZipper.map(_.positions.toStream.exists { z =>
         def focusedOnNN(z: Option[Zipper[Matcher[DependencyNode]]]) = z.map(z => isNN(z.focus)).getOrElse(false)
         isSlot(z.focus) && (focusedOnNN(z.previous) || focusedOnNN(z.next))
-      }).isDefined
+      }).getOrElse(false)
     }
     
     if (existsEdge(_.label == "dep")) {
