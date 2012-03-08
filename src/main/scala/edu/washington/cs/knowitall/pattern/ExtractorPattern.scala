@@ -96,11 +96,7 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
 
     val length = edgeMatchers.length
 
-    if (symmetric) {
-      logger.debug("invalid: symmetric: " + this.toString)
-      false
-    }
-    else if (length == 2 && multiplePreps) {
+    if (length == 2 && multiplePreps) {
       logger.debug("invalid: multiple preps: " + this.toString)
       false
     }
