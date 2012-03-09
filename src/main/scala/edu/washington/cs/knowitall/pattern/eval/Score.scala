@@ -67,27 +67,27 @@ object Score {
   }
 
   def score(lines: Iterator[String], gold: Map[String, Boolean]) = {
-    def promptScore(extr: String, confidence: String, rest: Seq[Any]): Option[Boolean] = {
+    def promptScore(index: Int, extr: String, confidence: String, rest: Seq[Any]): Option[Boolean] = {
       println()
-      System.out.println("Please score " + confidence + ":" + extr + ". (1/0) ")
+      System.out.println("Please score " + index + "/"+lines.size + ": " + confidence + ":" + extr + ". (1/0) ")
       if (rest.length > 0) println(rest.mkString("\t"))
       readLine match {
         case "0" => Some(false)
         case "1" => Some(true)
         case "skip" => None
-        case _ => promptScore(extr, confidence, rest)
+        case _ => promptScore(index, extr, confidence, rest)
       }
     }
 
     var golden = gold
 
     val scored = for {
-      line <- lines
+      (line, index) <- lines.zipWithIndex
       val Array(confidence, extr, rest @ _*) = line.split("\t")
 
       val scoreOption = gold.get(extr) match {
         case Some(score) => Some(score)
-        case None => promptScore(extr, confidence, rest)
+        case None => promptScore(index, extr, confidence, rest)
       }
       
       if scoreOption.isDefined
