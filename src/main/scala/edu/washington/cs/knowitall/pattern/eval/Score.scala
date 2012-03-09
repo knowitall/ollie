@@ -14,11 +14,13 @@ object Score {
       var outputFile: File = _
       var goldFile: Option[File] = None
       var goldOutputFile: Option[File] = None
+      var confidenceThreshold = 0.0
 
       arg("extrs", "extractions", { path: String => extractionFile = new File(path) })
       arg("output", "scored output", { path: String => outputFile = new File(path) })
       opt("g", "gold", "gold set", { path: String => goldFile = Some(new File(path)) })
       opt("u", "goldoutput", "output for updated gold set", { path: String => goldOutputFile = Some(new File(path)) })
+      doubleOpt("t", "threshold", "confidence threshold for considered extractions", { x: Double => confidenceThreshold = x })
     }
 
     if (parser.parse(args)) {
@@ -28,7 +30,7 @@ object Score {
       }
 
       val (scoreds, golden) = using(Source.fromFile(parser.extractionFile)) { source =>
-        score(source.getLines, gold)
+        score(source.getLines, gold, parser.confidenceThreshold)
       }
       
       // print the scored extractions
@@ -66,7 +68,7 @@ object Score {
     }
   }
 
-  def score(lines: Iterator[String], gold: Map[String, Boolean]) = {
+  def score(lines: Iterator[String], gold: Map[String, Boolean], confidenceThreshold: Double) = {
     def promptScore(index: Int, extr: String, confidence: String, rest: Seq[Any]): Option[Boolean] = {
       println()
       System.out.println("Please score " + index + "/"+lines.size + ": " + confidence + ":" + extr + ". (1/0) ")
@@ -78,13 +80,16 @@ object Score {
         case _ => promptScore(index, extr, confidence, rest)
       }
     }
-
+    
     var golden = gold
-
+    
     val scored = for {
       (line, index) <- lines.zipWithIndex
       val Array(confidence, extr, rest @ _*) = line.split("\t")
-
+      val conf = confidence.toDouble
+      
+      if (conf >= confidenceThreshold)
+      
       val scoreOption = gold.get(extr) match {
         case Some(score) => Some(score)
         case None => promptScore(index, extr, confidence, rest)
@@ -96,7 +101,7 @@ object Score {
       // update golden set
       golden += extr -> score
       // output
-      Scored(score, confidence.toDouble, extr, rest)
+      Scored(score, conf, extr, rest)
     }
 
     (scored.toList, golden)
