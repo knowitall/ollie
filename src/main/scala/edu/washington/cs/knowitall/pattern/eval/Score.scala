@@ -71,7 +71,7 @@ object Score {
   def score(lines: Iterator[String], gold: Map[String, Boolean], confidenceThreshold: Double) = {
     def promptScore(index: Int, extr: String, confidence: String, rest: Seq[Any]): Option[Boolean] = {
       println()
-      System.out.println("Please score " + index + "/"+lines.size + ": " + confidence + ":" + extr + ". (1/0) ")
+      System.out.println("Please score " + index + ": " + confidence + ":" + extr + ". (1/0) ")
       if (rest.length > 0) println(rest.mkString("\t"))
       readLine match {
         case "0" => Some(false)
