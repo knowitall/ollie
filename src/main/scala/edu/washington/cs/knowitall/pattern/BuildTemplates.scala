@@ -68,6 +68,14 @@ object BuildTemplates {
     }
   }
   
+  def outputLookup[K, V](file: File, items: Iterable[(K, Iterable[V])]) = {
+    using (new PrintWriter(file)) { pw =>
+      items.foreach { case (key, values) =>
+        pw.println(key+"\t"+values.mkString("\t"))
+      }
+    }
+  }
+  
   def run(settings: Settings) {
     def relationOnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] =  
     { case ((rel, pattern), count) =>
@@ -103,7 +111,7 @@ object BuildTemplates {
     // extract lemmas from a relation string
     def baseRelLemmas(rel: String) = {
       def clean(rel: String) = {
-        rel.split("\\s+").iterator.filterNot(_=="be").toSeq.lastOption.getOrElse("")
+        rel.split("\\s+").iterator.filterNot(_=="be").filter(_.forall(_.isLetter)).toSeq.lastOption.getOrElse("")
       }
       rel match {
         case prepRegex(rel, prep) => clean(rel)
@@ -183,7 +191,7 @@ object BuildTemplates {
             case prepRegex(rel, prep) =>
               // if the pattern contains a preposition too, substitute
               // with the capture group name
-              if (containsPrep) buildTemplate(rel) + " {prep}"
+              if (containsPrep) rel + " {prep}"
               // otherwise, keep the preposition
               else rel + " " + prep
             case _ => rel
@@ -216,7 +224,27 @@ object BuildTemplates {
       assume(result.values.sum == histogram.iterator.map(_._2).sum)
       result
     }
-    
+
+    def addSemantics(histogram: Iterable[((String, ExtractorPattern), Int)], relationLemmasByPattern: (ExtractorPattern)=>Iterable[String]) = {
+      val result = histogram.map {
+        case item @ ((rel, pattern), count) =>
+          if (settings.semantics && (nnEdge(item) || amodEdge(item) || relationOnEdge(item))) {
+            val semantics = relationLemmasByPattern(pattern)
+            val regex = semantics.mkString("|").r
+            val matchers = pattern.matchers.map {
+              case m: RelationMatcher => new RelationMatcher("rel", new RegexNodeMatcher(regex))
+              case m => m
+            }
+
+            ((rel, new ExtractorPattern(matchers)), count)
+          } else {
+            ((rel, pattern), count)
+          }
+      }.histogramFromPartials
+
+      assume(result.iterator.map(_._2).sum == histogram.iterator.map(_._2).sum)
+      result
+    }
     
     logger.info("Building histogram...")
     val histogram = buildHistogram(settings.sourceFile)
@@ -247,6 +275,10 @@ object BuildTemplates {
     }.histogramFromPartials.toSeq.map { case ((pattern, lemmas), count) =>
       (pattern, lemmas, count)
     }.groupBy(_._1).mapValues(_.map { case (pattern, lemmas, count) => (lemmas, count) })
+    settings.debug.map { dir =>
+      outputLookup(new File(dir, "lookup-rellemmas.txt"), relationLemmasByPattern.toSeq.sortBy(_._2.map(_._2).sum))
+    }
+    val lookupRelationLemmas = (pattern: ExtractorPattern) => relationLemmasByPattern.get(pattern).filter(_.map(_._2).sum > 5).map(_.map(_._1)).getOrElse(Seq())
     
     logger.info("Generalizing relations...")
     val generalizedRelation = generalizeRelation(generalizedPreposition)
@@ -255,21 +287,7 @@ object BuildTemplates {
     }
     
     logger.info("Adding semantics...")
-    val semantics = generalizedRelation.map { case item@((rel, pattern), count) =>
-      if (settings.semantics && (nnEdge(item) || amodEdge(item) || relationOnEdge(item))) {
-        val semantics = relationLemmasByPattern.get(pattern).map(_.withFilter(_._2 > 5).map(_._1)).getOrElse(Seq())
-        val regex = semantics.mkString("|").r
-        val matchers = pattern.matchers.map {
-          case m: RelationMatcher => new RelationMatcher("rel", new RegexNodeMatcher(regex))
-          case m => m
-        }
-        
-        ((rel, new ExtractorPattern(matchers)), count)
-      }
-      else {
-        ((rel, pattern), count)
-      }
-    }
+    val semantics = addSemantics(generalizedRelation, lookupRelationLemmas)
     settings.debug.map { dir =>
       output(new File(dir, "semantics.txt"), semantics.toSeq.sortBy(-_._2))
     }
