@@ -22,31 +22,37 @@ object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
   
   abstract class Settings {
-    def debug: Option[File]
     def sourceFile: File
     def destFile: Option[File]
     def templateFile: Option[File]
     def minCount: Int
     def semantics: Boolean
+    
+    def debug: Option[File]
+    def fromHistogram: Boolean
   }
   
   def main(args: Array[String]) {
     val settings = new Settings {
       var sourceFile: File = null
       var destFile: Option[File] = None
-      var debug: Option[File] = None
       var templateFile: Option[File] = None
       var minCount: Int = 5
       var semantics: Boolean = false
+      
+      var debug: Option[File] = None
+      var fromHistogram: Boolean = false
     }
     
     val parser = new OptionParser("buildtemp") {
       arg("source", "file with source relation, pattern pairs", { path: String => settings.sourceFile = new File(path) })
       argOpt("dest", "optional parameter to specify output to a file", { path: String => settings.destFile = Some(new File(path)) })
       opt("t", "reltemplates", "relation templates", { path: String => settings.templateFile = Some(new File(path)) })
-      opt("d", "debug", "directory to output debug files", { path: String => settings.debug = Some(new File(path)) })
       intOpt("n", "minimum", "minimum frequency for a pattern", { min: Int => settings.minCount = min })
       opt("s", "semantics", "add lexical restrictions", { settings.semantics = true })
+      
+      opt("from-histogram", "input is the histogram", { settings.fromHistogram = true })
+      opt("d", "debug", "directory to output debug files", { path: String => settings.debug = Some(new File(path)) })
     }
     
     if (parser.parse(args)) {
@@ -63,7 +69,7 @@ object BuildTemplates {
   }
   
   def run(settings: Settings) {
-        def relationOnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] =  
+    def relationOnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] =  
     { case ((rel, pattern), count) =>
         pattern.nodeMatchers.head.isInstanceOf[RelationMatcher] ||
         pattern.nodeMatchers.tail.isInstanceOf[RelationMatcher]
@@ -93,6 +99,8 @@ object BuildTemplates {
     }
     
     val prepRegex = new Regex("^(.*?)\\s+((?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
+    
+    // extract lemmas from a relation string
     def baseRelLemmas(rel: String) = {
       def clean(rel: String) = {
         rel.split("\\s+").iterator.filterNot(_=="be").toSeq.lastOption.getOrElse("")
@@ -103,6 +111,7 @@ object BuildTemplates {
       }
     }
     
+    // lookup a relation in a map to get the template
     val templatesMap = settings.templateFile.map { templateFile =>
       using(Source.fromFile(templateFile)) { source =>
         source.getLines.map { line =>
@@ -111,13 +120,17 @@ object BuildTemplates {
         }.toMap.withDefault((x: String)=>x)
       }
     }.getOrElse(Map().withDefault((x: String)=>x))
-    
-    def templateFromRel(rel: String) =
-      rel.split("\\s+").iterator.map {
-        case "be" => "be"
-        case s => "{rel}"
-      }.mkString(" ")
-    def buildTemplate(string: String) =
+
+    // build a template from the supplied relation
+    def buildTemplate(string: String) = {
+      // build a template from the supplied relation WITHOUT a preposition
+      def templateFromRel(rel: String) =
+        rel.split("\\s+").iterator.map {
+          case s@"be" => s
+          case s@"{prep}" => s
+          case s => "{rel}"
+        }.mkString(" ")
+
       templatesMap.get(string).getOrElse {
         string match {
           case prepRegex(rel, prep) =>
@@ -125,39 +138,126 @@ object BuildTemplates {
           case rel => templateFromRel(rel)
         }
       }
+    }
+
+    def buildHistogram(file: File) = {
+      val serializedHistogram =
+        using(Source.fromFile(file)) { source =>
+          if (settings.fromHistogram) {
+            // the input is the histogram so just read it
+            // this fork exists because creating this histogram
+            // is the slowest part of building templates.
+            source.getLines.map { line =>
+              val Array(rel, pattern, count) = line.split("\t")
+              ((rel, pattern), count.toInt)
+            }.toMap
+          } else {
+            // create the histogram from the patterned file
+            source.getLines.map { line =>
+              val Array(rel, _, _, _, pattern, _*) = line.split("\t")
+              (rel, pattern)
+            }.histogram
+          }
+        }
+      
+      // deserialize the patterns after creating the histogram
+      // for efficiency
+      val histogram = serializedHistogram.map {
+        case ((rel, pattern), count) =>
+          ((rel, new ExtractorPattern(DependencyPattern.deserialize(pattern))), count)
+      }
+      assume(serializedHistogram.size == histogram.size)
+      
+      histogram
+    }
+
+    def generalizePrepositions(histogram: Iterable[((String, ExtractorPattern), Int)]) = {
+      val result = histogram.iterator.map {
+        case item @ ((rel, pattern), count) =>
+          val containsPrep = pattern.depEdgeMatchers.exists {
+            case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
+            case _ => false
+          }
+
+          val template = rel match {
+            case prepRegex(rel, prep) =>
+              // if the pattern contains a preposition too, substitute
+              // with the capture group name
+              if (containsPrep) buildTemplate(rel) + " {prep}"
+              // otherwise, keep the preposition
+              else rel + " " + prep
+            case _ => rel
+          }
+
+          val matchers = pattern.matchers.map {
+            case m: DirectedEdgeMatcher[_] =>
+              m.matcher match {
+                case sub: LabelEdgeMatcher if sub.label.startsWith("prep_") => new CaptureEdgeMatcher("prep",
+                  new DirectedEdgeMatcher(m.direction,
+                    new RegexEdgeMatcher("prep_(.*)".r)))
+                case sub => m
+              }
+            case m => m
+          }
+          ((template, new ExtractorPattern(new DependencyPattern(matchers))), count)
+      }.histogramFromPartials
+      
+      assume(result.values.sum == histogram.iterator.map(_._2).sum)
+      result
+    }
+
+    def generalizeRelation(histogram: Iterable[((String, ExtractorPattern), Int)]) = {
+      val result = histogram.toSeq.map {
+        case item @ ((rel, pattern), count) =>
+          val template = buildTemplate(rel)
+          ((template, pattern), count)
+      }.histogramFromPartials
+      
+      assume(result.values.sum == histogram.iterator.map(_._2).sum)
+      result
+    }
+    
     
     logger.info("Building histogram...")
-    val histogram = 
-      using (Source.fromFile(settings.sourceFile)) { source =>
-        source.getLines.map { line =>
-          val Array(rel, _, _, _, pattern, _*) = line.split("\t")
-          (rel, pattern)
-        }.histogram
-      }.map { case ((rel, pattern), count) =>
-        ((rel, new ExtractorPattern(DependencyPattern.deserialize(pattern))), count)
-      }
+    val histogram = buildHistogram(settings.sourceFile)
+    settings.debug map { dir =>
+      output(new File(dir, "histogram.txt"), histogram.toSeq.sortBy(-_._2))
+    }
+
+    logger.info("Removing bad templates...")
+    val filtered = histogram filter prepsMatch
+    settings.debug.map { dir =>
+	  output (new File(dir, "filtered-keep.txt"), filtered.toSeq.sortBy(-_._2))
+	  output (new File(dir, "filtered-del-edge.txt"), (histogram.iterator filter relationOnEdge).toSeq.sortBy(-_._2))
+	  output (new File(dir, "filtered-del-nn.txt"), (histogram.iterator filter nnEdge).toSeq.sortBy(-_._2))
+	  output (new File(dir, "filtered-del-prepsmatch.txt"), (histogram.iterator filterNot prepsMatch).toSeq.sortBy(-_._2))
+    }
+    logger.info((histogram.values.sum - filtered.values.sum).toString + " items removed.")
     
-    val relationLemmas = histogram.map { case ((rel, pattern), count) =>
+    logger.info("Generalizing prepositions...")
+    val generalizedPreposition = generalizePrepositions(filtered)
+    settings.debug.map { dir =>
+      output(new File(dir, "generalized-prep.txt"), generalizedPreposition.toSeq.sortBy(-_._2))
+    }
+        
+    logger.info("Indexing relation lemmas by pattern...")
+    val relationLemmasByPattern = generalizedPreposition.map { case ((rel, pattern), count) =>
       val lemmas = baseRelLemmas(rel)
       ((pattern, lemmas), count)
     }.histogramFromPartials.toSeq.map { case ((pattern, lemmas), count) =>
       (pattern, lemmas, count)
     }.groupBy(_._1).mapValues(_.map { case (pattern, lemmas, count) => (lemmas, count) })
     
-    val generalizedRelation = histogram.toSeq.map { case item@((rel, pattern), count) =>
-      val template = buildTemplate(rel)
-      ((template, pattern), count)
-    }.histogramFromPartials
-
+    logger.info("Generalizing relations...")
+    val generalizedRelation = generalizeRelation(generalizedPreposition)
     settings.debug.map { dir =>
       output(new File(dir, "generalized-rel.txt"), generalizedRelation.toSeq.sortBy(-_._2))
     }
     
     logger.info("Adding semantics...")
-    
     val semantics = generalizedRelation.map { case item@((rel, pattern), count) =>
       if (settings.semantics && (nnEdge(item) || amodEdge(item) || relationOnEdge(item))) {
-        val semantics = relationLemmas.get(pattern).map(_.withFilter(_._2 > 5).map(_._1)).getOrElse(Seq())
+        val semantics = relationLemmasByPattern.get(pattern).map(_.withFilter(_._2 > 5).map(_._1)).getOrElse(Seq())
         val regex = semantics.mkString("|").r
         val matchers = pattern.matchers.map {
           case m: RelationMatcher => new RelationMatcher("rel", new RegexNodeMatcher(regex))
@@ -170,70 +270,31 @@ object BuildTemplates {
         ((rel, pattern), count)
       }
     }
-    
     settings.debug.map { dir =>
       output(new File(dir, "semantics.txt"), semantics.toSeq.sortBy(-_._2))
     }
 
-    logger.info("Removing bad templates...")
-
-      //!relationOnEdge && !nnEdge && prepsMatch
-    val filtered = semantics filter prepsMatch
-
+    val cleaned = semantics
+      .filter {
+        case ((template, pat), count) =>
+          count >= settings.minCount
+      }
+      .filter {
+        case ((template, pattern), count) =>
+          // remove {rel} {rel} templates for now
+          template.split("\\s+").count(_ == "{rel}") <= 1
+      }
     settings.debug.map { dir =>
-	  output (new File(dir, "filtered-keep.txt"), filtered.toSeq.sortBy(-_._2))
-	  // output (new File(dir, "filtered-del-edge.txt"), (histogram.iterator filter relationOnEdge).toSeq.sortBy(-_._2))
-	  // output (new File(dir, "filtered-del-nn.txt"), (histogram.iterator filter nnEdge).toSeq.sortBy(-_._2))
-	  output (new File(dir, "filtered-del-prepsmatch.txt"), (histogram.iterator filterNot prepsMatch).toSeq.sortBy(-_._2))
-    }
-    
-    logger.info("Generalizing templates...")
-    val generalizedPreposition = filtered.iterator.map { case item@((rel, pattern), count) =>
-      val containsPrep = pattern.depEdgeMatchers.exists {
-        case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
-        case _ => false
-      }
-      
-      val template = rel match {
-        case prepRegex(rel, prep) =>
-          // if the pattern contains a preposition too, substitute
-          // with the capture group name
-          if (containsPrep) buildTemplate(rel)+" {prep}"
-          // otherwise, keep the preposition
-          else buildTemplate(rel)+" "+prep
-        case _ => buildTemplate(rel)
-      }
-      
-      val matchers = pattern.matchers.map {
-        case m: DirectedEdgeMatcher[_] => 
-          m.matcher match {
-            case sub: LabelEdgeMatcher if sub.label.startsWith("prep_") => new CaptureEdgeMatcher("prep", 
-                new DirectedEdgeMatcher(m.direction, 
-                    new RegexEdgeMatcher("prep_(.*)".r)))
-            case sub => m
-          }
-        case m => m
-      }
-      ((template, new ExtractorPattern(new DependencyPattern(matchers))), count)
-    }.histogramFromPartials.filter { case ((template, pat), count) => 
-      count >= settings.minCount
-    }.filter { case ((template, pattern), count) =>
-      // remove {rel} {rel} templates for now
-      template.split("\\s+").count(_ == "{rel}") <= 1
-    }
-    
-    settings.debug.map { dir =>
-      output(new File(dir, "generalized-prep.txt"), generalizedPreposition.toSeq.sortBy(-_._2))
+      output(new File(dir, "cleaned.txt"), semantics.toSeq.sortBy(-_._2))
     }
     
     logger.info("Removing duplicates...")
-    val dedup = generalizedPreposition.groupBy { case ((template, pat), count) =>
+    val dedup = cleaned.groupBy { case ((template, pat), count) =>
       // set the key to the matchers, without arg1 and arg2,
       // and the reflection's matchers so we don't have mirrored
       // patterns
       Set(pat.matchers.tail.init, pat.reflection.matchers.tail.init)
     }.mapValues(_.maxBy(_._2)).values
-    
     settings.debug.map { dir =>
       output(new File(dir, "dedup.txt"), dedup.toSeq.sortBy(-_._2))
     }
