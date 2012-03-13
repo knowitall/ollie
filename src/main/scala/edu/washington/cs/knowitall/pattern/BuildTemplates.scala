@@ -19,6 +19,7 @@ import edu.washington.cs.knowitall.tool.parse.graph.Direction
 import edu.washington.cs.knowitall.tool.parse.pattern.RegexNodeMatcher
 import scala.collection.immutable
 import edu.washington.cs.knowitall.tool.parse.pattern.Matcher
+import edu.washington.cs.knowitall.tool.parse.pattern.ConjunctiveNodeMatcher
 
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -227,7 +228,7 @@ object BuildTemplates {
             case m => m
           }
           ((template, new ExtractorPattern(new DependencyPattern(matchers))), count)
-      }.histogramFromPartials
+      }.mergeHistograms
       
       assume(result.values.sum == histogram.iterator.map(_._2).sum)
       result
@@ -241,7 +242,7 @@ object BuildTemplates {
 	          ((template, pattern), (baseRelLemmas(rel), count))
         }.toSeq.groupBy(_._1).map { case (key@(template, pattern), members) =>
           if (settings.semantics && (nnEdge(pattern) || amodEdge(pattern) || relationOnSide(pattern))) {
-	        val values = members.map(_._2).filter(_._2 > 5)
+	        val values = members.map(_._2).filter(_._2 > 0)
 	        val lemmas: immutable.SortedSet[String] = immutable.SortedSet[String]() ++ values.map(_._1).flatten
 	        val count: Int = values.map(_._2).sum
 	        (key, (Some(lemmas), count))
@@ -255,13 +256,13 @@ object BuildTemplates {
           case ((template, pattern), (Some(lemmas), count)) =>
             val regex = lemmas.mkString("|").r
             val matchers = pattern.matchers.map {
-              case m: RelationMatcher => new RelationMatcher("rel", m.matchers + new RegexNodeMatcher(regex))
+              case m: RelationMatcher => new RelationMatcher("rel", new ConjunctiveNodeMatcher(Set(m.matcher, new RegexNodeMatcher(regex))))
               case m => m
             }
             ((template, new ExtractorPattern(matchers)), count)
           case ((template, pattern), (None, count)) =>
 	        ((template, pattern), count)
-        }.histogramFromPartials
+        }.mergeHistograms
       
       if (!settings.semantics) {
         assume(result.values.sum == histogram.iterator.map(_._2).sum)
@@ -303,14 +304,6 @@ object BuildTemplates {
       output(new File(dir, "generalized-rel.txt"), generalizedRelation.toSeq.sortBy(-_._2))
     }
     
-    /*
-    logger.info("Adding semantics...")
-    val semantics = addSemantics(generalizedRelation, lookupRelationLemmas)
-    settings.debug.map { dir =>
-      output(new File(dir, "semantics.txt"), semantics.toSeq.sortBy(-_._2))
-    }
-    */
-
     val cleaned = generalizedRelation
       .filter {
         case ((template, pat), count) =>

@@ -70,15 +70,15 @@ object CountPatternComponents {
               case _ => None
             }
         }
-        val postags = (pattern.nodeMatchers.toList).collect {
-          case m: RelationMatcher => m.matchers.flatMap { case m: PostagNodeMatcher => Some(m.postag); case _ => None }
+        val postags = (pattern.baseNodeMatchers.toList).collect {
+          case m: PostagNodeMatcher => m.postag
         }
         
         for (l <- labels) {
           edgeCounts += l -> (edgeCounts(l)+1)
         }
         
-        for (postagOption <- postags; postag <- postagOption) {
+        for (postag <- postags) {
           postagCounts += postag -> (postagCounts(postag)+1)
         }
       }
