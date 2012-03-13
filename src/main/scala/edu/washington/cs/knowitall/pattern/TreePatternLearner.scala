@@ -145,19 +145,19 @@ object TreePatternLearner {
           val zipperMatch = 
             // find an exact match
             zipper.findZ {
-              case m: DependencyNodeMatcher => m.text.get == target
+              case m: DependencyNodeMatcher => m.text == target
               case _ => false
            } orElse
             // find a partial match
             zipper.findZ {
-              case m: DependencyNodeMatcher => m.text.get contains target
+              case m: DependencyNodeMatcher => m.text contains target
               case _ => false
             } getOrElse {
               throw new InvalidBipathException("invalid: couldn't find replacement '"+rep+"': "+bip)
             }
 
           // ensure valid postags
-          if (!OpenParse.VALID_ARG_POSTAG.contains(zipperMatch.focus.asInstanceOf[DependencyNodeMatcher].postag.get))
+          if (!OpenParse.VALID_ARG_POSTAG.contains(zipperMatch.focus.asInstanceOf[DependencyNodeMatcher].postag))
             throw new InvalidBipathException("invalid: invalid arg postag '"+zipper.focus+"': "+bip)
 
           // make replacements
@@ -191,24 +191,24 @@ object TreePatternLearner {
       def replaceRel(zipper: Zipper[Matcher[DependencyNode]]) = {
         // find the rel node
         val relZipper = zipper.findZ(_ match {
-          case nm: DependencyNodeMatcher => !(relLemmas intersect nm.text.get.split(" ").toSet).isEmpty
+          case nm: DependencyNodeMatcher => !(relLemmas intersect nm.text.split(" ").toSet).isEmpty
           case _ => false
         }) getOrElse {
           throw new NoRelationNodeException("No relation ("+rel+") in pattern: " + pattern)
         }
 
         // replace rel
-        val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag.get
-        relZipper.update(new CaptureNodeMatcher("rel:"+postag))
+        val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag
+        relZipper.update(new CaptureNodeMatcher("rel", new PostagNodeMatcher(postag)))
       }
 
       def replaceSlots(zipper: Zipper[Matcher[DependencyNode]]) = {
         def replaceSlots(zipper: Zipper[Matcher[DependencyNode]], labels: List[String], index: Int): (Zipper[Matcher[DependencyNode]], List[String]) = {
           def replaceSlot(zipper: Zipper[Matcher[DependencyNode]]) = {
             val node = zipper.focus.asInstanceOf[DependencyNodeMatcher]
-            val postag = node.postag.get
-            (Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index+":"+postag), zipper.rights),
-                node.text.get)
+            val postag = node.postag
+            (Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index, new PostagNodeMatcher(postag)), zipper.rights),
+                node.text)
           }
 
           zipper.findZ(_.isInstanceOf[DependencyNodeMatcher]) match {

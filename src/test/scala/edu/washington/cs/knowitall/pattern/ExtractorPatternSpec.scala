@@ -21,8 +21,8 @@ object ExtractorPatternSpec extends Specification {
     }
   }
   
-  testSymmetric("{arg1} <nsubj< {rel:VBZ} >dobj> {arg2}", false)
-  testSymmetric("{arg1} <nsubj< {rel:VBD} >nsubj> {arg2}", true)
-  testSymmetric("{arg1} <prep_of< {rel:NN} >prep_of> {arg2}", true)
-  testSymmetric("{rel:NN} <nn< {arg1} >nn> {arg2}", false)
+  testSymmetric("{arg1} <nsubj< {rel:postag=VBZ} >dobj> {arg2}", false)
+  testSymmetric("{arg1} <nsubj< {rel:postag=VBD} >nsubj> {arg2}", true)
+  testSymmetric("{arg1} <prep_of< {rel:postag=NN} >prep_of> {arg2}", true)
+  testSymmetric("{rel:postag=NN} <nn< {arg1} >nn> {arg2}", false)
 }

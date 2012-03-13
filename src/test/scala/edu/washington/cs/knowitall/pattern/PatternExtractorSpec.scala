@@ -31,14 +31,14 @@ object PatternExtractorSpec extends Specification {
     }
 
     "(Angels, appear, the Bible) is found with a postag constraint" in {
-      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel:VB} >prep_in> {arg2}")
+      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel:postag=VB} >prep_in> {arg2}")
       val extractions = new GeneralExtractor(pattern, 1, 1).extract(graph)
       extractions.size must_== 1
       extractions.map(_.toString) must contain("(Angels; appear; the Bible story)")
     }
 
     "(Angels, appear, the Bible) is not found with the wrong postag constraint" in {
-      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel:XXX} >prep_in> {arg2}")
+      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel:postag=XXX} >prep_in> {arg2}")
       val extractions = new GeneralExtractor(pattern, 1, 1).extract(graph)
       extractions.size must_== 0
     }

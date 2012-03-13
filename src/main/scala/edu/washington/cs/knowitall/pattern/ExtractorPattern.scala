@@ -3,7 +3,6 @@ package pattern
 
 import tool.parse.pattern.Matcher
 import tool.parse.pattern.Pattern
-import tool.parse.pattern.DependencyNodeMatcher
 import tool.parse.pattern.DependencyEdgeMatcher
 import tool.parse.pattern.LabelEdgeMatcher
 import tool.parse.pattern.CaptureNodeMatcher
@@ -39,12 +38,12 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
   
   def valid: Boolean = {
     def existsEdge(pred: LabelEdgeMatcher=>Boolean) = 
-      this.depEdgeMatchers.collect {
+      this.baseEdgeMatchers.collect {
         case e: LabelEdgeMatcher => e
       }exists(pred)
       
     /* check for multiple prep edges */
-    def multiplePreps = this.depEdgeMatchers.collect {
+    def multiplePreps = this.baseEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e
     }.count(_.label.contains("prep")) > 1
     
@@ -62,9 +61,10 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
       import Scalaz._
       
       def isNN(m: Matcher[DependencyNode]) = m match {
-        case e: DirectedEdgeMatcher[_] => 
-          e.matcher match {
-            case m: LabelEdgeMatcher => m.label == "nn"
+        case e: NodeMatcher[_] => 
+          e.baseNodeMatchers exists {
+            case m: LabelEdgeMatcher if m.label == "nn" => true
+            case _ => false
           }
         case _ => false
       }
@@ -176,7 +176,7 @@ class ArgumentMatcher(alias: String) extends ExtractionPartMatcher(alias) {
   }
 }
 
-class RelationMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) 
+class RelationMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends ExtractionPartMatcher(alias, matcher) {
   override def canEqual(that: Any) = that.isInstanceOf[RelationMatcher]
   override def equals(that: Any) = that match {
@@ -185,7 +185,7 @@ extends ExtractionPartMatcher(alias, matcher) {
   }
 }
 
-class SlotMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) 
+class SlotMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends ExtractionPartMatcher(alias, matcher) {
   override def canEqual(that: Any) = that.isInstanceOf[SlotMatcher]
   override def equals(that: Any) = that match {

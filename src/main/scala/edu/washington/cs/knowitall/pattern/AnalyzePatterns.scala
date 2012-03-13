@@ -11,10 +11,10 @@ import java.io.File
 import scala.io.Codec
 import tool.parse.pattern.DependencyEdgeMatcher
 import tool.parse.pattern.LabelEdgeMatcher
-import tool.parse.pattern.DependencyNodeMatcher
 import tool.parse.pattern.DirectedEdgeMatcher
 import tool.parse.graph.DependencyNode
 import tool.parse.graph.DependencyGraph
+import tool.parse.pattern.PostagNodeMatcher
 
 object AnalyzePatterns {
   def main(args: Array[String]) {
@@ -70,15 +70,15 @@ object CountPatternComponents {
               case _ => None
             }
         }
-        val postags = (pattern.nodeMatchers.toList).collect {
-          case m: RelationMatcher => m.matcher.asInstanceOf[DependencyNodeMatcher].postag
+        val postags = (pattern.baseNodeMatchers.toList).collect {
+          case m: PostagNodeMatcher => m.postag
         }
         
         for (l <- labels) {
           edgeCounts += l -> (edgeCounts(l)+1)
         }
         
-        for (postagOption <- postags; postag <- postagOption) {
+        for (postag <- postags) {
           postagCounts += postag -> (postagCounts(postag)+1)
         }
       }
