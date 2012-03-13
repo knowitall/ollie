@@ -20,6 +20,7 @@ import edu.washington.cs.knowitall.tool.parse.pattern.RegexNodeMatcher
 import scala.collection.immutable
 import edu.washington.cs.knowitall.tool.parse.pattern.Matcher
 import edu.washington.cs.knowitall.tool.parse.pattern.ConjunctiveNodeMatcher
+import edu.washington.cs.knowitall.tool.parse.pattern.EdgeMatcher
 
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -97,6 +98,15 @@ object BuildTemplates {
   }
   
   def run(settings: Settings) {
+    val prepRegex = new Regex("^(.*?)\\s+((?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
+    
+    def relPrep(rel: String) = {
+      rel match {
+        case prepRegex(rel, prep) => Some(prep)
+        case rel => None
+      }
+    }
+    
     def relationOnSide: PartialFunction[ExtractorPattern, Boolean] =  
     { case pattern =>
         pattern.nodeMatchers.head.isInstanceOf[RelationMatcher] ||
@@ -119,14 +129,15 @@ object BuildTemplates {
       
     def prepsMatch: PartialFunction[((String, ExtractorPattern)), Boolean] = 
     { case ((rel, pattern)) => 
-        val relPrep = rel.split(" ").last
-        val edgePreps = pattern.baseEdgeMatchers.collect {
-          case m: LabelEdgeMatcher if m.label startsWith "prep_" => m.label.drop(5)
+        relPrep(rel) match {
+          case Some(relationPrep) =>
+	        val edgePreps = pattern.baseEdgeMatchers.collect {
+	          case m: LabelEdgeMatcher if m.label startsWith "prep_" => m.label.drop(5)
+	        }
+	        edgePreps.forall(_ == relationPrep)
+          case None => true
         }
-        edgePreps.forall(_ == relPrep)
     }
-    
-    val prepRegex = new Regex("^(.*?)\\s+((?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
     
     // extract lemmas from a relation string
     def baseRelLemmas(rel: String): Option[String] = {
