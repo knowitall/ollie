@@ -17,6 +17,8 @@ import edu.washington.cs.knowitall.tool.postag.PosTagger
 import scopt.OptionParser
 import edu.washington.cs.knowitall.tool.parse.graph.Direction
 import edu.washington.cs.knowitall.tool.parse.pattern.RegexNodeMatcher
+import scala.collection.immutable
+import edu.washington.cs.knowitall.tool.parse.pattern.Matcher
 
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -30,6 +32,11 @@ object BuildTemplates {
     
     def debug: Option[File]
     def fromHistogram: Boolean
+    
+    def filterNnEdge: Boolean
+    def filterAmodEdge: Boolean
+    def filterSideRel: Boolean
+    def filterPrepMismatch: Boolean
   }
   
   def main(args: Array[String]) {
@@ -42,6 +49,11 @@ object BuildTemplates {
       
       var debug: Option[File] = None
       var fromHistogram: Boolean = false
+      
+      var filterNnEdge = false
+      var filterAmodEdge = false
+      var filterSideRel = false
+      var filterPrepMismatch = false
     }
     
     val parser = new OptionParser("buildtemp") {
@@ -49,7 +61,12 @@ object BuildTemplates {
       argOpt("dest", "optional parameter to specify output to a file", { path: String => settings.destFile = Some(new File(path)) })
       opt("t", "reltemplates", "relation templates", { path: String => settings.templateFile = Some(new File(path)) })
       intOpt("n", "minimum", "minimum frequency for a pattern", { min: Int => settings.minCount = min })
+      
       opt("s", "semantics", "add lexical restrictions", { settings.semantics = true })
+      opt("filter-nnedge", "filter nn edges", {settings.filterNnEdge = true} )
+      opt("filter-amodedge", "filter amod edges", {settings.filterAmodEdge = true} )
+      opt("filter-siderel", "filter relation on side", {settings.filterSideRel = true} )
+      opt("filter-prepmismatch", "filter prep mismatch", {settings.filterPrepMismatch = true} )
       
       opt("from-histogram", "input is the histogram", { settings.fromHistogram = true })
       opt("d", "debug", "directory to output debug files", { path: String => settings.debug = Some(new File(path)) })
@@ -77,28 +94,28 @@ object BuildTemplates {
   }
   
   def run(settings: Settings) {
-    def relationOnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] =  
-    { case ((rel, pattern), count) =>
+    def relationOnSide: PartialFunction[ExtractorPattern, Boolean] =  
+    { case pattern =>
         pattern.nodeMatchers.head.isInstanceOf[RelationMatcher] ||
         pattern.nodeMatchers.tail.isInstanceOf[RelationMatcher]
     }  
         
-    def nnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
-    { case ((rel, pattern), count) => pattern.baseEdgeMatchers.exists { 
+    def nnEdge: PartialFunction[ExtractorPattern, Boolean] = 
+    { case pattern => pattern.baseEdgeMatchers.exists { 
         case m: LabelEdgeMatcher => m.label == "nn"
         case _ => false
       }
     }
     
-    def amodEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
-    { case ((rel, pattern), count) => pattern.baseEdgeMatchers.exists { 
+    def amodEdge: PartialFunction[ExtractorPattern, Boolean] = 
+    { case pattern => pattern.baseEdgeMatchers.exists { 
         case m: LabelEdgeMatcher => m.label == "amod"
         case _ => false
       }
     }
       
-    def prepsMatch: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
-    { case ((rel, pattern), count) => 
+    def prepsMatch: PartialFunction[((String, ExtractorPattern)), Boolean] = 
+    { case ((rel, pattern)) => 
         val relPrep = rel.split(" ").last
         val edgePreps = pattern.baseEdgeMatchers.collect {
           case m: LabelEdgeMatcher if m.label startsWith "prep_" => m.label.drop(5)
@@ -109,9 +126,9 @@ object BuildTemplates {
     val prepRegex = new Regex("^(.*?)\\s+((?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
     
     // extract lemmas from a relation string
-    def baseRelLemmas(rel: String) = {
+    def baseRelLemmas(rel: String): Option[String] = {
       def clean(rel: String) = {
-        rel.split("\\s+").iterator.filterNot(_=="be").filter(_.forall(_.isLetter)).toSeq.lastOption.getOrElse("")
+        rel.split("\\s+").iterator.filterNot(_.isEmpty).filterNot(_=="be").filter(_.forall(_.isLetter)).toSeq.lastOption.map(Some(_)).getOrElse(None)
       }
       rel match {
         case prepRegex(rel, prep) => clean(rel)
@@ -182,7 +199,9 @@ object BuildTemplates {
     def generalizePrepositions(histogram: Iterable[((String, ExtractorPattern), Int)]) = {
       val result = histogram.iterator.map {
         case item @ ((rel, pattern), count) =>
-          val containsPrep = pattern.baseEdgeMatchers.exists {
+          val prepositionsMatch = prepsMatch(rel, pattern)
+          
+          val containsPrep = prepositionsMatch && pattern.baseEdgeMatchers.exists {
             case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
             case _ => false
           }
@@ -198,7 +217,7 @@ object BuildTemplates {
           }
 
           val matchers = pattern.matchers.map {
-            case m: DirectedEdgeMatcher[_] =>
+            case m: DirectedEdgeMatcher[_] if prepositionsMatch =>
               m.matcher match {
                 case sub: LabelEdgeMatcher if sub.label.startsWith("prep_") => new CaptureEdgeMatcher("prep",
                   new DirectedEdgeMatcher(m.direction,
@@ -215,34 +234,39 @@ object BuildTemplates {
     }
 
     def generalizeRelation(histogram: Iterable[((String, ExtractorPattern), Int)]) = {
-      val result = histogram.toSeq.map {
-        case item @ ((rel, pattern), count) =>
-          val template = buildTemplate(rel)
-          ((template, pattern), count)
-      }.histogramFromPartials
-      
-      assume(result.values.sum == histogram.iterator.map(_._2).sum)
-      result
-    }
-
-    def addSemantics(histogram: Iterable[((String, ExtractorPattern), Int)], relationLemmasByPattern: (ExtractorPattern)=>Iterable[String]) = {
-      val result = histogram.map {
-        case item @ ((rel, pattern), count) =>
-          if (settings.semantics && (nnEdge(item) || amodEdge(item) || relationOnEdge(item))) {
-            val semantics = relationLemmasByPattern(pattern)
-            val regex = semantics.mkString("|").r
+        // we need to handle semantics
+        val groups = histogram.toSeq.map {
+	        case item @ ((rel, pattern), count) =>
+	          val template = buildTemplate(rel)
+	          ((template, pattern), (baseRelLemmas(rel), count))
+        }.toSeq.groupBy(_._1).map { case (key@(template, pattern), members) =>
+          if (settings.semantics && (nnEdge(pattern) || amodEdge(pattern) || relationOnSide(pattern))) {
+	        val values = members.map(_._2).filter(_._2 > 5)
+	        val lemmas: immutable.SortedSet[String] = immutable.SortedSet[String]() ++ values.map(_._1).flatten
+	        val count: Int = values.map(_._2).sum
+	        (key, (Some(lemmas), count))
+          }
+          else {
+            (key, (None, members.map(_._2._2).sum))
+          }
+        }
+        
+        val result = groups.map { 
+          case ((template, pattern), (Some(lemmas), count)) =>
+            val regex = lemmas.mkString("|").r
             val matchers = pattern.matchers.map {
-              case m: RelationMatcher => new RelationMatcher("rel", new RegexNodeMatcher(regex))
+              case m: RelationMatcher => new RelationMatcher("rel", m.matchers + new RegexNodeMatcher(regex))
               case m => m
             }
-
-            ((rel, new ExtractorPattern(matchers)), count)
-          } else {
-            ((rel, pattern), count)
-          }
-      }.histogramFromPartials
-
-      assume(result.iterator.map(_._2).sum == histogram.iterator.map(_._2).sum)
+            ((template, new ExtractorPattern(matchers)), count)
+          case ((template, pattern), (None, count)) =>
+	        ((template, pattern), count)
+        }.histogramFromPartials
+      
+      if (!settings.semantics) {
+        assume(result.values.sum == histogram.iterator.map(_._2).sum)
+      }
+      
       result
     }
     
@@ -253,12 +277,17 @@ object BuildTemplates {
     }
 
     logger.info("Removing bad templates...")
-    val filtered = histogram filter prepsMatch
+    val filtered = histogram filterNot { case ((rel, pattern), count) =>
+      settings.filterNnEdge && nnEdge(pattern) ||
+      settings.filterAmodEdge && amodEdge(pattern) ||
+      settings.filterSideRel && relationOnSide(pattern) ||
+      settings.filterPrepMismatch && !prepsMatch((rel, pattern))
+    }
     settings.debug.map { dir =>
 	  output (new File(dir, "filtered-keep.txt"), filtered.toSeq.sortBy(-_._2))
-	  output (new File(dir, "filtered-del-edge.txt"), (histogram.iterator filter relationOnEdge).toSeq.sortBy(-_._2))
-	  output (new File(dir, "filtered-del-nn.txt"), (histogram.iterator filter nnEdge).toSeq.sortBy(-_._2))
-	  output (new File(dir, "filtered-del-prepsmatch.txt"), (histogram.iterator filterNot prepsMatch).toSeq.sortBy(-_._2))
+	  //output (new File(dir, "filtered-del-edge.txt"), (histogram.iterator filter relationOnSide).toSeq.sortBy(-_._2))
+	  //output (new File(dir, "filtered-del-nn.txt"), (histogram.iterator filter nnEdge).toSeq.sortBy(-_._2))
+	  //output (new File(dir, "filtered-del-prepsmatch.txt"), (histogram.iterator filterNot prepsMatch).toSeq.sortBy(-_._2))
     }
     logger.info((histogram.values.sum - filtered.values.sum).toString + " items removed.")
     
@@ -267,18 +296,6 @@ object BuildTemplates {
     settings.debug.map { dir =>
       output(new File(dir, "generalized-prep.txt"), generalizedPreposition.toSeq.sortBy(-_._2))
     }
-        
-    logger.info("Indexing relation lemmas by pattern...")
-    val relationLemmasByPattern = generalizedPreposition.map { case ((rel, pattern), count) =>
-      val lemmas = baseRelLemmas(rel)
-      ((pattern, lemmas), count)
-    }.histogramFromPartials.toSeq.map { case ((pattern, lemmas), count) =>
-      (pattern, lemmas, count)
-    }.groupBy(_._1).mapValues(_.map { case (pattern, lemmas, count) => (lemmas, count) })
-    settings.debug.map { dir =>
-      outputLookup(new File(dir, "lookup-rellemmas.txt"), relationLemmasByPattern.toSeq.sortBy(_._2.map(_._2).sum))
-    }
-    val lookupRelationLemmas = (pattern: ExtractorPattern) => relationLemmasByPattern.get(pattern).filter(_.map(_._2).sum > 5).map(_.map(_._1)).getOrElse(Seq())
     
     logger.info("Generalizing relations...")
     val generalizedRelation = generalizeRelation(generalizedPreposition)
@@ -286,13 +303,15 @@ object BuildTemplates {
       output(new File(dir, "generalized-rel.txt"), generalizedRelation.toSeq.sortBy(-_._2))
     }
     
+    /*
     logger.info("Adding semantics...")
     val semantics = addSemantics(generalizedRelation, lookupRelationLemmas)
     settings.debug.map { dir =>
       output(new File(dir, "semantics.txt"), semantics.toSeq.sortBy(-_._2))
     }
+    */
 
-    val cleaned = semantics
+    val cleaned = generalizedRelation
       .filter {
         case ((template, pat), count) =>
           count >= settings.minCount
@@ -303,15 +322,19 @@ object BuildTemplates {
           template.split("\\s+").count(_ == "{rel}") <= 1
       }
     settings.debug.map { dir =>
-      output(new File(dir, "cleaned.txt"), semantics.toSeq.sortBy(-_._2))
+      output(new File(dir, "cleaned.txt"), cleaned.toSeq.sortBy(-_._2))
     }
     
     logger.info("Removing duplicates...")
     val dedup = cleaned.groupBy { case ((template, pat), count) =>
+      def filter(matchers: Iterable[Matcher[_]]) = matchers.filter {
+        case m: ArgumentMatcher => false
+        case _ => true
+      }
       // set the key to the matchers, without arg1 and arg2,
       // and the reflection's matchers so we don't have mirrored
       // patterns
-      Set(pat.matchers.tail.init, pat.reflection.matchers.tail.init)
+      Set(filter(pat.matchers), filter(pat.reflection.matchers))
     }.mapValues(_.maxBy(_._2)).values
     settings.debug.map { dir =>
       output(new File(dir, "dedup.txt"), dedup.toSeq.sortBy(-_._2))
