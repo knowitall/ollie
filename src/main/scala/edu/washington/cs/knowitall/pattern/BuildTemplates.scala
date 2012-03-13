@@ -38,6 +38,8 @@ object BuildTemplates {
     def filterAmodEdge: Boolean
     def filterSideRel: Boolean
     def filterPrepMismatch: Boolean
+    
+    val minimumSemanticsCount = 5
   }
   
   def main(args: Array[String]) {
@@ -242,7 +244,7 @@ object BuildTemplates {
 	          ((template, pattern), (baseRelLemmas(rel), count))
         }.toSeq.groupBy(_._1).map { case (key@(template, pattern), members) =>
           if (settings.semantics && (nnEdge(pattern) || amodEdge(pattern) || relationOnSide(pattern))) {
-	        val values = members.map(_._2).filter(_._2 > 0)
+	        val values = members.map(_._2).filter(_._2 > settings.minimumSemanticsCount)
 	        val lemmas: immutable.SortedSet[String] = immutable.SortedSet[String]() ++ values.map(_._1).flatten
 	        val count: Int = values.map(_._2).sum
 	        (key, (Some(lemmas), count))
