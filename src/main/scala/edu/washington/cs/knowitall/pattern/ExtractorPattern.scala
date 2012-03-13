@@ -3,7 +3,6 @@ package pattern
 
 import tool.parse.pattern.Matcher
 import tool.parse.pattern.Pattern
-import tool.parse.pattern.DependencyNodeMatcher
 import tool.parse.pattern.DependencyEdgeMatcher
 import tool.parse.pattern.LabelEdgeMatcher
 import tool.parse.pattern.CaptureNodeMatcher
@@ -23,8 +22,8 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     // lift extractor matchers to a more representitive class
     case m: CaptureNodeMatcher[_] => m.alias.take(3) match {
       case "arg" => new ArgumentMatcher(m.alias)
-      case "rel" => new RelationMatcher(m.alias, m.matcher)
-      case "slo" => new SlotMatcher(m.alias, m.matcher)
+      case "rel" => new RelationMatcher(m.alias, m.matchers)
+      case "slo" => new SlotMatcher(m.alias, m.matchers)
       case _ => throw new IllegalArgumentException("Unknown capture alias: " + m.alias)
     }
     // keep everything else the same
@@ -39,12 +38,12 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
   
   def valid: Boolean = {
     def existsEdge(pred: LabelEdgeMatcher=>Boolean) = 
-      this.depEdgeMatchers.collect {
+      this.baseEdgeMatchers.collect {
         case e: LabelEdgeMatcher => e
       }exists(pred)
       
     /* check for multiple prep edges */
-    def multiplePreps = this.depEdgeMatchers.collect {
+    def multiplePreps = this.baseEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e
     }.count(_.label.contains("prep")) > 1
     
@@ -163,8 +162,9 @@ object ExtractorPattern {
   }
 }
 
-class ExtractionPartMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
+class ExtractionPartMatcher(alias: String, matcher: Set[NodeMatcher[DependencyNode]])
 extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
+  def this(alias: String, matcher: NodeMatcher[DependencyNode]) = this(alias, Set(matcher))
   def this(alias: String) = this(alias, new TrivialNodeMatcher[DependencyNode])
 }
 
@@ -176,8 +176,9 @@ class ArgumentMatcher(alias: String) extends ExtractionPartMatcher(alias) {
   }
 }
 
-class RelationMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) 
-extends ExtractionPartMatcher(alias, matcher) {
+class RelationMatcher(alias: String, matchers: Set[NodeMatcher[DependencyNode]])
+extends ExtractionPartMatcher(alias, matchers) {
+  def this(alias: String, matcher: NodeMatcher[DependencyNode]) = this(alias, Set(matcher))
   override def canEqual(that: Any) = that.isInstanceOf[RelationMatcher]
   override def equals(that: Any) = that match {
     case that: RelationMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
@@ -185,8 +186,9 @@ extends ExtractionPartMatcher(alias, matcher) {
   }
 }
 
-class SlotMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) 
-extends ExtractionPartMatcher(alias, matcher) {
+class SlotMatcher(alias: String, matchers: Set[NodeMatcher[DependencyNode]])
+extends ExtractionPartMatcher(alias, matchers) {
+  def this(alias: String, matcher: NodeMatcher[DependencyNode]) = this(alias, Set(matcher))
   override def canEqual(that: Any) = that.isInstanceOf[SlotMatcher]
   override def equals(that: Any) = that match {
     case that: SlotMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])

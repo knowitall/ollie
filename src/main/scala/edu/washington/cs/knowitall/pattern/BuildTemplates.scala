@@ -84,14 +84,14 @@ object BuildTemplates {
     }  
         
     def nnEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
-    { case ((rel, pattern), count) => pattern.depEdgeMatchers.exists { 
+    { case ((rel, pattern), count) => pattern.baseEdgeMatchers.exists { 
         case m: LabelEdgeMatcher => m.label == "nn"
         case _ => false
       }
     }
     
     def amodEdge: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
-    { case ((rel, pattern), count) => pattern.depEdgeMatchers.exists { 
+    { case ((rel, pattern), count) => pattern.baseEdgeMatchers.exists { 
         case m: LabelEdgeMatcher => m.label == "amod"
         case _ => false
       }
@@ -100,7 +100,7 @@ object BuildTemplates {
     def prepsMatch: PartialFunction[((String, ExtractorPattern), Int), Boolean] = 
     { case ((rel, pattern), count) => 
         val relPrep = rel.split(" ").last
-        val edgePreps = pattern.depEdgeMatchers.collect {
+        val edgePreps = pattern.baseEdgeMatchers.collect {
           case m: LabelEdgeMatcher if m.label startsWith "prep_" => m.label.drop(5)
         }
         edgePreps.forall(_ == relPrep)
@@ -182,7 +182,7 @@ object BuildTemplates {
     def generalizePrepositions(histogram: Iterable[((String, ExtractorPattern), Int)]) = {
       val result = histogram.iterator.map {
         case item @ ((rel, pattern), count) =>
-          val containsPrep = pattern.depEdgeMatchers.exists {
+          val containsPrep = pattern.baseEdgeMatchers.exists {
             case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
             case _ => false
           }
