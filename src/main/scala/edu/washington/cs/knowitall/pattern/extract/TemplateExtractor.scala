@@ -58,7 +58,7 @@ case class Template(template: String, be: Boolean) {
       case "rel" => extr.relText
       case "arg1" => extr.arg1Text
       case "arg2" => extr.arg2Text
-      case _ => m.groups(name).text
+      case _ => m.groups(name).map(_.text).mkString(" ")
     }
 
     val prefix = if (be && ((extr.rel.nodes -- m.bipath.nodes) count (_.postag.startsWith("VB"))) == 0) {

@@ -42,8 +42,11 @@ object OpenParse {
     def clausalComponent(node: DependencyNode, until: Set[DependencyNode]) = {
       attributionPattern.apply(graph.graph, node) match {
         case List(m) => 
-          val rel = m.nodeGroups("rel").node
-          val arg = m.nodeGroups("arg").node
+          assume(m.nodeGroups("rel").size == 1)
+          assume(m.nodeGroups("arg").size == 1)
+          
+          val rel = m.nodeGroups("rel").head.node
+          val arg = m.nodeGroups("arg").head.node
           
           val Part(expandedRelNodes, expandedRelText) = expandRelation(graph, rel, until + arg)
           val expandedArg = expandArgument(graph, arg, until + rel)
@@ -62,17 +65,30 @@ object OpenParse {
     
     val groups = m.nodeGroups
 
-    val rel = groups.get("rel").map(_.node) getOrElse (throw new IllegalArgumentException("no rel: " + m))
-    val arg1 = groups.get("arg1").map(_.node) getOrElse (throw new IllegalArgumentException("no arg1: " + m))
-    val arg2 = groups.get("arg2").map(_.node) getOrElse (throw new IllegalArgumentException("no arg2: " + m))
+    val rels = groups.get("rel").map(_.map(_.node)) getOrElse (throw new IllegalArgumentException("no rel: " + m))
+    val arg1s = groups.get("arg1").map(_.map(_.node)) getOrElse (throw new IllegalArgumentException("no arg1: " + m))
+    val arg2s = groups.get("arg2").map(_.map(_.node)) getOrElse (throw new IllegalArgumentException("no arg2: " + m))
+    
+    val arg1 = arg1s match {
+      case arg1 :: Nil => arg1
+      case _ => throw new IllegalArgumentException("multiple arg1s")
+    }
+    val arg2 = arg2s match {
+      case arg2 :: Nil => arg2
+      case _ => throw new IllegalArgumentException("multiple arg2s")
+    }
 
-    val expandedArg1 = if (expand) expandArgument(graph, arg1, Set(rel)) else SortedSet(arg1)
-    val expandedArg2 = if (expand) expandArgument(graph, arg2, Set(rel)) else SortedSet(arg2)
-    val Part(expandedRelNodes, expandedRelText) = if (expand) expandRelation(graph, rel, expandedArg1 ++ expandedArg2) else (SortedSet(rel), rel.text)
+    val expandedArg1 = if (expand) expandArgument(graph, arg1, Set(rels: _*)) else SortedSet(arg1)
+    val expandedArg2 = if (expand) expandArgument(graph, arg2, Set(rels: _*)) else SortedSet(arg2)
+    val Part(expandedRelNodes, expandedRelText) = 
+      if (expand) {
+        val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2))
+        Part(expansions.map(_.nodes).reduce(_++_), expansions.map(_.text).mkString(" "))
+      } else (SortedSet(rels: _*), rels.map(_.text).mkString(" "))
     
     val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
-    val clausal = clausalComponent(rel, nodes)
-    val modifier = adverbialModifier(rel, nodes)
+    val clausal = rels.flatMap(rel => clausalComponent(rel, nodes)).headOption
+    val modifier = rels.flatMap(rel => adverbialModifier(rel, nodes)).headOption
     
     if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
       logger.info("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
@@ -82,7 +98,7 @@ object OpenParse {
   }
 
   def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
-    !restrictArguments || (VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag))
+    !restrictArguments || VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").head.node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").head.node.postag)
   }
 
   def neighborsUntil(graph: DependencyGraph, node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
