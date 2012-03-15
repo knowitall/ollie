@@ -128,15 +128,15 @@ object BuildTemplates {
       }
     }
       
-    def prepsMatch: PartialFunction[((String, ExtractorPattern)), Boolean] = 
+    def prepMismatch: PartialFunction[((String, ExtractorPattern)), Boolean] = 
     { case ((rel, pattern)) => 
         relPrep(rel) match {
           case Some(relationPrep) =>
             val edgePreps = pattern.baseEdgeMatchers.collect {
               case m: LabelEdgeMatcher if m.label startsWith "prep_" => m.label.drop(5).replaceAll("_", " ")
             }
-            edgePreps.forall(_ == relationPrep)
-          case None => true
+            edgePreps.exists(_ != relationPrep)
+          case None => false
         }
     }
     
@@ -214,9 +214,10 @@ object BuildTemplates {
     def generalizePrepositions(histogram: Iterable[((String, ExtractorPattern), Int)]) = {
       val result = histogram.iterator.map {
         case item @ ((rel, pattern), count) =>
-          val prepositionsMatch = prepsMatch(rel, pattern)
+          val mismatch = prepMismatch(rel, pattern)
+          val relPrepOption = relPrep(rel)
           
-          val containsPrep = prepositionsMatch && pattern.baseEdgeMatchers.exists {
+          val patternContainsPrep = pattern.baseEdgeMatchers.exists {
             case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
             case _ => false
           }
@@ -225,16 +226,16 @@ object BuildTemplates {
             case prepRegex(rel, prep) =>
               // if the pattern contains a preposition too, substitute
               // with the capture group name
-              if (containsPrep) rel + " {prep}"
+              if (patternContainsPrep && !mismatch) rel + " {prep}"
               // otherwise, keep the preposition
               else rel + " " + prep
             case _ => rel
           }
 
-          def target(m: Matcher[DependencyNode]): Boolean = m match {
+          def target(relPrep: String)(m: Matcher[DependencyNode]): Boolean = m match {
             case m: DirectedEdgeMatcher[_] =>
               m.matcher match {
-                case sub: LabelEdgeMatcher if sub.label.startsWith("prep_") => true
+                case sub: LabelEdgeMatcher if sub.label.startsWith("prep_") => sub.label.drop(5).replaceAll("_", " ") == relPrep
                 case _ => false
               }
             case _ => false
@@ -243,21 +244,22 @@ object BuildTemplates {
           import scalaz._
           import Scalaz._
           
-          val matchers = 
-            if (!prepositionsMatch) pattern.matchers
+          val newMatchers = 
+            if (!patternContainsPrep || !relPrepOption.isDefined || mismatch) None
             else 
               (for {
+                relPrep <- relPrepOption
                 zipper <- pattern.matchers.zipperEnd
-                found <- zipper findPrevious target
+                found <- zipper findPrevious target(relPrep)
               } yield {
                 found.modify { m =>
                   new CaptureEdgeMatcher[DependencyNode]("prep", 
                     new DirectedEdgeMatcher[DependencyNode](m.asInstanceOf[DirectedEdgeMatcher[_]].direction, 
                       new RegexEdgeMatcher("prep_(.*)".r)))
                 }.toStream.toList
-              }).getOrElse(pattern.matchers)
+              }).orElse(throw new IllegalStateException(rel + " -> " + relPrepOption.toString + " -> " + pattern))
           
-          ((template, new ExtractorPattern(new DependencyPattern(matchers))), count)
+          ((template, newMatchers.map(matchers => new ExtractorPattern(new DependencyPattern(matchers))).getOrElse(pattern)), count)
       }.mergeHistograms
       
       assume(result.values.sum == histogram.iterator.map(_._2).sum)
@@ -312,7 +314,7 @@ object BuildTemplates {
       settings.filterNnEdge && nnEdge(pattern) ||
       settings.filterAmodEdge && amodEdge(pattern) ||
       settings.filterSideRel && relationOnSide(pattern) ||
-      settings.filterPrepMismatch && !prepsMatch((rel, pattern))
+      settings.filterPrepMismatch && prepMismatch((rel, pattern))
     }
     settings.debug.map { dir =>
     output (new File(dir, "filtered-keep.txt"), filtered.toSeq.sortBy(-_._2))
