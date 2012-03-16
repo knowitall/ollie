@@ -84,7 +84,7 @@ object OpenParse {
       if (expand) {
         val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2))
         Part(expansions.map(_.nodes).reduce(_++_), expansions.map(_.text).mkString(" "))
-      } else (SortedSet(rels: _*), rels.map(_.text).mkString(" "))
+      } else Part(SortedSet(rels: _*), rels.map(_.text).mkString(" "))
     
     val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
     val clausal = rels.flatMap(rel => clausalComponent(rel, nodes)).headOption
