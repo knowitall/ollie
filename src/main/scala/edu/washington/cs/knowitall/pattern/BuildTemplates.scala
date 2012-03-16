@@ -182,7 +182,7 @@ object BuildTemplates {
     // extract lemmas from a relation string
     def baseRelLemmas(rel: String): Option[String] = {
       def clean(rel: String) = {
-        rel.split("\\s+").iterator.filterNot(_.isEmpty).filterNot(_=="be").filter(_.forall(_.isLetter)).toSeq.lastOption.map(Some(_)).getOrElse(None)
+        rel.split("\\s+").iterator.filterNot(_.isEmpty).filterNot(_=="be").filterNot(_=="{prep}").toSeq.lastOption.map(Some(_)).getOrElse(None)
       }
       rel match {
         case prepRegex(rel, prep) => clean(rel)
