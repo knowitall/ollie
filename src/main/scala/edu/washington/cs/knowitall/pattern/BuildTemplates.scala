@@ -118,7 +118,7 @@ object BuildTemplates {
   def outputDetailed(writer: PrintWriter, items: TraversableOnce[((Any, Any), Attrib)]): Unit = {
     items.foreach {
       case ((rel, pattern), attrib) =>
-        writer.println(rel + "\t" + pattern + "\t" + attrib.count + "\t" + attrib.slots.toMap.mkString("\t"))
+        writer.println(rel + "\t" + pattern + "\t" + attrib.count + "\t" + attrib.slots.asMap.mkString("\t"))
     }
   }
   
@@ -351,7 +351,7 @@ object BuildTemplates {
           
           if (!hasSlot) Some(((rel, pattern), attrib))
           else {
-            val semantics = attrib.slots.toMap.filter(_._2 >= 5)
+            val semantics = attrib.slots.asMap.filter(_._2 >= 5)
             
             if (semantics.isEmpty) None
             else {
