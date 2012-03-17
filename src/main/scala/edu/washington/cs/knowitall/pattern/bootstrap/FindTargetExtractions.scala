@@ -79,7 +79,7 @@ object FindTargetExtractions {
           val (arg1cleanPostags, arg1cleanStrings, arg1cleanLemmas) = cleanArg(arg1).unzip3
           val (arg2cleanPostags, arg2cleanStrings, arg2cleanLemmas) = cleanArg(arg2).unzip3
           val (relcleanPostags, relcleanStrings, relcleanLemmas) = {
-            val stripped = stripPostag("DT", rel)
+            val stripped = stripPostag("RB.*", stripPostag("DT", rel))
             val beIndex = rel.indexWhere(_._3 == "be")
             val penultimateAdjective = 
               if (rel.length - beIndex >= 3 && (rel.drop(beIndex).head._3 startsWith "be") && rel.last._1 == "IN") {
