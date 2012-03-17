@@ -62,17 +62,28 @@ case class Template(template: String, be: Boolean) {
     }
 
     val prefix = if (be && ((extr.rel.nodes -- m.bipath.nodes) count (_.postag.startsWith("VB"))) == 0) {
-      "be "
+      "be"
     }
     else ""
+      
+    val modals = extr.rel.nodes.filter(_.postag startsWith "MD")
 
     // horrible escape is required.  See JavaDoc for Match.replaceAll
     // or https://issues.scala-lang.org/browse/SI-5437
-    val rel = prefix + group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1))
+    var rel = group.replaceAllIn(template, (gm: Regex.Match) => matchGroup(gm.group(1))
       .replaceAll("_", " ")
       .replaceAll("""\\""", """\\\\""")
       .replaceAll("""\$""", """\\\$"""))
 
+    if (!prefix.isEmpty) {
+      if (modals.isEmpty) {
+        rel = prefix + " " + rel
+      } else {
+        val regex = new Regex("(^.*\\b(?:" + modals.iterator.map(_.text).mkString("|") + "))\\b")
+        rel = regex.replaceAllIn(rel, "$1 " + prefix)
+      }
+    }
+    
     extr.replaceRelation(rel)
   }
 
