@@ -357,7 +357,7 @@ object BuildTemplates {
             else {
 	          val matchers = pattern.matchers.map { 
 	            case m: SlotMatcher => 
-	              new SlotMatcher(m.alias, new ConjunctiveNodeMatcher(m.matcher, new RegexNodeMatcher(semantics.keys.mkString("|").r)))
+	              new SlotMatcher(m.alias, new ConjunctiveNodeMatcher(m.matcher, new RegexNodeMatcher(semantics.keys.toSeq.sorted.mkString("|").r)))
 	            case m => m
 	          }
 	          
