@@ -1,6 +1,7 @@
 package edu.washington.cs.knowitall.pattern
 
 import java.io.File
+import java.io.PrintWriter
 import scala.collection.immutable
 import scala.collection.immutable
 import scala.io.Source
@@ -107,7 +108,7 @@ object GeneralizeTemplates {
         }.toList
       }
 
-    templates.map {
+    templates = templates.map {
       case ((template, pattern), count) =>
         val matchers = pattern.matchers.map { matcher =>
           matcher match {
@@ -121,6 +122,15 @@ object GeneralizeTemplates {
         }
 
         ((template, new ExtractorPattern(matchers)), count)
-    } map { case ((template, pattern), count) => Iterable(template, pattern, count).mkString("\t") } foreach println
+    }
+    
+    using (
+      settings.destFile match {
+        case Some(file) => new PrintWriter(file)
+        case None => new PrintWriter(System.out)
+      }) 
+    { writer =>
+      templates map { case ((template, pattern), count) => Iterable(template, pattern, count).mkString("\t") } foreach writer.println
+    }
   }
 }
