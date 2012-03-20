@@ -163,17 +163,22 @@ object ExtractorPattern {
   }
 }
 
-class ExtractionPartMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
+sealed abstract class ExtractionPartMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
   def this(alias: String) = this(alias, new TrivialNodeMatcher[DependencyNode])
+  
+  def withMatcher(matcher: NodeMatcher[DependencyNode]): ExtractionPartMatcher
 }
 
-class ArgumentMatcher(alias: String) extends ExtractionPartMatcher(alias) {
+class ArgumentMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) extends ExtractionPartMatcher(alias, matcher) {
+  def this(alias: String) = this (alias, new TrivialNodeMatcher[DependencyNode])
   override def canEqual(that: Any) = that.isInstanceOf[ExtractionPartMatcher]
   override def equals(that: Any) = that match {
     case that: ExtractionPartMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
     case _ => false
   }
+  
+  override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new ArgumentMatcher(this.alias, matcher)
 }
 
 class RelationMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
@@ -183,6 +188,8 @@ extends ExtractionPartMatcher(alias, matcher) {
     case that: RelationMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
     case _ => false
   }
+  
+  override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new RelationMatcher(this.alias, matcher)
 }
 
 class SlotMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
@@ -192,4 +199,6 @@ extends ExtractionPartMatcher(alias, matcher) {
     case that: SlotMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
     case _ => false
   }
+  
+  override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new SlotMatcher(this.alias, matcher)
 }
