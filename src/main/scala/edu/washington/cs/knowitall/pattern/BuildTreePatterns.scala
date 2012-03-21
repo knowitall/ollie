@@ -53,7 +53,7 @@ object BuildTreePatterns {
    
     // file with dependencies
     val source = Source.fromFile(settings.sourcePath, "UTF-8")
-    val writer = settings.destPath.map(dest => new PrintWriter(new File(dest))).getOrElse(new PrintWriter(System.out))
+    val writer = settings.destPath.map(dest => new PrintWriter(new File(dest), "UTF8")).getOrElse(new PrintWriter(System.out))
     
     logger.info("chunk size: " + CHUNK_SIZE)
     logger.info("pattern length: " + settings.length)
@@ -116,7 +116,7 @@ object KeepCommonPatterns {
     var keepers = 0
 
     var patterns = collection.immutable.Map[String, Int]().withDefaultValue(0)
-    val firstSource = Source.fromFile(args(0))
+    val firstSource = Source.fromFile(args(0), "UTF8")
     for (line <- firstSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       rows += 1
@@ -127,7 +127,7 @@ object KeepCommonPatterns {
     System.err.println(rows+" rows")
     System.err.println(patterns.size+" unique patterns")
 
-    val secondSource = Source.fromFile(args(0))
+    val secondSource = Source.fromFile(args(0), "UTF8")
     for (line <- secondSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       if (patterns(pattern) >= min) {
@@ -176,7 +176,7 @@ object KeepDiversePatterns {
     var keepers = 0
 
     var patterns = collection.immutable.Map[String, Set[Int]]().withDefaultValue(Set())
-    val firstSource = Source.fromFile(settings.inputFile)
+    val firstSource = Source.fromFile(settings.inputFile, "UTF8")
     for (line <- firstSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
       rows += 1
@@ -187,7 +187,7 @@ object KeepDiversePatterns {
     System.err.println(rows+" rows")
     System.err.println(patterns.size+" unique patterns")
     
-    val secondSource = Source.fromFile(settings.inputFile)
+    val secondSource = Source.fromFile(settings.inputFile, "UTF8")
     val outputWriter = settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))
     val debugWriter = settings.debugFile.map(new PrintWriter(_))
     for (line <- secondSource.getLines) {

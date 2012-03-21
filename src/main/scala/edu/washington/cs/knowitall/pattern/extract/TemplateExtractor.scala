@@ -13,7 +13,6 @@ import Template.group
 import tool.parse.pattern.DependencyPattern
 import java.io.File
 import org.slf4j.LoggerFactory
-import scala.io.Source
 
 class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
 extends GeneralExtractor(pattern, patternCount, maxPatternCount) {

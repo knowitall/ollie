@@ -31,7 +31,7 @@ object AnalyzePatterns {
     }
 
     println("Grouping patterns...")
-    Resource.using(new PrintWriter(new File(outputFilePath))) { writer =>
+    Resource.using(new PrintWriter(new File(outputFilePath), "UTF8")) { writer =>
       val ordered = patterns.toList.sortBy(_._2)(implicitly(Ordering[Int]).reverse)
       for ((pattern, count) <- ordered.filter(_._2 > 100)) {
         println(count + ":" + pattern)

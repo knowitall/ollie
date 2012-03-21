@@ -16,7 +16,6 @@ import tool.parse.graph.Graph
 import tool.parse.pattern.Match
 import tool.parse.pattern.Pattern
 import java.io.File
-import scala.io.Source
 import tool.parse.pattern.DependencyPattern
 
 

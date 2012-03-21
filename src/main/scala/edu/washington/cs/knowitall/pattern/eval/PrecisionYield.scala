@@ -20,8 +20,6 @@ object PrecisionYield {
     }
     
     val parser = new OptionParser("precyield") {
-      var scoredFile: File = _
-
       arg("scored", "scored extractions file", { path: String => settings.scoredFile = new File(path) })
       argOpt("output", "output file", { path: String => settings.outputFile = Some(new File(path)) })
     }
@@ -37,7 +35,7 @@ object PrecisionYield {
 
     using {
       settings.outputFile match {
-        case Some(file) => new PrintWriter(file)
+        case Some(file) => new PrintWriter(file, "UTF8")
         case None => new PrintWriter(System.out)
       }
     } { writer =>
@@ -45,5 +43,39 @@ object PrecisionYield {
         writer.println(conf + "\t" + yld + "\t" + pr)
       }
     }
+  }
+}
+
+object MergePYFiles {
+  abstract class Settings {
+    def files: List[File]
+  }
+  
+  def main(args: Array[String]) {
+    val settings = new Settings {
+      var files: List[File] = Nil
+    }
+    
+    val parser = new OptionParser("mergebycol") {
+      arglist("<file>...", "input files", { file: String => settings.files = new File(file) :: settings.files })
+    }
+    
+    if (parser.parse(args)) {
+      run(settings)
+    }
+  }
+
+  def run(settings: Settings) {
+    val points = for ((file, i) <- settings.files.zipWithIndex) yield {
+      using(io.Source.fromFile(file, "UTF8")) { source =>
+        source.getLines.map { line =>
+          val Array(_, yld, prec) = line.split("\t", -1)
+          (yld.toInt, (i, prec.toDouble))
+        }.toList
+      }
+    }
+    
+    println("\t" + settings.files.map(_.getName).mkString("\t"))
+    points.flatten.sortBy(_._1).reverse foreach { case (k, (i, v)) => println(k+"\t"+"\t"*i+v) }
   }
 }

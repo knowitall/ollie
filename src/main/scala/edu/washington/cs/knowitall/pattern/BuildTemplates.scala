@@ -97,7 +97,7 @@ object BuildTemplates {
     items.toSeq.sortBy(item => (-item._2.count, item._1.toString))
     
   def output(file: File, items: TraversableOnce[((Any, Any), Attrib)]): Unit = {
-    using (new PrintWriter(file)) { pw =>
+    using (new PrintWriter(file, "UTF8")) { pw =>
       outputDetailed(pw, items)
     }
   }
@@ -110,7 +110,7 @@ object BuildTemplates {
   }
     
   def outputDetailed(file: File, items: TraversableOnce[((Any, Any), Attrib)]): Unit = {
-    using (new PrintWriter(file)) { pw =>
+    using (new PrintWriter(file, "UTF8")) { pw =>
       outputDetailed(pw, items)
     }
   }
@@ -123,7 +123,7 @@ object BuildTemplates {
   }
   
   def outputLookup[K, V](file: File, items: Iterable[(K, Iterable[V])]) = {
-    using (new PrintWriter(file)) { pw =>
+    using (new PrintWriter(file, "UTF8")) { pw =>
       items.foreach { case (key, values) =>
         pw.println(key+"\t"+values.mkString("\t"))
       }

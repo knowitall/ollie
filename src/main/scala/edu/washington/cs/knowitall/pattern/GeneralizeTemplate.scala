@@ -101,7 +101,7 @@ object GeneralizeTemplates {
     }
 
     var templates =
-      using(Source.fromFile(settings.sourceFile)) { source =>
+      using(Source.fromFile(settings.sourceFile, "UTF8")) { source =>
         source.getLines().map { line =>
           val Array(template, pattern, count) = line.split("\t")
           ((template, new ExtractorPattern(DependencyPattern.deserialize(pattern))), count.toInt)
@@ -126,7 +126,7 @@ object GeneralizeTemplates {
     
     using (
       settings.destFile match {
-        case Some(file) => new PrintWriter(file)
+        case Some(file) => new PrintWriter(file, "UTF8")
         case None => new PrintWriter(System.out)
       }) 
     { writer =>

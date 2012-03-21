@@ -30,12 +30,12 @@ object CreateLDAFiles {
     var source: Source = null
     
     println("creating word encodings...")
-    source = Source.fromFile(sourcePath)
+    source = Source.fromFile(sourcePath, "UTF8")
     val wordEncoding = createWordEncoding(source)
     source.close
     
     println("creating pattern encodings...")
-    source = Source.fromFile(sourcePath)
+    source = Source.fromFile(sourcePath, "UTF8")
     val patternEncoding = createPatternEncoding(source)
     source.close
     
@@ -45,16 +45,16 @@ object CreateLDAFiles {
     writeEncoding(patternEncoding, patternEncodingFile)
     
     println("writing rel patterns")
-    source = Source.fromFile(sourcePath)
+    source = Source.fromFile(sourcePath, "UTF8")
     writeRelPatternFile(wordEncoding, patternEncoding, source, relPatternFile, relationEncodingFile)
     source.close
     
     println("writing rel arg1s")
-    source = Source.fromFile(sourcePath)
+    source = Source.fromFile(sourcePath, "UTF8")
     writeRelWordFile(wordEncoding, patternEncoding, 1, source, relArg1File)
     source.close
     
-    source = Source.fromFile(sourcePath)
+    source = Source.fromFile(sourcePath, "UTF8")
     writeRelWordFile(wordEncoding, patternEncoding, 2, source, relArg2File)
     source.close
     

@@ -189,22 +189,22 @@ object Distributions {
     val Array(ldaInputPath, ldaOutputPath, relationDecodingPath, patternDecodingPath) = args
 
     logger.info("loading lda input: " + ldaInputPath)
-    val relPattern = using (Source.fromFile(new File(ldaInputPath))) { source =>
+    val relPattern = using (Source.fromFile(new File(ldaInputPath), "UTF8")) { source =>
       Decode.readRelFile(source)
     }
 
     logger.info("loading lda ouput: " + ldaOutputPath)
-    val relTopic = using (Source.fromFile(new File(ldaOutputPath))) { source =>
+    val relTopic = using (Source.fromFile(new File(ldaOutputPath), "UTF8")) { source =>
        Decode.readRelFile(source)
     }
 
     logger.info("loading relation decoding: " + relationDecodingPath)
-    val relationDecoding = using (Source.fromFile(new File(relationDecodingPath))) { source =>
+    val relationDecoding = using (Source.fromFile(new File(relationDecodingPath), "UTF8")) { source =>
       Decode.readDecoding(source)
     }
 
     logger.info("loading pattern decoding: " + patternDecodingPath)
-    val patternDecoding = using (Source.fromFile(new File(patternDecodingPath))) { source =>
+    val patternDecoding = using (Source.fromFile(new File(patternDecodingPath), "UTF8")) { source =>
       // index patterns from 0
       Decode.readDecoding(source).map{ case (a, b) => (a-1, b) } 
     }
@@ -250,7 +250,7 @@ object Distributions {
     println("evaluating test set ("+evaluateOutputPath+")...")
     val evaluateOutput = new PrintStream(
       new FileOutputStream(evaluateOutputPath))
-    Evaluate.evaluate(dist, Source.fromFile(prefix + "/raw/test.txt"), evaluateOutput)
+    Evaluate.evaluate(dist, Source.fromFile(prefix + "/raw/test.txt", "UTF8"), evaluateOutput)
     evaluateOutput.close
 
     val testDistributionsOutputPath = outputPath + "/testdist.txt"

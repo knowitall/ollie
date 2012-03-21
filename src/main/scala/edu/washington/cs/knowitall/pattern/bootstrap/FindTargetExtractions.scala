@@ -40,7 +40,7 @@ object FindTargetExtractions {
       // read in the argument files
       val extractions = Source.fromFile(parser.extractionFilePath, "UTF8")
       logger.info("loading targets")
-      val relationsRows = parser.relationFilePath.map(Source.fromFile(_).getLines.map(line => line.split("\t")).toList)
+      val relationsRows = parser.relationFilePath.map(Source.fromFile(_, "UTF8").getLines.map(line => line.split("\t")).toList)
       val targets = relationsRows.map(_ map (_(0)))
       val relationLemmaLookup = relationsRows.map(_.map(row => (row(0), row(1).split(" "))).toMap)
       def relationLemmas(relation: String): Seq[String] = {
@@ -55,7 +55,7 @@ object FindTargetExtractions {
         case None => logger.info("No target restriction")
       }
       logger.info("loading arguments")
-      val arguments = Source.fromFile(parser.argumentFilePath).getLines.map(line => line.split("\t")(0)).toSet
+      val arguments = Source.fromFile(parser.argumentFilePath, "UTF8").getLines.map(line => line.split("\t")(0)).toSet
       logger.info("5 arguments: " + arguments.take(5).mkString(", "))
 
       // iterate over extractions

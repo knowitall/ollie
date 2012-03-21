@@ -9,7 +9,7 @@ object ReduceTargetExtractions {
   val logger = LoggerFactory.getLogger(this.getClass)
 
   def main(args: Array[String]) {
-    val inputFile = Source.fromFile(args(0))
+    val inputFile = Source.fromFile(args(0), "UTF8")
 
     logger.info("reading lines and counting")
     var relationCounts = Map[String, Int]().withDefaultValue(0)

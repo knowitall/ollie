@@ -3,7 +3,6 @@ package edu.washington.cs.knowitall.pattern.eval
 import edu.washington.cs.knowitall.common.Resource._
 import scopt.OptionParser
 import java.io.File
-import scala.io.Source
 import common.stats.Analysis
 import java.io.PrintWriter
 
@@ -42,7 +41,7 @@ object RankPatterns {
 
     using {
       settings.outputFile match {
-        case Some(file) => new PrintWriter(file)
+        case Some(file) => new PrintWriter(file, "UTF8")
         case None => new PrintWriter(System.out)
       }
     } { writer =>

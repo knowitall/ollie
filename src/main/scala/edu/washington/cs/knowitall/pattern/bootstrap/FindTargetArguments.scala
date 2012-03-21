@@ -26,7 +26,7 @@ object FindTargetArguments {
     * exceed the lower bound.  The lower bound is specified by the first
     * command-line argument. */
   def main(args: Array[String]) {
-    val source = Source.fromFile(args(0))
+    val source = Source.fromFile(args(0), "UTF8")
     val lowerBound = args(1).toInt
     
     val map = new mutable.HashMap[String, Int]().withDefaultValue(0)

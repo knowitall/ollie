@@ -25,15 +25,15 @@ object CreateTestSet {
     val trainFilePath = args(2)
 
     println("opening output files")
-    val testWriter = new PrintWriter(new File(testFilePath))
-    val trainWriter = new PrintWriter(new File(trainFilePath))
+    val testWriter = new PrintWriter(new File(testFilePath), "UTF8")
+    val trainWriter = new PrintWriter(new File(trainFilePath), "UTF8")
     println("building a test set of 100 random seed extractions.")
     var testRows = 0
     var trainRows = 0
     try {
       var extractions = Set[Extraction]()
 
-      for (line <- Source.fromFile(sourceFilePath).getLines) {
+      for (line <- Source.fromFile(sourceFilePath, "UTF8").getLines) {
         val Array(rel, arg1, arg2, _*) = line.split("\t")
         extractions += Extraction(rel, arg1, arg2)
       }
@@ -41,7 +41,7 @@ object CreateTestSet {
       val rand = new scala.util.Random
       val testExtractions = Random.select(extractions, testSize, rand).toList
 
-      for (line <- Source.fromFile(sourceFilePath).getLines) {
+      for (line <- Source.fromFile(sourceFilePath, "UTF8").getLines) {
         val Array(rel, arg1, arg2, lemmas, pattern, _*) = line.split("\t")
         val extr = Extraction(rel, arg1, arg2)
 

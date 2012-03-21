@@ -14,11 +14,11 @@ import scala.io.Source
 object FlatPatternLearner {
   def main(args: Array[String]) {
     var source =
-      if (args.length > 0) Source.fromFile(args(0)).getLines
+      if (args.length > 0) Source.fromFile(args(0), "UTF8").getLines
       else Source.stdin.getLines
 
     val dest =
-      if (args.length > 1) new PrintWriter(new File(args(1)))
+      if (args.length > 1) new PrintWriter(new File(args(1)), "UTF8")
       else new PrintWriter(System.out)
 
     val chunker = new OpenNlpSentenceChunker()

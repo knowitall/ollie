@@ -23,7 +23,7 @@ abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
 
 abstract class PatternExtractorType {
   def fromFile(file: File): Seq[PatternExtractor] = {
-    using (Source.fromFile(file)) { source => 
+    using (Source.fromFile(file, "UTF8")) { source => 
       fromLines(source.getLines)
     }
     

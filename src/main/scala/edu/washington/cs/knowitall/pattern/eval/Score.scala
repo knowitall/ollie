@@ -15,12 +15,14 @@ object Score {
       var goldFile: Option[File] = None
       var goldOutputFile: Option[File] = None
       var confidenceThreshold = 0.0
+      var skipAll = false
 
       arg("extrs", "extractions", { path: String => extractionFile = new File(path) })
       arg("output", "scored output", { path: String => outputFile = new File(path) })
       opt("g", "gold", "gold set", { path: String => goldFile = Some(new File(path)) })
       opt("u", "goldoutput", "output for updated gold set", { path: String => goldOutputFile = Some(new File(path)) })
       doubleOpt("t", "threshold", "confidence threshold for considered extractions", { x: Double => confidenceThreshold = x })
+      opt("skip-all", "don't prompt for items not in the gold set", { skipAll = true })
     }
 
     if (parser.parse(args)) {
@@ -29,12 +31,12 @@ object Score {
         case Some(goldFile) => loadGoldSet(goldFile)
       }
 
-      val (scoreds, golden) = using(Source.fromFile(parser.extractionFile)) { source =>
-        score(source.getLines, gold, parser.confidenceThreshold)
+      val (scoreds, golden) = using(Source.fromFile(parser.extractionFile, "UTF8")) { source =>
+        score(source.getLines, gold, parser.confidenceThreshold, !parser.skipAll)
       }
       
       // print the scored extractions
-      using (new PrintWriter(parser.outputFile)) { writer =>
+      using (new PrintWriter(parser.outputFile, "UTF8")) { writer =>
         for (scored <- scoreds) {
           writer.println(scored.toRow)
         }
@@ -43,7 +45,7 @@ object Score {
       // output updated gold set
       parser.goldOutputFile match {
         case Some(file) => 
-          using(new PrintWriter(file)) { writer =>
+          using(new PrintWriter(file, "UTF8")) { writer =>
             golden.foreach { case (k, v) => writer.println((if (v) 1 else 0) + "\t" + k) }
           }
         case None =>
@@ -52,7 +54,7 @@ object Score {
   }
   
   def loadScoredFile(file: File) = {
-    using(Source.fromFile(file)) { source =>
+    using(Source.fromFile(file, "UTF8")) { source =>
       source.getLines.map { line =>
         Scored.fromRow(line)
       }.toList
@@ -60,7 +62,7 @@ object Score {
   }
 
   def loadGoldSet(file: File) = {
-    using(Source.fromFile(file)) { source =>
+    using(Source.fromFile(file, "UTF8")) { source =>
       source.getLines.map { line =>
         val parts = line.split("\t")
         parts(1) -> (if (parts(0) == "1") true else false)
@@ -68,15 +70,15 @@ object Score {
     }
   }
 
-  def score(lines: Iterator[String], gold: Map[String, Boolean], confidenceThreshold: Double) = {
+  def score(lines: Iterator[String], gold: Map[String, Boolean], confidenceThreshold: Double, prompt: Boolean) = {
     def promptScore(index: Int, extr: String, confidence: String, rest: Seq[Any]): Option[Boolean] = {
       println()
-      System.out.println("Please score " + index + ": " + confidence + ":" + extr + ". (1/0) ")
+      System.out.println("Please score " + index + ": " + confidence + ":" + extr + ". (1/y/0/n/skip) ")
       if (rest.length > 0) println(rest.mkString("\t"))
       readLine match {
-        case "0" => Some(false)
-        case "1" => Some(true)
-        case "skip" => None
+        case "0" | "y" => Some(false)
+        case "1" | "n" => Some(true)
+        case "s" | "skip" => None
         case _ => promptScore(index, extr, confidence, rest)
       }
     }
@@ -92,7 +94,8 @@ object Score {
       
       val scoreOption = gold.get(extr) match {
         case Some(score) => Some(score)
-        case None => promptScore(index, extr, confidence, rest)
+        case None if prompt => promptScore(index, extr, confidence, rest)
+        case None => None
       }
       
       if scoreOption.isDefined
