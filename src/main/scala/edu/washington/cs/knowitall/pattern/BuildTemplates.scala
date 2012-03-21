@@ -130,8 +130,8 @@ object BuildTemplates {
     }
   }
   
-  case class Attrib(count: Int, slots: Bag[String] = Bag.empty, rels: SortedSet[String] = SortedSet.empty) {
-    def plus(that: Attrib) = Attrib(this.count + that.count, this.slots merge that.slots, this.rels ++ that.rels)
+  case class Attrib(count: Int, slots: Bag[String] = Bag.empty, rels: SortedSet[String] = SortedSet.empty, mismatch: Boolean = false) {
+    def plus(that: Attrib) = Attrib(this.count + that.count, this.slots merge that.slots, this.rels ++ that.rels, this.mismatch | that.mismatch)
   }
   implicit def AttribSemigroup[T]: Semigroup[Attrib] = semigroup(_ plus _)
   implicit def AttribZero[T]: Zero[Attrib] = zero(Attrib(0, Bag.empty[String], SortedSet.empty[String]))
@@ -256,13 +256,14 @@ object BuildTemplates {
     def generalizePrepositions(histogram: Iterable[((String, ExtractorPattern), Attrib)]) = {
       val result = histogram.iterator.map {
         case item @ ((rel, pattern), attrib) =>
-          val mismatch = prepMismatch(rel, pattern)
           val relPrepOption = relPrep(rel)
           
           val patternContainsPrep = pattern.baseEdgeMatchers.exists {
             case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
             case _ => false
           }
+
+          val mismatch = prepMismatch(rel, pattern) || patternContainsPrep && !relPrepOption.isDefined
 
           val template = rel match {
             case prepRegex(rel, prep) =>
@@ -301,7 +302,7 @@ object BuildTemplates {
                 }.toStream.toList
               }).orElse(throw new IllegalStateException(rel + " -> " + relPrepOption.toString + " -> " + pattern))
           
-          ((template, newMatchers.map(matchers => new ExtractorPattern(new DependencyPattern(matchers))).getOrElse(pattern)), attrib)
+          ((template, newMatchers.map(matchers => new ExtractorPattern(new DependencyPattern(matchers))).getOrElse(pattern)), attrib.copy(mismatch=mismatch))
       }.mergeKeys
       
       assume(result.values.iterator.map(_.count).sum == histogram.iterator.map(_._2.count).sum)
@@ -315,13 +316,15 @@ object BuildTemplates {
           val template = buildTemplate(rel)
           ((template, pattern), if (settings.relationSemantics) attrib.copy(rels = immutable.SortedSet[String]() ++ baseRelLemmas(rel)) else attrib)
       }.toSeq.groupBy(_._1).flatMap {
-        case (key @ (template, pattern), attrib) =>
-          if (settings.relationSemantics && (nnEdge(pattern) || amodEdge(pattern) || relationOnSide(pattern) || prepMismatch((template, pattern)))) {
-            val values = attrib.map(_._2).filter(_.count > settings.minimumSemanticsCount)
+        case (key @ (template, pattern), seqs) =>
+          val attribs = seqs.map(_._2)
+          val attrib = attribs.reduce(_ plus _)
+          if (settings.relationSemantics && (nnEdge(pattern) || amodEdge(pattern) || relationOnSide(pattern) || attrib.mismatch)) {
+            val values = attribs.filter(_.count > settings.minimumSemanticsCount)
             if (values.isEmpty || values.iterator.flatMap(_.rels).isEmpty) None
             else Some((key, (true, values.reduce(_ plus _))))
           } else {
-            Some(key, (false, attrib.iterator.map(_._2).reduce(_ plus _)))
+            Some(key, (false, attrib))
           }
       }
 
