@@ -28,6 +28,7 @@ import Scalaz._
 import edu.washington.cs.knowitall.common.enrich.Traversables._
 import scala.collection.immutable.SortedSet
 import scala.collection.immutable
+import edu.washington.cs.knowitall.tool.parse.pattern.PostagNodeMatcher
 
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
@@ -330,9 +331,11 @@ object BuildTemplates {
 
       val result = groups.map {
         case ((template, pattern), (true, attrib)) =>
+          val nnedge = nnEdge(pattern)
           val regex = attrib.rels.toSeq.mkString("|").r
           val matchers = pattern.matchers.map {
             case m: RelationMatcher => new RelationMatcher("rel", new ConjunctiveNodeMatcher(Set(m.matcher, new RegexNodeMatcher(regex))))
+            case m: ArgumentMatcher if nnedge => new ArgumentMatcher(m.alias, new PostagNodeMatcher("NNP"))
             case m => m
           }
           ((template, new ExtractorPattern(matchers)), attrib)
