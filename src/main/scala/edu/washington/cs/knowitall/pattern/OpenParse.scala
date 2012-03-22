@@ -33,6 +33,8 @@ object OpenParse {
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
   
+  val CHUNK_SIZE = 10000
+  
   implicit def implicitBuildExtraction = buildExtraction(true) _
   implicit def implicitValidMatch = validMatch(true) _
   
@@ -340,6 +342,8 @@ object OpenParse {
       var showAll: Boolean = false
       var verbose: Boolean = false
       var collapseVB: Boolean = false
+      
+      var parallel: Boolean = false
 
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFile = Option(new File(v)) })
       opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
@@ -353,6 +357,7 @@ object OpenParse {
 
       opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { showAll = true })
       opt("v", "verbose", "", { verbose = true })
+      opt("p", "parallel", "", { parallel = true })
 
       arg("type", "type of extractor", { v: String => extractorType = PatternExtractorType(v) })
       arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
@@ -403,48 +408,53 @@ object OpenParse {
       logger.info("performing extractions")
       using(parser.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
         using(Source.fromFile(parser.sentenceFilePath, "UTF-8")) { sentenceSource =>
-          for (line <- sentenceSource.getLines) {
-            val parts = line.split("\t")
-            require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
-
-            try {
-              val pickled = parts.last
-              val dgraph = DependencyGraph.deserialize(pickled)
-              val text = if (parts.length > 1) parts(0) else dgraph.text
-              logger.debug("text: " + text)
-              logger.debug("graph: " + dgraph.serialize)
-
-              if (parser.verbose) {
-                writer.println("text: " + text)
-                writer.println("deps: " + dgraph.serialize)
-              }
-
-              val reverbExtractions = reverbExtract(text)
-              if (parser.showReverb) {
-                if (parser.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-                logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-              }
-
-              val extractions = extractor.extract(dgraph)
-              val results = for ((conf, extr) <- extractions) yield {
-                val reverbMatches = reverbExtractions.find(_.softMatch(extr))
-                logger.debug("reverb match: " + reverbMatches.toString)
-                val extra = reverbMatches.map("\treverb:" + _.toString)
-
-                val resultText =
-                  if (parser.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
-                  else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled + extra.getOrElse("")
-                Result(conf, extr, resultText)
-              }
+          for (group <- sentenceSource.getLines.grouped(CHUNK_SIZE)) {
+            val lines = if (parser.parallel) group.par else group
               
-              for (result <- results) {
-                writer.println(result)
-              }
+            for (line <- lines) {
+              val parts = line.split("\t")
+              require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
 
-              if (parser.verbose) writer.println()
-            }
-            catch {
-              case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
+              try {
+                val pickled = parts.last
+                val dgraph = DependencyGraph.deserialize(pickled)
+                val text = if (parts.length > 1) parts(0) else dgraph.text
+                logger.debug("text: " + text)
+                logger.debug("graph: " + dgraph.serialize)
+
+                if (parser.verbose) {
+                  writer.println("text: " + text)
+                  writer.println("deps: " + dgraph.serialize)
+                }
+
+                val reverbExtractions = reverbExtract(text)
+                if (parser.showReverb) {
+                  if (parser.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+                  logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+                }
+
+                val extractions = extractor.extract(dgraph)
+                val results = for ((conf, extr) <- extractions) yield {
+                  val reverbMatches = reverbExtractions.find(_.softMatch(extr))
+                  logger.debug("reverb match: " + reverbMatches.toString)
+                  val extra = reverbMatches.map("\treverb:" + _.toString)
+
+                  val resultText =
+                    if (parser.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
+                    else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled + extra.getOrElse("")
+                  Result(conf, extr, resultText)
+                }
+
+                writer.synchronized {
+                  for (result <- results) {
+                    writer.println(result)
+                  }
+                }
+
+                if (parser.verbose) writer.println()
+              } catch {
+                case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
+              }
             }
           }
         }
