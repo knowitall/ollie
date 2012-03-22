@@ -325,8 +325,34 @@ object OpenParse {
     }
   }
 
+  abstract class Settings {
+    def patternFile: Option[File]
+    def ldaDirectoryPath: Option[String]
+    def outputFile: Option[File]
+
+    def sentenceFilePath: String
+    def extractorType: PatternExtractorType
+
+    def confidenceThreshold: Double
+
+    def showReverb: Boolean
+    def duplicates: Boolean
+    def expandArguments: Boolean
+    def showAll: Boolean
+    def verbose: Boolean
+    def collapseVB: Boolean
+
+    def parallel: Boolean
+
+    def configuration = new Configuration(
+      confidenceThreshold = this.confidenceThreshold,
+      expandExtraction = this.expandArguments,
+      simplifyVBPostags = this.collapseVB,
+      keepDuplicates = this.duplicates)
+  }
+
   def main(args: Array[String]) {
-    val parser = new OptionParser("applypat") {
+    object settings extends Settings {
       var patternFile: Option[File] = None
       var ldaDirectoryPath: Option[String] = None
       var outputFile: Option[File] = None
@@ -344,50 +370,59 @@ object OpenParse {
       var collapseVB: Boolean = false
       
       var parallel: Boolean = false
+    }
+    
+    val parser = new OptionParser("applypat") {
+      opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => settings.patternFile = Option(new File(v)) })
+      opt(None, "lda", "<directory>", "lda directory", { v: String => settings.ldaDirectoryPath = Option(v) })
+      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
+      opt("o", "output", "output file (otherwise stdout)", { path => settings.outputFile = Some(new File(path)) })
 
-      opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => patternFile = Option(new File(v)) })
-      opt(None, "lda", "<directory>", "lda directory", { v: String => ldaDirectoryPath = Option(v) })
-      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => confidenceThreshold = t })
-      opt("o", "output", "output file (otherwise stdout)", { path => outputFile = Some(new File(path)) })
+      opt("d", "duplicates", "keep duplicate extractions", { settings.duplicates = true })
+      opt("x", "expand-arguments", "expand extraction arguments", { settings.expandArguments = true })
+      opt("r", "reverb", "show which extractions are reverb extractions", { settings.showReverb = true })
+      opt("collapse-vb", "collapse 'VB.*' to 'VB' in the graph", { settings.collapseVB = true })
 
-      opt("d", "duplicates", "keep duplicate extractions", { duplicates = true })
-      opt("x", "expand-arguments", "expand extraction arguments", { expandArguments = true })
-      opt("r", "reverb", "show which extractions are reverb extractions", { showReverb = true })
-      opt("collapse-vb", "collapse 'VB.*' to 'VB' in the graph", { collapseVB = true })
+      opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { settings.showAll = true })
+      opt("v", "verbose", "", { settings.verbose = true })
+      opt("p", "parallel", "", { settings.parallel = true })
 
-      opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { showAll = true })
-      opt("v", "verbose", "", { verbose = true })
-      opt("p", "parallel", "", { parallel = true })
-
-      arg("type", "type of extractor", { v: String => extractorType = PatternExtractorType(v) })
-      arg("sentences", "sentence file", { v: String => sentenceFilePath = v })
-
-      def configuration = new Configuration(
-        confidenceThreshold = this.confidenceThreshold,
-        expandExtraction = this.expandArguments,
-        simplifyVBPostags = this.collapseVB,
-        keepDuplicates = this.duplicates)
+      arg("type", "type of extractor", { v: String => settings.extractorType = PatternExtractorType(v) })
+      arg("sentences", "sentence file", { v: String => settings.sentenceFilePath = v })
     }
 
     if (parser.parse(args)) {
       logger.info("args: " + args.mkString(" "))
+      run(settings)
+    }
+  }
+
+  class Configuration(
+    val simplifyVBPostags: Boolean = false,
+    val simplifyPostags: Boolean = true,
+    val confidenceThreshold: Double = 0.0,
+    val expandExtraction: Boolean = true,
+    val restrictArguments: Boolean = true,
+    val keepDuplicates: Boolean = false)
+
+def run(settings: Settings) {
 
       // optionally load the distributions
-      val distributions = parser.ldaDirectoryPath.map {
+      val distributions = settings.ldaDirectoryPath.map {
         logger.info("loading distributions")
         Distributions.fromDirectory(_)
       }
 
       // load the individual extractors
-      val extractors = loadExtractors(parser.extractorType, distributions, parser.patternFile)
+      val extractors = loadExtractors(settings.extractorType, distributions, settings.patternFile)
 
       // create a standalone extractor
-      val configuration = parser.configuration
+      val configuration = settings.configuration
       val extractor = new OpenParse(extractors, configuration)
 
       // create items necessary for reverb
-      val chunker = if (parser.showReverb) Some(new OpenNlpSentenceChunker) else None
-      val reverb = if (parser.showReverb) Some(new ReVerbExtractor) else None
+      val chunker = if (settings.showReverb) Some(new OpenNlpSentenceChunker) else None
+      val reverb = if (settings.showReverb) Some(new ReVerbExtractor) else None
 
       // apply reverb to the sentence and return the extractions
       def reverbExtract(sentence: String) = {
@@ -406,10 +441,10 @@ object OpenParse {
       }
 
       logger.info("performing extractions")
-      using(parser.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
-        using(Source.fromFile(parser.sentenceFilePath, "UTF-8")) { sentenceSource =>
+      using(settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
+        using(Source.fromFile(settings.sentenceFilePath, "UTF-8")) { sentenceSource =>
           for (group <- sentenceSource.getLines.grouped(CHUNK_SIZE)) {
-            val lines = if (parser.parallel) group.par else group
+            val lines = if (settings.parallel) group.par else group
               
             for (line <- lines) {
               val parts = line.split("\t")
@@ -422,14 +457,14 @@ object OpenParse {
                 logger.debug("text: " + text)
                 logger.debug("graph: " + dgraph.serialize)
 
-                if (parser.verbose) {
+                if (settings.verbose) {
                   writer.println("text: " + text)
                   writer.println("deps: " + dgraph.serialize)
                 }
 
                 val reverbExtractions = reverbExtract(text)
-                if (parser.showReverb) {
-                  if (parser.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+                if (settings.showReverb) {
+                  if (settings.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
                   logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
                 }
 
@@ -440,7 +475,7 @@ object OpenParse {
                   val extra = reverbMatches.map("\treverb:" + _.toString)
 
                   val resultText =
-                    if (parser.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
+                    if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
                     else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled + extra.getOrElse("")
                   Result(conf, extr, resultText)
                 }
@@ -451,7 +486,7 @@ object OpenParse {
                   }
                 }
 
-                if (parser.verbose) writer.println()
+                if (settings.verbose) writer.println()
               } catch {
                 case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
               }
@@ -459,16 +494,7 @@ object OpenParse {
           }
         }
       }
-    }
-  }
-
-  class Configuration(
-    val simplifyVBPostags: Boolean = false,
-    val simplifyPostags: Boolean = true,
-    val confidenceThreshold: Double = 0.0,
-    val expandExtraction: Boolean = true,
-    val restrictArguments: Boolean = true,
-    val keepDuplicates: Boolean = false)
+}
 }
 
 class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Configuration) {
