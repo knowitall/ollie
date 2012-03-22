@@ -21,7 +21,7 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     case m: ExtractionPartMatcher => m
     // lift extractor matchers to a more representitive class
     case m: CaptureNodeMatcher[_] => m.alias.take(3) match {
-      case "arg" => new ArgumentMatcher(m.alias)
+      case "arg" => new ArgumentMatcher(m.alias, m.matcher)
       case "rel" => new RelationMatcher(m.alias, m.matcher)
       case "slo" => new SlotMatcher(m.alias, m.matcher)
       case _ => throw new IllegalArgumentException("Unknown capture alias: " + m.alias)
@@ -171,7 +171,7 @@ extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
 }
 
 class ArgumentMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) extends ExtractionPartMatcher(alias, matcher) {
-  def this(alias: String) = this (alias, new TrivialNodeMatcher[DependencyNode])
+  def this(alias: String) = this(alias, new TrivialNodeMatcher[DependencyNode])
   override def canEqual(that: Any) = that.isInstanceOf[ExtractionPartMatcher]
   override def equals(that: Any) = that match {
     case that: ExtractionPartMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
