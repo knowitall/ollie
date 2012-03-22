@@ -8,48 +8,62 @@ import java.io.File
 import java.io.PrintWriter
 
 object Score {
+  abstract class Settings {
+    def extractionFile: File
+    def outputFile: File
+    def goldFile: Option[File]
+    def goldOutputFile: Option[File]
+    def confidenceThreshold: Double
+    def skipAll: Boolean
+  }
+  
   def main(args: Array[String]) = {
-    val parser = new OptionParser("scoreextr") {
+    object settings extends Settings {
       var extractionFile: File = _
       var outputFile: File = _
       var goldFile: Option[File] = None
       var goldOutputFile: Option[File] = None
       var confidenceThreshold = 0.0
       var skipAll = false
-
-      arg("extrs", "extractions", { path: String => extractionFile = new File(path) })
-      arg("output", "scored output", { path: String => outputFile = new File(path) })
-      opt("g", "gold", "gold set", { path: String => goldFile = Some(new File(path)) })
-      opt("u", "goldoutput", "output for updated gold set", { path: String => goldOutputFile = Some(new File(path)) })
-      doubleOpt("t", "threshold", "confidence threshold for considered extractions", { x: Double => confidenceThreshold = x })
-      opt("skip-all", "don't prompt for items not in the gold set", { skipAll = true })
+    }
+    
+    val parser = new OptionParser("scoreextr") {
+      arg("extrs", "extractions", { path: String => settings.extractionFile = new File(path) })
+      arg("output", "scored output", { path: String => settings.outputFile = new File(path) })
+      opt("g", "gold", "gold set", { path: String => settings.goldFile = Some(new File(path)) })
+      opt("u", "goldoutput", "output for updated gold set", { path: String => settings.goldOutputFile = Some(new File(path)) })
+      doubleOpt("t", "threshold", "confidence threshold for considered extractions", { x: Double => settings.confidenceThreshold = x })
+      opt("skip-all", "don't prompt for items not in the gold set", { settings.skipAll = true })
     }
 
     if (parser.parse(args)) {
-      val gold = parser.goldFile match {
-        case None => Map[String, Boolean]()
-        case Some(goldFile) => loadGoldSet(goldFile)
-      }
+    }
+  }
 
-      val (scoreds, golden) = using(Source.fromFile(parser.extractionFile, "UTF8")) { source =>
-        score(source.getLines, gold, parser.confidenceThreshold, !parser.skipAll)
+  def run(settings: Settings) {
+    val gold = settings.goldFile match {
+      case None => Map[String, Boolean]()
+      case Some(goldFile) => loadGoldSet(goldFile)
+    }
+
+    val (scoreds, golden) = using(Source.fromFile(settings.extractionFile, "UTF8")) { source =>
+      score(source.getLines, gold, settings.confidenceThreshold, !settings.skipAll)
+    }
+
+    // print the scored extractions
+    using(new PrintWriter(settings.outputFile, "UTF8")) { writer =>
+      for (scored <- scoreds) {
+        writer.println(scored.toRow)
       }
-      
-      // print the scored extractions
-      using (new PrintWriter(parser.outputFile, "UTF8")) { writer =>
-        for (scored <- scoreds) {
-          writer.println(scored.toRow)
+    }
+
+    // output updated gold set
+    settings.goldOutputFile match {
+      case Some(file) =>
+        using(new PrintWriter(file, "UTF8")) { writer =>
+          golden.foreach { case (k, v) => writer.println((if (v) 1 else 0) + "\t" + k) }
         }
-      }
-
-      // output updated gold set
-      parser.goldOutputFile match {
-        case Some(file) => 
-          using(new PrintWriter(file, "UTF8")) { writer =>
-            golden.foreach { case (k, v) => writer.println((if (v) 1 else 0) + "\t" + k) }
-          }
-        case None =>
-      }
+      case None =>
     }
   }
   
