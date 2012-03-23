@@ -83,13 +83,18 @@ object GeneralizeTemplates {
     val categories = loadCategories(settings.categories)
 
     def generalize(matcher: NodeMatcher[DependencyNode], postag: String, lemmas: Set[String]) = {
-      def distance(cat: Category) = (cat.elements intersect lemmas).size.toDouble / lemmas.size.toDouble
+      def distance(cat: Category) = {
+        val intersectSize = (cat.elements intersect lemmas).size
+        intersectSize.toDouble / lemmas.size.toDouble
+        if (intersectSize < 5) 0.0
+        else intersectSize.toDouble / lemmas.size.toDouble
+      }
       if (lemmas.size < 10) matcher
       else {
         postag match {
           case "NN" | "NNS" =>
             val overlaps = categories map (cat => (cat, distance(cat))) sortBy (-_._2)
-            if (overlaps.iterator.map(_._2).sum > 0.50) {
+            if (overlaps.iterator.map(_._2).sum > 0.75) {
               val categories = overlaps.filter(_._2 > 0.10).map(_._1)
               val uncategorized = lemmas -- categories.flatMap(_.elements)
               val elements = immutable.SortedSet[String]() ++ categories.flatMap(_.elements) ++ uncategorized
@@ -112,7 +117,7 @@ object GeneralizeTemplates {
       case ((template, pattern), count) =>
         val matchers = pattern.matchers.map { matcher =>
           matcher match {
-            case m: ExtractionPartMatcher =>
+            case m: ExtractionPartMatcher if m.isInstanceOf[SlotMatcher] || m.isInstanceOf[RelationMatcher] =>
               lexicalRestrictions(m) match {
                 case Some((postag, lemmas)) => m.withMatcher(generalize(m.matcher, postag, lemmas.toSet))
                 case None => m
