@@ -11,6 +11,7 @@ import scala.io.Source
 import org.slf4j.LoggerFactory
 
 import edu.washington.cs.knowitall.collection.immutable.Interval
+import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.extractor.ReVerbExtractor
 import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
@@ -93,7 +94,7 @@ object OpenParse {
     val modifier = rels.flatMap(rel => adverbialModifier(rel, nodes)).headOption
     
     if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
-      logger.info("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
+      logger.debug("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
       None
     }
     else Some(new DetailedExtraction(ex, m, new Part(expandedArg1), Part(expandedRelNodes, expandedRelText), new Part(expandedArg2), clausal=clausal, modifier=modifier))
@@ -343,6 +344,7 @@ object OpenParse {
     def collapseVB: Boolean
 
     def parallel: Boolean
+    def invincible: Boolean
 
     def configuration = new Configuration(
       confidenceThreshold = this.confidenceThreshold,
@@ -370,6 +372,7 @@ object OpenParse {
       var collapseVB: Boolean = false
       
       var parallel: Boolean = false
+      var invincible: Boolean = false
     }
     
     val parser = new OptionParser("applypat") {
@@ -386,6 +389,7 @@ object OpenParse {
       opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { settings.showAll = true })
       opt("v", "verbose", "", { settings.verbose = true })
       opt("p", "parallel", "", { settings.parallel = true })
+      opt("invincible", "", { settings.invincible = true })
 
       arg("type", "type of extractor", { v: String => settings.extractorType = PatternExtractorType(v) })
       arg("sentences", "sentence file", { v: String => settings.sentenceFilePath = v })
@@ -405,8 +409,7 @@ object OpenParse {
     val restrictArguments: Boolean = true,
     val keepDuplicates: Boolean = false)
 
-def run(settings: Settings) {
-
+    def run(settings: Settings) {
       // optionally load the distributions
       val distributions = settings.ldaDirectoryPath.map {
         logger.info("loading distributions")
@@ -441,60 +444,75 @@ def run(settings: Settings) {
       }
 
       logger.info("performing extractions")
+      var chunkCount = 0
+      val extractionCount = new java.util.concurrent.atomic.AtomicInteger
+      val startTime = System.nanoTime();
       using(settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
         using(Source.fromFile(settings.sentenceFilePath, "UTF-8")) { sentenceSource =>
           for (group <- sentenceSource.getLines.grouped(CHUNK_SIZE)) {
+            chunkCount = chunkCount + 1
+            if (settings.outputFile.isDefined) {
+              // provide some nice information about where we are
+              println("summary: "+extractionCount+" extractions, "+chunkCount*CHUNK_SIZE+" sentences, "+Timing.Seconds.format(System.nanoTime()-startTime)+" seconds");
+            }
             val lines = if (settings.parallel) group.par else group
               
             for (line <- lines) {
-              val parts = line.split("\t")
-              require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
-
               try {
-                val pickled = parts.last
-                val dgraph = DependencyGraph.deserialize(pickled)
-                val text = if (parts.length > 1) parts(0) else dgraph.text
-                logger.debug("text: " + text)
-                logger.debug("graph: " + dgraph.serialize)
+                val parts = line.split("\t")
+                require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
 
-                if (settings.verbose) {
-                  writer.println("text: " + text)
-                  writer.println("deps: " + dgraph.serialize)
-                }
+                try {
+                  val pickled = parts.last
+                  val dgraph = DependencyGraph.deserialize(pickled)
+                  val text = if (parts.length > 1) parts(0) else dgraph.text
+                  logger.debug("text: " + text)
+                  logger.debug("graph: " + dgraph.serialize)
 
-                val reverbExtractions = reverbExtract(text)
-                if (settings.showReverb) {
-                  if (settings.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-                  logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-                }
-
-                val extractions = extractor.extract(dgraph)
-                val results = for ((conf, extr) <- extractions) yield {
-                  val reverbMatches = reverbExtractions.find(_.softMatch(extr))
-                  logger.debug("reverb match: " + reverbMatches.toString)
-                  val extra = reverbMatches.map("\treverb:" + _.toString)
-
-                  val resultText =
-                    if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
-                    else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled + extra.getOrElse("")
-                  Result(conf, extr, resultText)
-                }
-
-                writer.synchronized {
-                  for (result <- results) {
-                    writer.println(result)
+                  if (settings.verbose) {
+                    writer.println("text: " + text)
+                    writer.println("deps: " + dgraph.serialize)
                   }
-                }
 
-                if (settings.verbose) writer.println()
-              } catch {
-                case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
+                  val reverbExtractions = reverbExtract(text)
+                  if (settings.showReverb) {
+                    if (settings.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+                    logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
+                  }
+
+                  val extractions = extractor.extract(dgraph)
+                  extractionCount.addAndGet(extractions.size)
+                  val results = for ((conf, extr) <- extractions) yield {
+                    val reverbMatches = reverbExtractions.find(_.softMatch(extr))
+                    logger.debug("reverb match: " + reverbMatches.toString)
+                    val extra = reverbMatches.map("\treverb:" + _.toString)
+
+                    val resultText =
+                      if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
+                      else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled + extra.getOrElse("")
+                    Result(conf, extr, resultText)
+                  }
+
+                  writer.synchronized {
+                    for (result <- results) {
+                      writer.println(result)
+                    }
+                  }
+
+                  if (settings.verbose) writer.println()
+                } catch {
+                  case e: DependencyGraph.SerializationException => // logger.error("could not deserialize graph.", e)
+                }
+              }
+              catch {
+                case e if settings.invincible =>
+                case e => throw e
               }
             }
           }
         }
       }
-}
+    }
 }
 
 class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Configuration) {
