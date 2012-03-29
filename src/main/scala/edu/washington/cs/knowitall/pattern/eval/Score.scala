@@ -15,6 +15,7 @@ object Score {
     def goldOutputFile: Option[File]
     def confidenceThreshold: Double
     def skipAll: Boolean
+    def keepSkipped: Boolean
   }
   
   def main(args: Array[String]) = {
@@ -25,6 +26,7 @@ object Score {
       var goldOutputFile: Option[File] = None
       var confidenceThreshold = 0.0
       var skipAll = false
+      var keepSkipped = false
     }
     
     val parser = new OptionParser("scoreextr") {
@@ -34,9 +36,11 @@ object Score {
       opt("u", "goldoutput", "output for updated gold set", { path: String => settings.goldOutputFile = Some(new File(path)) })
       doubleOpt("t", "threshold", "confidence threshold for considered extractions", { x: Double => settings.confidenceThreshold = x })
       opt("skip-all", "don't prompt for items not in the gold set", { settings.skipAll = true })
+      opt("keep-skipped", "keep unannotated extractions in output file", { settings.keepSkipped = true })
     }
 
     if (parser.parse(args)) {
+      run(settings)
     }
   }
 
@@ -52,7 +56,7 @@ object Score {
 
     // print the scored extractions
     using(new PrintWriter(settings.outputFile, "UTF8")) { writer =>
-      for (scored <- scoreds) {
+      for (scored <- scoreds.filter(scored => settings.keepSkipped || scored.score.isDefined)) {
         writer.println(scored.toRow)
       }
     }
@@ -67,7 +71,7 @@ object Score {
     }
   }
   
-  def loadScoredFile(file: File) = {
+  def loadScoredFile(file: File): Seq[Scored] = {
     using(Source.fromFile(file, "UTF8")) { source =>
       source.getLines.map { line =>
         Scored.fromRow(line)
@@ -111,22 +115,24 @@ object Score {
         case None if prompt => promptScore(index, extr, confidence, rest)
         case None => None
       }
-      
-      if scoreOption.isDefined
-      val score = scoreOption.get
     } yield {
-      // update golden set
-      golden += extr -> score
+      scoreOption match {
+        case Some(score) =>
+          // update golden set
+          golden += extr -> score
+        case None => 
+      }
+      
       // output
-      Scored(score, conf, extr, rest)
+      Scored(scoreOption, conf, extr, rest)
     }
 
     (scored.toList, golden)
   }
 }
 
-case class Scored(score: Boolean, confidence: Double, extraction: String, extra: Seq[String]) {
-  def toRow = (if (score) "1" else "0")+"\t"+confidence+"\t"+extraction+"\t"+extra.mkString("\t")
+case class Scored(score: Option[Boolean], confidence: Double, extraction: String, extra: Seq[String]) {
+  def toRow = (if (!score.isDefined) "" else if (score.get == true) "1" else "0")+"\t"+confidence+"\t"+extraction+"\t"+extra.mkString("\t")
 }
 
 object Scored {
@@ -141,6 +147,6 @@ object Scored {
     val extraction = parts(2)
     val extra = parts.drop(3)
     
-    Scored(score, confidence, extraction, extra)
+    Scored(Some(score), confidence, extraction, extra)
   }
 }

@@ -1,7 +1,8 @@
 package edu.washington.cs.knowitall.pattern.eval
+
+import edu.washington.cs.knowitall.common.Analysis
 import scopt.OptionParser
 import java.io.File
-import common.stats.Analysis
 
 object GroupScoredBy {
   def main(args: Array[String]) = {
@@ -23,7 +24,7 @@ object GroupScoredBy {
         val title = group._1
         val scoreds = group._2
 
-        (group._1, Analysis.precision(scoreds.map(_.score)), group._2)
+        (group._1, Analysis.precision(scoreds.map(scored => scored.score.getOrElse(throw new IllegalArgumentException("unscored extraction: " + scored)))), group._2)
       }).toList.sortBy(tuple => (tuple._2, tuple._3.mkString("\t"))).reverse
       
       scored.foreach { item => 

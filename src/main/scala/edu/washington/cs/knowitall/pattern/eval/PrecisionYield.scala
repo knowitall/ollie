@@ -1,10 +1,10 @@
 package edu.washington.cs.knowitall.pattern.eval
 
 import edu.washington.cs.knowitall.common.Resource._
+import edu.washington.cs.knowitall.common.Analysis
 import scopt.OptionParser
 import java.io.File
 import scala.io.Source
-import common.stats.Analysis
 import java.io.PrintWriter
 
 object PrecisionYield {
@@ -31,7 +31,7 @@ object PrecisionYield {
   
   def run(settings: Settings) = {
     val scores = Score.loadScoredFile(settings.scoredFile).sortBy(_.confidence).reverse
-    val input = scores.map(scored => ("%.4f".format(scored.confidence), scored.score))
+    val input = scores.map(scored => ("%.4f".format(scored.confidence), scored.score.getOrElse(throw new IllegalArgumentException("unscored extraction: " + scored))))
 
     using {
       settings.outputFile match {
@@ -39,6 +39,9 @@ object PrecisionYield {
         case None => new PrintWriter(System.out)
       }
     } { writer =>
+      val py = Analysis.precisionYieldMeta(input)
+      val area = Analysis.areaUnderCurve(py.map { case (conf, yld, pr) => (yld, pr) })
+      println("auc: " + area)
       for ((conf, yld, pr) <- Analysis.precisionYieldMeta(input)) {
         writer.println(conf + "\t" + yld + "\t" + pr)
       }
@@ -76,6 +79,12 @@ object MergePYFiles {
     }
     
     println("\t" + settings.files.map(_.getName).mkString("\t"))
-    points.flatten.sortBy(_._1).reverse foreach { case (k, (i, v)) => println(k+"\t"+"\t"*i+v) }
+    points.flatten.sortBy(_._1).reverse.groupBy(_._1).toSeq.sortBy(_._1).reverse foreach { case (grp, seq) => 
+      var vec = Vector.fill[String](settings.files.size)("")
+      seq.foreach { 
+        case (k, (i, v)) => vec = vec updated (i, v.toString)
+      }
+      println(grp+"\t"+vec.mkString("\t")) 
+    }
   }
 }

@@ -1,9 +1,9 @@
 package edu.washington.cs.knowitall.pattern.eval
 
 import edu.washington.cs.knowitall.common.Resource._
+import edu.washington.cs.knowitall.common.Analysis
 import scopt.OptionParser
 import java.io.File
-import common.stats.Analysis
 import java.io.PrintWriter
 
 object RankPatterns {
@@ -34,7 +34,7 @@ object RankPatterns {
     val scores = Score.loadScoredFile(settings.scoredFile).sortBy(_.confidence).reverse
     val grouped = scores.groupBy(_.extra(0))
       .mapValues { scoreds =>
-        val yld = scoreds.map(x => if (x.score) 1 else 0).sum
+        val yld = scoreds.map(scored => if (scored.score.getOrElse(throw new IllegalArgumentException("unscored extraction: " + scored))) 1 else 0).sum
         val precision = yld.toDouble / scoreds.size.toDouble
         (precision, yld)
       }
