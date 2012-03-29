@@ -6,7 +6,6 @@ import java.io.PrintWriter
 import scala.io.Source
 import scala.collection
 import common.Timing._
-import TreePatternLearner.findPattern
 import tool.parse._
 import tool.stem._
 import tool.parse.pattern._
@@ -16,13 +15,12 @@ import org.slf4j.LoggerFactory
 
 import scopt.OptionParser
 
-object BuildTreePatterns {
-  import TreePatternLearner._
-
+object BuildPatterns {
   val logger = LoggerFactory.getLogger(this.getClass)
 
   val CHUNK_SIZE = 100000
 
+  class NoRelationNodeException(message: String) extends NoSuchElementException(message)
   class Settings {
     var sourcePath: String = _
     var destPath: Option[String] = None
@@ -78,7 +76,7 @@ object BuildTreePatterns {
             logger.warn("Invalid graph (no verb?): " + graph.text + "\t" + graph.serialize)
           }
           else {
-            val patterns = findPatternsForLDA(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
+            val patterns = findPatterns(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
             for ((pattern, slots) <- patterns; if pattern.valid) {
               if (!settings.length.isDefined || pattern.nodeMatchers.length <= settings.length.get) {
                 writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
@@ -104,6 +102,163 @@ object BuildTreePatterns {
 
     source.close
     writer.close
+  }
+ 
+   def findBipaths(lemmas: Set[String], graph: DependencyGraph, maxLength: Option[Int]) = {
+    // build a set of all the possible combinations that don't use a
+    // node with the same text twice
+    def combinations(nodes: Set[DependencyNode]) = {
+      def rec(nodes: Seq[(String, Set[DependencyNode])], combs: Set[DependencyNode]): Set[Set[DependencyNode]] = nodes match {
+        case Seq((text, set), rest @ _*) => set.flatMap(item => rec(rest, combs + item))
+        case Seq() => Set(combs)
+      }
+
+      if (nodes.map(_.text).size == nodes.size) {
+        // there are no duplicate nodes
+        Set(nodes)
+      } else {
+        // build combinations
+        rec(nodes.groupBy(_.text).toSeq, Set())
+      }
+    }
+
+    val allNodes = lemmas.flatMap { lemma =>
+      // find all exact matches
+      val exacts = graph.graph.vertices.filter(_.text == lemma)
+
+      // or one partial match
+      if (exacts.isEmpty) graph.graph.vertices.find(_.text.contains(lemma)) map { List(_) } getOrElse List.empty
+      else exacts
+    }
+
+    combinations(allNodes).flatMap { nodes =>
+      val paths = graph.graph.bipaths(nodes, maxLength)
+
+      // restrict to paths that go up and then down
+      paths.filter(bipath => bipath.path.length > 0 && 
+          bipath.path.dropWhile(_.isInstanceOf[UpEdge[_]]).dropWhile(_.isInstanceOf[DownEdge[_]]).isEmpty)
+    }
+  }
+
+  class InvalidBipathException(message: String) extends RuntimeException(message)
+  def findPattern(graph: DependencyGraph,
+    lemmas: Set[String],
+    replacements: Map[String, String],
+    maxLength: Option[Int]) = {
+
+    def valid(bip: Bipath[DependencyNode]) = {
+      def params = replacements.toString+"; "+bip.toString
+
+      // we don't have any "punct" edges
+      !bip.edges.find(_.label == "punct").map { edge =>
+        logger.debug("invalid: punct edge '"+edge+"': "+bip)
+      }.isDefined &&
+      // we don't have any "dep" edges
+      !bip.edges.find(_.label == "dep").map { edge =>
+        logger.debug("invalid: dep edge '"+edge+"': "+bip)
+      }.isDefined &&
+      // all edges are simple word characters
+      !bip.edges.find(!_.label.matches("\\w+")).map { edge =>
+        logger.debug("invalid: special character in edge '"+edge+"': "+bip)
+      }.isDefined
+    }
+
+    // find paths containing lemma
+    val bipaths = findBipaths(lemmas, graph, maxLength) filter valid
+
+    bipaths.flatMap { bip =>
+      import scalaz._
+      import Scalaz._
+
+      val zipper = DependencyPattern.create(bip).matchers.toZipper.get
+
+      val zipperReplaced = try { Some((zipper /: replacements){ 
+        case (zipper, (target, rep)) =>
+          val zipperMatch = 
+            // find an exact match
+            zipper.findZ {
+              case m: DependencyNodeMatcher => m.text == target
+              case _ => false
+           } orElse
+            // find a partial match
+            zipper.findZ {
+              case m: DependencyNodeMatcher => m.text contains target
+              case _ => false
+            } getOrElse {
+              throw new InvalidBipathException("invalid: couldn't find replacement '"+rep+"': "+bip)
+            }
+
+          // ensure valid postags
+          if (!OpenParse.VALID_ARG_POSTAG.contains(zipperMatch.focus.asInstanceOf[DependencyNodeMatcher].postag))
+            throw new InvalidBipathException("invalid: invalid arg postag '"+zipper.focus+"': "+bip)
+
+          // make replacements
+          zipperMatch.update(new ArgumentMatcher(rep))
+      })} catch {
+        case e: InvalidBipathException => logger.debug(e.getMessage); None
+      }
+
+      zipperReplaced.map(zipper => new ExtractorPattern(zipper.toStream.toList))
+    }
+  }
+
+  def findPatterns(graph: DependencyGraph, lemmas: Set[String], replacements: Map[String, String], rel: String, maxLength: Option[Int]): List[(ExtractorPattern, List[String])] = {
+    def valid(pattern: Pattern[DependencyNode]) = 
+      // make sure arg1 comes first
+      pattern.matchers.find(_
+        .isInstanceOf[CaptureNodeMatcher[_]]).map(_
+        .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false)
+      
+    val patterns = findPattern(graph, lemmas, replacements, maxLength)
+    
+    val filtered = patterns.filter(valid).toList
+
+    val relLemmas = rel.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST
+
+    // find the best part to replace with rel
+    filtered.map { pattern =>
+      import scalaz._
+      import Scalaz._
+
+      def replaceRel(zipper: Zipper[Matcher[DependencyNode]]) = {
+        // find the rel node
+        val relZipper = zipper.findZ(_ match {
+          case nm: DependencyNodeMatcher => !(relLemmas intersect nm.text.split(" ").toSet).isEmpty
+          case _ => false
+        }) getOrElse {
+          throw new NoRelationNodeException("No relation ("+rel+") in pattern: " + pattern)
+        }
+
+        // replace rel
+        val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag
+        relZipper.update(new CaptureNodeMatcher("rel", new PostagNodeMatcher(postag)))
+      }
+
+      def replaceSlots(zipper: Zipper[Matcher[DependencyNode]]) = {
+        def replaceSlots(zipper: Zipper[Matcher[DependencyNode]], labels: List[String], index: Int): (Zipper[Matcher[DependencyNode]], List[String]) = {
+          def replaceSlot(zipper: Zipper[Matcher[DependencyNode]]) = {
+            val node = zipper.focus.asInstanceOf[DependencyNodeMatcher]
+            val postag = node.postag
+            (Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index, new PostagNodeMatcher(postag)), zipper.rights),
+                node.text)
+          }
+
+          zipper.findZ(_.isInstanceOf[DependencyNodeMatcher]) match {
+            case Some(z) => val (zipper, label) = replaceSlot(z)
+                    replaceSlots(zipper, label :: labels, index + 1)
+            case None => (zipper, labels)
+          }
+        }
+
+        replaceSlots(zipper, List(), 0)
+      }
+
+      val zipper = pattern.matchers.toZipper.get
+      val relZipper = replaceRel(zipper)
+      val (slotZipper, slotLabels) = replaceSlots(relZipper)
+
+      (new ExtractorPattern(slotZipper.toStream.toList), slotLabels)
+    }
   }
 }
 
