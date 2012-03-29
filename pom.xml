@@ -32,12 +32,7 @@
   <dependencies>
     <dependency>
       <groupId>edu.washington.cs.knowitall</groupId>
-      <artifactId>nlptools-parse-stanford</artifactId>
-      <version>2.0.0-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>edu.washington.cs.knowitall</groupId>
-      <artifactId>nlptools-parse-malt</artifactId>
+      <artifactId>nlptools-core</artifactId>
       <version>2.0.0-SNAPSHOT</version>
     </dependency>
     <dependency>
