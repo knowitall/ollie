@@ -18,12 +18,11 @@ import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
 import edu.washington.cs.knowitall.normalization.RelationString
 import edu.washington.cs.knowitall.pattern.extract.Extraction.{Part, AdverbialModifier, ClausalComponent}
 import edu.washington.cs.knowitall.pattern.extract.{SimpleExtraction, ExtendedExtraction, PatternExtractorType}
-import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.tool.parse.graph.{Graph, DirectedEdge}
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
 
 import OpenParse.{logger, expandRelation, expandArgument, VALID_ARG_POSTAG}
-import extract.{TemplateExtractor, SpecificExtractor, PatternExtractor, LdaExtractor, GeneralExtractor, Extraction, DetailedExtraction}
+import extract.{TemplateExtractor, SpecificExtractor, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
 import scopt.OptionParser
 import tool.parse.graph.{Direction, DependencyNode, DependencyGraph}
 import tool.parse.pattern.DependencyPattern
@@ -265,49 +264,18 @@ object OpenParse {
     Part(expansion.reduce(_ ++ _), texts.mkString(" "))
   }
 
-  def loadLdaExtractorsFromDistributions(dist: Distributions): List[LdaExtractor] = {
-    (for (p <- dist.patternCodes) yield {
-      new LdaExtractor(DependencyPattern.deserialize(dist.patternDecoding(p)), dist)
-    }).toList
-  }
-
-  def loadGeneralExtractorsFromDistributions(dist: Distributions): List[GeneralExtractor] = {
-    (for (p <- dist.patternCodes) yield {
-      new GeneralExtractor(DependencyPattern.deserialize(dist.patternDecoding(p)), dist)
-    }).toList
-  }
-
-  def loadSpecificExtractorsFromDistributions(dist: Distributions): List[GeneralExtractor] = {
-    (for (
-      p <- dist.patternCodes;
-      val pattern = DependencyPattern.deserialize(dist.patternDecoding(p));
-      r <- dist.relationsForPattern(p)
-    ) yield {
-      new SpecificExtractor(dist.relationDecoding(r),
-        pattern,
-        dist)
-    }).toList
-  }
-
-  def loadExtractors(extractorType: PatternExtractorType, patternFile: File): List[PatternExtractor] =
-    loadExtractors(extractorType, None, Some(patternFile))
-
   def loadExtractors(extractorType: PatternExtractorType,
-    distributions: Option[Distributions],
     patternFile: Option[File]): List[PatternExtractor] =
     {
       logger.info("reading patterns")
 
       // sort by inverse count so frequent patterns appear first 
-      ((extractorType, distributions) match {
-        case (LdaExtractor, Some(distributions)) => loadLdaExtractorsFromDistributions(distributions)
-        case (GeneralExtractor, Some(distributions)) => loadGeneralExtractorsFromDistributions(distributions)
-        case (TemplateExtractor, None) =>
+      (extractorType match {
+        case TemplateExtractor =>
           TemplateExtractor.fromFile(
             patternFile.getOrElse(
               throw new IllegalArgumentException("pattern template file (--patterns) required for the template extractor.")))
-        case (SpecificExtractor, Some(distributions)) => loadSpecificExtractorsFromDistributions(distributions)
-        case (GeneralExtractor, None) =>
+        case GeneralExtractor =>
           GeneralExtractor.fromFile(
             patternFile.getOrElse(
               throw new IllegalArgumentException("pattern file (--patterns) required for the general extractor.")))
@@ -328,7 +296,6 @@ object OpenParse {
 
   abstract class Settings {
     def patternFile: Option[File]
-    def ldaDirectoryPath: Option[String]
     def outputFile: Option[File]
 
     def sentenceFilePath: String
@@ -356,7 +323,6 @@ object OpenParse {
   def main(args: Array[String]) {
     object settings extends Settings {
       var patternFile: Option[File] = None
-      var ldaDirectoryPath: Option[String] = None
       var outputFile: Option[File] = None
 
       var sentenceFilePath: String = null
@@ -377,7 +343,6 @@ object OpenParse {
     
     val parser = new OptionParser("applypat") {
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => settings.patternFile = Option(new File(v)) })
-      opt(None, "lda", "<directory>", "lda directory", { v: String => settings.ldaDirectoryPath = Option(v) })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
       opt("o", "output", "output file (otherwise stdout)", { path => settings.outputFile = Some(new File(path)) })
 
@@ -410,14 +375,8 @@ object OpenParse {
     val keepDuplicates: Boolean = false)
 
     def run(settings: Settings) {
-      // optionally load the distributions
-      val distributions = settings.ldaDirectoryPath.map {
-        logger.info("loading distributions")
-        Distributions.fromDirectory(_)
-      }
-
       // load the individual extractors
-      val extractors = loadExtractors(settings.extractorType, distributions, settings.patternFile)
+      val extractors = loadExtractors(settings.extractorType, settings.patternFile)
 
       // create a standalone extractor
       val configuration = settings.configuration

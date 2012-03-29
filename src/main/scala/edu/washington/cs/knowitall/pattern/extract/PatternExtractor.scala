@@ -38,7 +38,6 @@ object PatternExtractorType {
     case "general" => GeneralExtractor
     case "template" => TemplateExtractor
     case "specific" => SpecificExtractor
-    case "lda" => LdaExtractor
     case _ => throw new IllegalArgumentException("unknown extractor: " + string)
   }
 }

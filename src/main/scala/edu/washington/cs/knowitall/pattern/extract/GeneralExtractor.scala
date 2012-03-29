@@ -5,7 +5,6 @@ package extract
 import scala.Option.option2Iterable
 import org.slf4j.LoggerFactory
 import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
 import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
@@ -22,8 +21,6 @@ import tool.parse.pattern.DependencyPattern
 class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
   import GeneralExtractor._
   
-  def this(pattern: Pattern[DependencyNode], dist: Distributions) = this(pattern, dist.patternCount(dist.patternEncoding(pattern.toString)), dist.maxPatternCount)
-
   protected def extractWithMatches(dgraph: DependencyGraph)(implicit
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {

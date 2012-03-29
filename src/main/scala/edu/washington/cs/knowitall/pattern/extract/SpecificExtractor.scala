@@ -3,7 +3,6 @@ package pattern
 package extract
 
 import scala.Array.canBuildFrom
-import edu.washington.cs.knowitall.pattern.lda.Distributions
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 import edu.washington.cs.knowitall.tool.parse.graph.Graph
@@ -16,15 +15,6 @@ class SpecificExtractor(val relation: String,
   val relationLemmas: List[String], 
   pattern: Pattern[DependencyNode], patternCount: Int, relationCount: Int) 
 extends GeneralExtractor(pattern, patternCount, relationCount) {
-
-  def this(relation: String, 
-    pattern: Pattern[DependencyNode], dist: Distributions) =
-    this(relation, 
-      // todo: hack
-      (relation.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST).toList,
-      pattern, 
-      dist.relationByPattern(dist.relationEncoding(relation))._1(dist.patternEncoding(pattern.toString)),
-      dist.relationByPattern(dist.relationEncoding(relation))._2)
 
   override def extract(dgraph: DependencyGraph)(implicit 
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
