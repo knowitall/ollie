@@ -76,7 +76,7 @@ object BuildPatterns {
             logger.warn("Invalid graph (no verb?): " + graph.text + "\t" + graph.serialize)
           }
           else {
-            val patterns = findPatterns(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, settings.length)
+            val patterns = findRelationPatterns(graph, rel, arg1, arg2, lemmas, settings.length)
             for ((pattern, slots) <- patterns; if pattern.valid) {
               if (!settings.length.isDefined || pattern.nodeMatchers.length <= settings.length.get) {
                 writer.println((List(rel, arg1, arg2, lemmas.mkString(" "), pattern, text, deps) ::: slots).mkString("\t"))
@@ -200,6 +200,20 @@ object BuildPatterns {
 
       zipperReplaced.map(zipper => new ExtractorPattern(zipper.toStream.toList))
     }
+  }
+  
+  /**
+    * Find patterns in the graph that connect arg1, rel, and arg2.
+    * 
+    * @param  graph  the graph to find the pattern in.
+    * @param  rel  the relation
+    * @param  arg1  the argument 1
+    * @param  arg2  the argument 2
+    * @param  lemmas  all lemmas in `rel`, `arg1`, and `arg2`
+    * @param  maxLength  the maximum path length, in edges
+    */
+  def findRelationPatterns(graph: DependencyGraph, rel: String, arg1: String, arg2: String, lemmas: Set[String], maxLength: Option[Int] = None) = {
+    findPatterns(graph, lemmas, Map(arg1 -> "arg1", arg2 -> "arg2"), rel, maxLength)
   }
 
   def findPatterns(graph: DependencyGraph, lemmas: Set[String], replacements: Map[String, String], rel: String, maxLength: Option[Int]): List[(ExtractorPattern, List[String])] = {
