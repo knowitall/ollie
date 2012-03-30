@@ -44,7 +44,7 @@ object PatternExtractorSpec extends Specification {
     }
   }
 
-  def testRelnoun {
+  def testRelnounCases {
     "adjective descriptor relnoun" in {
       val sentence = "US President Barack Obama went to the grocery store."
       val pickled = "nn(Obama_NNP_3, US_NNP_0); nn(Obama_NNP_3, President_NNP_1); nn(Obama_NNP_3, Barack_NNP_2); nsubj(went_VBD_4, Obama_NNP_3); prep(went_VBD_4, to_TO_5); det(store_NN_8, the_DT_6); nn(store_NN_8, grocery_NN_7); pobj(to_TO_5, store_NN_8)"
@@ -136,6 +136,22 @@ object PatternExtractorSpec extends Specification {
     extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(The people; fled chaotically; the barn)"))
   }
   
+  "noun relation word expands across of when it doesn't overlap with the argument" in {
+    val pickled = "(of_IN_4), (by_IN_8), (of_IN_15), (at_IN_17), (of_IN_20), (at_IN_22), (and_CC_25), nsubj(types_NNS_3, These_DT_0); cop(types_NNS_3, are_VBP_1); det(types_NNS_3, the_DT_2); prep_of(types_NNS_3, clues_NNS_5); punct(types_NNS_3, ,_,_24); conj_and(types_NNS_3, team_NN_27); punct(types_NNS_3, of..._._28); partmod(clues_NNS_5, ferreted_VBN_6); prt(ferreted_VBN_6, out_RP_7); agent(ferreted_VBN_6, Gosling_NNP_10); nn(Gosling_NNP_10, Sam_NNP_9); punct(Gosling_NNP_10, ,_,_11); appos(Gosling_NNP_10, professor_NN_14); det(professor_NN_14, an_DT_12); amod(professor_NN_14, associate_JJ_13); prep_of(professor_NN_14, psychology_NN_16); prep_at(professor_NN_14, University_NNP_19); det(University_NNP_19, the_DT_18); prep_of(University_NNP_19, Texas_NNP_21); prep_at(University_NNP_19, Austin_NNP_23); poss(team_NN_27, his_PRP$_26)"
+    val graph = DependencyGraph.deserialize(pickled) // don't normalize
+    val pattern = DependencyPattern.deserialize("{arg1} >appos> {rel:postag=NN} >{prep:regex=prep_(.*)}> {arg2}")
+    val extractor = new TemplateExtractor(Template.deserialize("be {rel} {prep}"), pattern, 1, 1)
+    extractor.extract(graph).map(_.toString) must contain("(Sam Gosling; be an associate professor of psychology at; the University of Texas)")
+  }
+  
+  "noun relation word does NOT expands across of when it overlaps with the argument" in {
+    val pickled = "(of_IN_4), (by_IN_8), (of_IN_15), (at_IN_17), (of_IN_20), (at_IN_22), (and_CC_25), nsubj(types_NNS_3, These_DT_0); cop(types_NNS_3, are_VBP_1); det(types_NNS_3, the_DT_2); prep_of(types_NNS_3, clues_NNS_5); punct(types_NNS_3, ,_,_24); conj_and(types_NNS_3, team_NN_27); punct(types_NNS_3, of..._._28); partmod(clues_NNS_5, ferreted_VBN_6); prt(ferreted_VBN_6, out_RP_7); agent(ferreted_VBN_6, Gosling_NNP_10); nn(Gosling_NNP_10, Sam_NNP_9); punct(Gosling_NNP_10, ,_,_11); appos(Gosling_NNP_10, professor_NN_14); det(professor_NN_14, an_DT_12); amod(professor_NN_14, associate_JJ_13); prep_of(professor_NN_14, psychology_NN_16); prep_at(professor_NN_14, University_NNP_19); det(University_NNP_19, the_DT_18); prep_of(University_NNP_19, Texas_NNP_21); prep_at(University_NNP_19, Austin_NNP_23); poss(team_NN_27, his_PRP$_26)"
+    val graph = DependencyGraph.deserialize(pickled) // don't normalize
+    val pattern = DependencyPattern.deserialize("{arg1} >appos> {rel:postag=NN} >{prep:regex=prep_(.*)}> {arg2}")
+    val extractor = new TemplateExtractor(Template.deserialize("be {rel} {prep}"), pattern, 1, 1)
+    extractor.extract(graph).map(_.toString) must contain("(Sam Gosling; be an associate professor of; psychology)")
+  }
+  
   testPostagConstraint
-  testRelnoun
+  testRelnounCases
 }

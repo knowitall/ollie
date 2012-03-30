@@ -230,7 +230,7 @@ object OpenParse {
 
   def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): Part = {
     val nounLabels =
-      Set("det", "amod", "num", "nn", "poss", "quantmod", "neg")
+      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod", "neg")
 
     // count the adjacent dobj edges.  We will only expand across
     // dobj components if there is exactly one adjacent dobj edge.
