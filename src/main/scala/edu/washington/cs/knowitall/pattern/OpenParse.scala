@@ -501,7 +501,7 @@ object OpenParse {
 
                   if (settings.verbose) writer.println()
                 } catch {
-                  case e: DependencyGraph.SerializationException => // logger.error("could not deserialize graph.", e)
+                  case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
                 }
               }
               catch {
