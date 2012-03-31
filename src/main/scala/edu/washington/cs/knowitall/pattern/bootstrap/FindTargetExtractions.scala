@@ -12,8 +12,6 @@ import scala.io.Source
 
 import tool.stem.MorphaStemmer
 
-import edu.washington.cs.knowitall.normalization._
-
 object FindTargetExtractions {
   import FindCommon._
 
@@ -65,11 +63,12 @@ object FindTargetExtractions {
           val Array(id, arg1String, relationString, arg2String, _, relationLemma, _, arg1Postag, relationPostag, arg2Postag, _, _, _, count, confidence, url, sentence) = line.split("\t", -1)
           val arg1Lemma = arg1String.split(" ").map(MorphaStemmer.instance.lemmatize(_)).mkString(" ")
           val arg2Lemma = arg2String.split(" ").map(MorphaStemmer.instance.lemmatize(_)).mkString(" ")
-          val rs = new RelationString(relationString, relationLemma, relationPostag)
-          rs.correctNormalization()
+          // val rs = new RelationString(relationString, relationLemma, relationPostag)
+          // rs.correctNormalization()
 
           val arg1 = zip3(arg1Postag.split("""\s+""").toList, arg1String.split("""\s+""").toList, arg1Lemma.split("""\s+""").toList)
-          val rel = zip3(rs.getPosPred.split("""\s+""").toList, rs.getPred.split("""\s+""").toList, rs.getNormPred.split("""\s+""").toList)
+          // val rel = zip3(rs.getPosPred.split("""\s+""").toList, rs.getPred.split("""\s+""").toList, rs.getNormPred.split("""\s+""").toList)
+          val rel = zip3(relationPostag.split("""\s+""").toList, relationString.split("""\s+""").toList, relationLemma.split("""\s+""").toList)
           val arg2 = zip3(arg2Postag.split("""\s+""").toList, arg2String.split("""\s+""").toList, arg2Lemma.split("""\s+""").toList)
 
           implicit def t2mapper[A, B](t: (A, B)) = new { 

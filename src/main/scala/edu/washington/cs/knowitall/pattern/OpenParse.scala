@@ -13,9 +13,6 @@ import org.slf4j.LoggerFactory
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.extractor.ReVerbExtractor
-import edu.washington.cs.knowitall.nlp.OpenNlpSentenceChunker
-import edu.washington.cs.knowitall.normalization.RelationString
 import edu.washington.cs.knowitall.pattern.extract.Extraction.{Part, AdverbialModifier, ClausalComponent}
 import edu.washington.cs.knowitall.pattern.extract.{SimpleExtraction, ExtendedExtraction, PatternExtractorType}
 import edu.washington.cs.knowitall.tool.parse.graph.{Graph, DirectedEdge}
@@ -303,7 +300,6 @@ object OpenParse {
 
     def confidenceThreshold: Double
 
-    def showReverb: Boolean
     def duplicates: Boolean
     def expandArguments: Boolean
     def showAll: Boolean
@@ -330,7 +326,6 @@ object OpenParse {
 
       var confidenceThreshold = 0.0;
 
-      var showReverb: Boolean = false
       var duplicates: Boolean = false
       var expandArguments: Boolean = false
       var showAll: Boolean = false
@@ -348,7 +343,6 @@ object OpenParse {
 
       opt("d", "duplicates", "keep duplicate extractions", { settings.duplicates = true })
       opt("x", "expand-arguments", "expand extraction arguments", { settings.expandArguments = true })
-      opt("r", "reverb", "show which extractions are reverb extractions", { settings.showReverb = true })
       opt("collapse-vb", "collapse 'VB.*' to 'VB' in the graph", { settings.collapseVB = true })
 
       opt("a", "all", "don't restrict extractions to are noun or adjective arguments", { settings.showAll = true })
@@ -382,26 +376,6 @@ object OpenParse {
       val configuration = settings.configuration
       val extractor = new OpenParse(extractors, configuration)
 
-      // create items necessary for reverb
-      val chunker = if (settings.showReverb) Some(new OpenNlpSentenceChunker) else None
-      val reverb = if (settings.showReverb) Some(new ReVerbExtractor) else None
-
-      // apply reverb to the sentence and return the extractions
-      def reverbExtract(sentence: String) = {
-        import scala.collection.JavaConversions._
-
-        reverb.map { reverb =>
-          val chunked = chunker.get.chunkSentence(sentence)
-          val extractions = reverb.extract(chunked)
-          extractions.map { extr =>
-            val rs = new RelationString(extr.getRelation.getText, extr.getRelation.getTokens.map(MorphaStemmer.instance.lemmatize(_)).mkString(" "), extr.getRelation.getPosTags.mkString(" "))
-            rs.correctNormalization()
-
-            new SimpleExtraction(extr.getArgument1.getText, extr.getRelation.getText, rs.getNormPred.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST, extr.getArgument2.getText)
-          }
-        }.getOrElse(Nil)
-      }
-
       logger.info("performing extractions")
       var chunkCount = 0
       val extractionCount = new java.util.concurrent.atomic.AtomicInteger
@@ -433,22 +407,12 @@ object OpenParse {
                     writer.println("deps: " + dgraph.serialize)
                   }
 
-                  val reverbExtractions = reverbExtract(text)
-                  if (settings.showReverb) {
-                    if (settings.verbose) writer.println("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-                    logger.debug("reverb: " + reverbExtractions.mkString("[", "; ", "]"))
-                  }
-
                   val extractions = extractor.extract(dgraph)
                   extractionCount.addAndGet(extractions.size)
                   val results = for ((conf, extr) <- extractions) yield {
-                    val reverbMatches = reverbExtractions.find(_.softMatch(extr))
-                    logger.debug("reverb match: " + reverbMatches.toString)
-                    val extra = reverbMatches.map("\treverb:" + _.toString)
-
                     val resultText =
-                      if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")" + reverbMatches.map(" compared to " + _).getOrElse("")
-                      else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled + extra.getOrElse("")
+                      if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")"
+                      else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled
                     Result(conf, extr, resultText)
                   }
 

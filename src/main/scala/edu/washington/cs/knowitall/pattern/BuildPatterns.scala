@@ -10,7 +10,6 @@ import tool.parse._
 import tool.stem._
 import tool.parse.pattern._
 import tool.parse.graph._
-import util.DefaultObjects
 import org.slf4j.LoggerFactory
 
 import scopt.OptionParser
