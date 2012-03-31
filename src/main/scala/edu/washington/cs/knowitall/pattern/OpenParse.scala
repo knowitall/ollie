@@ -26,7 +26,6 @@ import tool.parse.pattern.DependencyPattern
 import tool.stem.MorphaStemmer
 
 object OpenParse {
-  val LEMMA_BLACKLIST = Set("for", "in", "than", "up", "as", "to", "at", "on", "by", "with", "from", "be", "like", "of")
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
   

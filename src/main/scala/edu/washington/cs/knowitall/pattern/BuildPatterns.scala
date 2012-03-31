@@ -226,7 +226,7 @@ object BuildPatterns {
     
     val filtered = patterns.filter(valid).toList
 
-    val relLemmas = rel.split(" ").toSet -- OpenParse.LEMMA_BLACKLIST
+    val relLemmas = rel.split(" ").toSet intersect lemmas
 
     // find the best part to replace with rel
     filtered.map { pattern =>
