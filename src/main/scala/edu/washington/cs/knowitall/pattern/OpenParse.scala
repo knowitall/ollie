@@ -2,14 +2,11 @@ package edu.washington.cs.knowitall
 package pattern
 
 import java.io.{PrintWriter, File}
-
 import scala.Option.option2Iterable
 import scala.collection.JavaConversions.{iterableAsScalaIterable, asScalaBuffer}
 import scala.collection.{SortedSet, Set}
 import scala.io.Source
-
 import org.slf4j.LoggerFactory
-
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.common.Resource.using
@@ -17,15 +14,16 @@ import edu.washington.cs.knowitall.pattern.extract.Extraction.{Part, AdverbialMo
 import edu.washington.cs.knowitall.pattern.extract.{SimpleExtraction, ExtendedExtraction, PatternExtractorType}
 import edu.washington.cs.knowitall.tool.parse.graph.{Graph, DirectedEdge}
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
-
 import OpenParse.{logger, expandRelation, expandArgument, VALID_ARG_POSTAG}
 import extract.{TemplateExtractor, SpecificExtractor, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
 import scopt.OptionParser
 import tool.parse.graph.{Direction, DependencyNode, DependencyGraph}
 import tool.parse.pattern.DependencyPattern
 import tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.tool.postag.PosTagger
 
 object OpenParse {
+  val LEMMA_BLACKLIST = PosTagger.simplePrepositions + "like" + "be"
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
   
@@ -40,11 +38,11 @@ object OpenParse {
     def clausalComponent(node: DependencyNode, until: Set[DependencyNode]) = {
       attributionPattern.apply(graph.graph, node) match {
         case List(m) => 
-          assume(m.nodeGroups("rel").size == 1)
-          assume(m.nodeGroups("arg").size == 1)
+          assume(m.nodeGroups.get("rel").isDefined)
+          assume(m.nodeGroups.get("arg").isDefined)
           
-          val rel = m.nodeGroups("rel").head.node
-          val arg = m.nodeGroups("arg").head.node
+          val rel = m.nodeGroups("rel").node
+          val arg = m.nodeGroups("arg").node
           
           val Part(expandedRelNodes, expandedRelText) = expandRelation(graph, rel, until + arg)
           val expandedArg = expandArgument(graph, arg, until + rel)
@@ -63,26 +61,18 @@ object OpenParse {
     
     val groups = m.nodeGroups
 
-    val rels = groups.get("rel").map(_.map(_.node)) getOrElse (throw new IllegalArgumentException("no rel: " + m))
-    val arg1s = groups.get("arg1").map(_.map(_.node)) getOrElse (throw new IllegalArgumentException("no arg1: " + m))
-    val arg2s = groups.get("arg2").map(_.map(_.node)) getOrElse (throw new IllegalArgumentException("no arg2: " + m))
-    
-    val arg1 = arg1s match {
-      case arg1 :: Nil => arg1
-      case _ => throw new IllegalArgumentException("multiple arg1s")
-    }
-    val arg2 = arg2s match {
-      case arg2 :: Nil => arg2
-      case _ => throw new IllegalArgumentException("multiple arg2s")
-    }
+    val rels = groups.filter(_._1 startsWith "rel").toSeq.sortBy(_._1).map(_._2.node)
+    if (rels.isEmpty) (throw new IllegalArgumentException("no rel: " + m))
+    val arg1 = groups.get("arg1").map(_.node) getOrElse (throw new IllegalArgumentException("no arg1: " + m))
+    val arg2 = groups.get("arg2").map(_.node) getOrElse (throw new IllegalArgumentException("no arg2: " + m))
 
-    val expandedArg1 = if (expand) expandArgument(graph, arg1, Set(rels: _*)) else SortedSet(arg1)
-    val expandedArg2 = if (expand) expandArgument(graph, arg2, Set(rels: _*)) else SortedSet(arg2)
+    val expandedArg1 = if (expand) expandArgument(graph, arg1, rels.toSet) else SortedSet(arg1)
+    val expandedArg2 = if (expand) expandArgument(graph, arg2, rels.toSet) else SortedSet(arg2)
     val Part(expandedRelNodes, expandedRelText) = 
       if (expand) {
         val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2))
         Part(expansions.map(_.nodes).reduce(_++_), expansions.map(_.text).mkString(" "))
-      } else Part(SortedSet(rels: _*), rels.map(_.text).mkString(" "))
+      } else Part(SortedSet.empty[DependencyNode] ++ rels, rels.map(_.text).mkString(" "))
     
     val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
     val clausal = rels.flatMap(rel => clausalComponent(rel, nodes)).headOption
@@ -96,7 +86,7 @@ object OpenParse {
   }
 
   def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
-    !restrictArguments || VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").head.node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").head.node.postag)
+    !restrictArguments || VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag)
   }
 
   def neighborsUntil(graph: DependencyGraph, node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {

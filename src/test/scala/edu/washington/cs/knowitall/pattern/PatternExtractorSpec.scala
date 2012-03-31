@@ -131,7 +131,7 @@ object PatternExtractorSpec extends Specification {
     "A rel rel pattern is found" in {
       val pickled = "(of_IN_5), (._._9), nn(Obama_NNP_1, Barack_NNP_0); nsubjpass(elected_VBN_3, Obama_NNP_1); auxpass(elected_VBN_3, was_VBD_2); dobj(elected_VBN_3, president_NN_4); prep_of(president_NN_4, States_NNPS_8); det(States_NNPS_8, the_DT_6); nn(States_NNPS_8, United_NNP_7)"
       val graph = DependencyGraph.deserialize(pickled)
-      val pattern = DependencyPattern.deserialize("{arg1} <nsubjpass< {rel} >dobj> {rel} >prep_of> {arg2}")
+      val pattern = DependencyPattern.deserialize("{arg1} <nsubjpass< {rel1} >dobj> {rel2} >prep_of> {arg2}")
       val extractor = new TemplateExtractor(Template.deserialize("be {rel} of"), pattern, 1, 1)
       extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Barack Obama; was elected president of; the United States)"))
     }
@@ -139,7 +139,7 @@ object PatternExtractorSpec extends Specification {
     "A rel rel pattern is found" in {
       val pickled = "(in_IN_6), (._._8), det(Mariners_NNPS_1, The_DT_0); nsubj(team_NN_4, Mariners_NNPS_1); cop(team_NN_4, are_VBP_2); det(team_NN_4, a_DT_3); partmod(team_NN_4, located_VBN_5); prep_in(located_VBN_5, Seattle_NNP_7)"
       val graph = DependencyGraph.deserialize(pickled)
-      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >partmod> {rel} >prep_in> {arg2}")
+      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel1} >partmod> {rel2} >prep_in> {arg2}")
       val extractor = new TemplateExtractor(Template.deserialize("be {rel} in"), pattern, 1, 1)
       extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(The Mariners; are a team located in; Seattle)"))
     }
@@ -147,7 +147,7 @@ object PatternExtractorSpec extends Specification {
     "A rel rel pattern is found" in {
       val pickled = "(._._7), nsubj(going_VBG_2, Humans_NNS_0); aux(going_VBG_2, are_VBP_1); xcomp(going_VBG_2, populate_VB_4); aux(populate_VB_4, to_TO_3); dobj(populate_VB_4, earth_NN_6); det(earth_NN_6, the_DT_5)"
       val graph = DependencyGraph.deserialize(pickled)
-      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >xcomp> {rel} >dobj> {arg2}")
+      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel1} >xcomp> {rel2} >dobj> {arg2}")
       val extractor = new TemplateExtractor(Template.deserialize("be {rel}"), pattern, 1, 1)
       extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Humans; are going to populate; the earth)"))
     }
@@ -155,7 +155,7 @@ object PatternExtractorSpec extends Specification {
     "A rel rel pattern is found" in {
       val pickled = "(on_IN_4), (._._6), nsubj(has_VBZ_1, Juliette_NNP_0); dobj(has_VBZ_1, crush_NN_3); det(crush_NN_3, a_DT_2); prep_on(crush_NN_3, Romeo_NNP_5)"
       val graph = DependencyGraph.deserialize(pickled)
-      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel} >dobj> {rel} >prep_on> {arg2}")
+      val pattern = DependencyPattern.deserialize("{arg1} <nsubj< {rel1} >dobj> {rel2} >prep_on> {arg2}")
       val extractor = new TemplateExtractor(Template.deserialize("{rel} on"), pattern, 1, 1)
       extractor.extract(graph).map(_.toString) must haveTheSameElementsAs(List("(Juliette; has a crush on; Romeo)"))
     }

@@ -226,25 +226,34 @@ object BuildPatterns {
     
     val filtered = patterns.filter(valid).toList
 
-    val relLemmas = rel.split(" ").toSet intersect lemmas
+    val relLemmas = rel.split(" ").toList filter lemmas
 
     // find the best part to replace with rel
     filtered.map { pattern =>
       import scalaz._
       import Scalaz._
 
-      def replaceRel(zipper: Zipper[Matcher[DependencyNode]]) = {
-        // find the rel node
-        val relZipper = zipper.findZ(_ match {
-          case nm: DependencyNodeMatcher => !(relLemmas intersect nm.text.split(" ").toSet).isEmpty
-          case _ => false
-        }) getOrElse {
-          throw new NoRelationNodeException("No relation ("+rel+") in pattern: " + pattern)
+      def replaceRels(zipper: Zipper[Matcher[DependencyNode]]) = {
+        def replaceRels(zipper: Zipper[Matcher[DependencyNode]], rels: List[(String, Int)]): Zipper[Matcher[DependencyNode]] = rels match {
+          case Nil => zipper
+          case (rel, i) :: xs => 
+            // find the rel node
+            val relZipper = zipper.findZ(_ match {
+              case nm: DependencyNodeMatcher => nm.text.split("\\s+").contains(rel)
+              case _ => false
+            }) getOrElse {
+              throw new NoRelationNodeException("No relation node ("+rel+") in pattern: " + pattern)
+            }
+    
+            // replace rel
+            val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag
+            val alias = if (i == 0 && xs.isEmpty) "rel" else "rel" + i
+            val updated = relZipper.update(new CaptureNodeMatcher(alias, new PostagNodeMatcher(postag)))
+            
+            replaceRels(updated, xs)
         }
-
-        // replace rel
-        val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag
-        relZipper.update(new CaptureNodeMatcher("rel", new PostagNodeMatcher(postag)))
+        
+        replaceRels(zipper, relLemmas.zipWithIndex)
       }
 
       def replaceSlots(zipper: Zipper[Matcher[DependencyNode]]) = {
@@ -267,7 +276,7 @@ object BuildPatterns {
       }
 
       val zipper = pattern.matchers.toZipper.get
-      val relZipper = replaceRel(zipper)
+      val relZipper = replaceRels(zipper)
       val (slotZipper, slotLabels) = replaceSlots(relZipper)
 
       (new ExtractorPattern(slotZipper.toStream.toList), slotLabels)

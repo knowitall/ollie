@@ -43,33 +43,37 @@ object BuildPatternsSpec extends Specification {
   }
   
   // rel rel
-  "A single pattern is found with a slot" in {
+  "A pattern is found" in {
     val row = ("be bear a", "queequag", "slave", "bear queequag slave", "(in_IN_5), (._._7), nsubjpass(born_VBN_2, Queequag_NNP_0); auxpass(born_VBN_2, was_VBD_1); dobj(born_VBN_2, slave_NN_4); det(slave_NN_4, a_DT_3); prep_in(slave_NN_4, Africa_NNP_6)")
     val patterns = findPatterns(row, Some(2))
     patterns.size must_== 1
+    patterns.head._1.toString must_== "{arg1} <nsubjpass< {rel:postag=VBN} >dobj> {arg2}"
   }
   
   "A single pattern is found with a slot instead of a rel rel" in {
     val row = ("be elect president of", "barack obama", "unite state", "barack obama unite state elect president", "(of_IN_5), (._._9), nn(Obama_NNP_1, Barack_NNP_0); nsubjpass(elected_VBN_3, Obama_NNP_1); auxpass(elected_VBN_3, was_VBD_2); dobj(elected_VBN_3, president_NN_4); prep_of(president_NN_4, States_NNPS_8); det(States_NNPS_8, the_DT_6); nn(States_NNPS_8, United_NNP_7)")
     val patterns = findPatterns(row)
     patterns.size must_== 1
+    patterns.head._1.toString must_== "{arg1} <nsubjpass< {rel0:postag=VBN} >dobj> {rel1:postag=NN} >prep_of> {arg2}"
   }
   
   "A single pattern is found with a slot instead of a rel rel" in {
     val row = ("be team locate in", "mariner", "seattle", "mariner team locate seattle", "(in_IN_6), (._._8), det(Mariners_NNPS_1, The_DT_0); nsubj(team_NN_4, Mariners_NNPS_1); cop(team_NN_4, are_VBP_2); det(team_NN_4, a_DT_3); partmod(team_NN_4, located_VBN_5); prep_in(located_VBN_5, Seattle_NNP_7)")
     val patterns = findPatterns(row)
-    patterns.size must_== 1
+    patterns.head._1.toString must_== "{arg1} <nsubj< {rel0:postag=NN} >partmod> {rel1:postag=VBN} >prep_in> {arg2}"
   }
   
   "A single pattern is found with a slot instead of a rel rel" in {
     val row = ("be going populate", "human", "earth", "human go populate earth", "(._._7), nsubj(going_VBG_2, Humans_NNS_0); aux(going_VBG_2, are_VBP_1); xcomp(going_VBG_2, populate_VB_4); aux(populate_VB_4, to_TO_3); dobj(populate_VB_4, earth_NN_6); det(earth_NN_6, the_DT_5)")
     val patterns = findPatterns(row)
     patterns.size must_== 1
+    patterns.head._1.toString must_== "{arg1} <nsubj< {slot0:postag=VBG} >xcomp> {rel:postag=VB} >dobj> {arg2}"
   }
   
   "A single pattern is found with a slot instead of a rel rel" in {
     val row = ("have crush on", "juliette", "romeo", "juliette have crush romeo", "(on_IN_4), (._._6), nsubj(has_VBZ_1, Juliette_NNP_0); dobj(has_VBZ_1, crush_NN_3); det(crush_NN_3, a_DT_2); prep_on(crush_NN_3, Romeo_NNP_5)")
     val patterns = findPatterns(row)
     patterns.size must_== 1
+    patterns.head._1.toString must_== "{arg1} <nsubj< {rel0:postag=VBZ} >dobj> {rel1:postag=NN} >prep_on> {arg2}"
   }
 }
