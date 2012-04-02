@@ -389,11 +389,11 @@ object OpenParse {
                   val dgraph = DependencyGraph.deserialize(pickled)
                   val text = if (parts.length > 1) parts(0) else dgraph.text
                   logger.debug("text: " + text)
-                  logger.debug("graph: " + dgraph.serialize)
+                  logger.debug("graph: " + pickled)
 
                   if (settings.verbose) {
                     writer.println("text: " + text)
-                    writer.println("deps: " + dgraph.serialize)
+                    writer.println("deps: " + pickled)
                   }
 
                   val extractions = extractor.extract(dgraph)
