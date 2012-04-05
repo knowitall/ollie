@@ -22,6 +22,22 @@ object OpenParse {
   val LEMMA_BLACKLIST = PosTagger.simplePrepositions + "like" + "be"
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
+  
+  // factory methods
+  def fromModelSource(source: Source, configuration: Configuration = new Configuration()) = {
+    val it = source.getLines
+    val head = it.next
+    
+    val typ = PatternExtractorType(head)
+    val extractors = typ.fromLines(it)
+    new OpenParse(extractors, configuration)
+  }
+  
+  def fromModelFile(file: File, configuration: Configuration = new Configuration()) = {
+    using (Source.fromFile(file)) { source =>
+      OpenParse.fromModelSource(source, configuration)
+    }
+  }
 
   val CHUNK_SIZE = 10000
 
