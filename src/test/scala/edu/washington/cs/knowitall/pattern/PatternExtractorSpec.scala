@@ -10,7 +10,7 @@ import org.specs.runner.JUnitSuiteRunner
 import tool.parse.graph.DependencyGraph
 import tool.parse.graph.Dependencies
 import tool.stem.MorphaStemmer
-import tool.parse.pattern.DependencyPattern
+import tool.parse.graph.DependencyPattern
 
 import OpenParse._
 import pattern.extract._

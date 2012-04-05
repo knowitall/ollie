@@ -1,29 +1,22 @@
-package edu.washington.cs.knowitall
-package pattern
+package edu.washington.cs.knowitall.pattern
 
-import java.io.File
-import java.io.PrintWriter
+import java.io.{PrintWriter, File}
 
 import scala.collection.Set
 import scala.io.Source
 
 import org.slf4j.LoggerFactory
 
-import OpenParse.validMatch
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
+import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.Timing
-import edu.washington.cs.knowitall.pattern.extract.PatternExtractorType
-import edu.washington.cs.knowitall.tool.parse.graph.Graph
-import edu.washington.cs.knowitall.tool.parse.pattern.Match
+import edu.washington.cs.knowitall.pattern.OpenParse.validMatch
+import edu.washington.cs.knowitall.pattern.extract.{TemplateExtractor, PatternExtractorType, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
+import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.postag.PosTagger
-import extract.DetailedExtraction
-import extract.Extraction
-import extract.GeneralExtractor
-import extract.PatternExtractor
-import extract.TemplateExtractor
+
 import scopt.OptionParser
-import tool.parse.graph.DependencyGraph
-import tool.parse.graph.DependencyNode
 
 object OpenParse {
   val LEMMA_BLACKLIST = PosTagger.simplePrepositions + "like" + "be"

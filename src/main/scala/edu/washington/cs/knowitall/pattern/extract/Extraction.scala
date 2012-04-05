@@ -1,25 +1,22 @@
-package edu.washington.cs.knowitall
-package pattern
-package extract
+package edu.washington.cs.knowitall.pattern.extract
 
-import GraphExpansions._
+import edu.washington.cs.knowitall.pattern.GraphExpansions._
+import edu.washington.cs.knowitall.pattern.OpenParse
 
 import scala.Array.canBuildFrom
 import scala.collection.SortedSet
 import scala.collection.Set
 
 import edu.washington.cs.knowitall.collection.immutable.Interval
-import edu.washington.cs.knowitall.tool.parse.pattern.DependencyPattern
-import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
-import edu.washington.cs.knowitall.tool.parse.graph.Graph
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Pattern
+import edu.washington.cs.knowitall.collection.immutable.graph.DirectedEdge
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
+import edu.washington.cs.knowitall.collection.immutable.graph.Direction
+import edu.washington.cs.knowitall.collection.immutable.graph.Graph
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyPattern
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.parse.pattern.Match
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
-import edu.washington.cs.knowitall.tool.parse.graph.DirectedEdge
-import edu.washington.cs.knowitall.tool.parse.graph.Direction
-
-import tool.parse.pattern.Match
 
 import Extraction._
 

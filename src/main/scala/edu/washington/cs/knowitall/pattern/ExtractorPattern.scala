@@ -1,18 +1,15 @@
-package edu.washington.cs.knowitall
-package pattern
+package edu.washington.cs.knowitall.pattern
 
-import tool.parse.pattern.Matcher
-import tool.parse.pattern.Pattern
-import tool.parse.pattern.DependencyEdgeMatcher
-import tool.parse.pattern.LabelEdgeMatcher
-import tool.parse.pattern.CaptureNodeMatcher
-import tool.parse.graph.DependencyNode
-import tool.parse.pattern.DependencyPattern
-import tool.parse.pattern.NodeMatcher
-import tool.parse.pattern.EdgeMatcher
-import tool.parse.pattern.TrivialNodeMatcher
+import scala.io.Source
+
 import org.slf4j.LoggerFactory
-import tool.parse.pattern.DirectedEdgeMatcher
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, NodeMatcher, EdgeMatcher, CaptureNodeMatcher}
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{TrivialNodeMatcher, Matcher}
+import edu.washington.cs.knowitall.tool.parse.graph.{LabelEdgeMatcher, DependencyPattern, DependencyNode}
+
+import scalaz.Scalaz._
+import scalaz._
 
 class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends DependencyPattern(matchers) {
   val logger = LoggerFactory.getLogger(this.getClass)

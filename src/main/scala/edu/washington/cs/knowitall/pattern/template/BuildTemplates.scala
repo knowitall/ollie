@@ -1,34 +1,45 @@
-package edu.washington.cs.knowitall.pattern
+package edu.washington.cs.knowitall.pattern.template
 
 import java.io.File
 import java.io.PrintWriter
 import scala.io.Source
 import scala.util.matching.Regex
 import org.slf4j.LoggerFactory
+
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOncePairIntTo
 import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOnceTo
-import edu.washington.cs.knowitall.tool.parse.pattern.CaptureEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.DependencyPattern
-import edu.washington.cs.knowitall.tool.parse.pattern.DirectedEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.LabelEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.RegexEdgeMatcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.CaptureEdgeMatcher
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyPattern
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
+import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
+import edu.washington.cs.knowitall.tool.parse.graph.RegexEdgeMatcher
 import edu.washington.cs.knowitall.tool.postag.PosTagger
+
 import scopt.OptionParser
-import edu.washington.cs.knowitall.tool.parse.graph.Direction
+
+import edu.washington.cs.knowitall.collection.immutable.graph.Direction
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.parse.pattern.RegexNodeMatcher
+import edu.washington.cs.knowitall.tool.parse.graph.RegexNodeMatcher
+
 import scala.collection.immutable
-import edu.washington.cs.knowitall.tool.parse.pattern.Matcher
-import edu.washington.cs.knowitall.tool.parse.pattern.ConjunctiveNodeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.EdgeMatcher
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Matcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.ConjunctiveNodeMatcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.EdgeMatcher
 import edu.washington.cs.knowitall.collection.immutable.Bag
+
 import scalaz._
 import Scalaz._
+
 import edu.washington.cs.knowitall.common.enrich.Traversables._
 import scala.collection.immutable.SortedSet
 import scala.collection.immutable
-import edu.washington.cs.knowitall.tool.parse.pattern.PostagNodeMatcher
+import edu.washington.cs.knowitall.tool.parse.graph.PostagNodeMatcher
+import edu.washington.cs.knowitall.pattern.ExtractorPattern
+import edu.washington.cs.knowitall.pattern.RelationMatcher
+import edu.washington.cs.knowitall.pattern.ArgumentMatcher
+import edu.washington.cs.knowitall.pattern.SlotMatcher
 
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)

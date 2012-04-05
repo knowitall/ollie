@@ -2,14 +2,14 @@ package edu.washington.cs.knowitall
 package pattern
 package extract
 
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.parse.graph.Graph
-import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
-import edu.washington.cs.knowitall.tool.parse.pattern.Match
 import java.io.File
+
 import scala.io.Source
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
+import edu.washington.cs.knowitall.collection.immutable.graph.Graph
+import edu.washington.cs.knowitall.common.Resource.using
+import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
   def extract(dgraph: DependencyGraph)(implicit 

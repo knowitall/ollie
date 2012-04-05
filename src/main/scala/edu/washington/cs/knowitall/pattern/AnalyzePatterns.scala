@@ -1,20 +1,16 @@
-package edu.washington.cs.knowitall
-package pattern
+package edu.washington.cs.knowitall.pattern
 
-import tool.parse.pattern.DependencyPattern
-import edu.washington.cs.knowitall.common.Resource
-import scala.io.Source
-import scala.collection.immutable
+import java.io.{PrintWriter, File}
+
+import scala.Option.option2Iterable
 import scala.collection.mutable
-import java.io.PrintWriter
-import java.io.File
-import scala.io.Codec
-import tool.parse.pattern.DependencyEdgeMatcher
-import tool.parse.pattern.LabelEdgeMatcher
-import tool.parse.pattern.DirectedEdgeMatcher
-import tool.parse.graph.DependencyNode
-import tool.parse.graph.DependencyGraph
-import tool.parse.pattern.PostagNodeMatcher
+import scala.io.Source
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
+import edu.washington.cs.knowitall.common.Resource
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
+import edu.washington.cs.knowitall.tool.parse.graph.{PostagNodeMatcher, LabelEdgeMatcher, DependencyPattern, DependencyGraph}
 
 object AnalyzePatterns {
   def main(args: Array[String]) {

@@ -3,12 +3,11 @@ package pattern
 package extract
 
 import scala.Array.canBuildFrom
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.parse.graph.Graph
-import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
-import edu.washington.cs.knowitall.tool.parse.pattern.Match
-import tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.collection.immutable.graph.{Graph}
+import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Pattern
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 
 class SpecificExtractor(val relation: String, 
   val relationLemmas: List[String], 

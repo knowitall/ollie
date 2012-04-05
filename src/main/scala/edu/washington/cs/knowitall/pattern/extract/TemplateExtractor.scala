@@ -3,16 +3,16 @@ package pattern
 package extract
 
 import scala.util.matching.Regex
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.parse.graph.Graph
-import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
-import edu.washington.cs.knowitall.tool.parse.pattern.Match
-import edu.washington.cs.knowitall.common.Resource.using
-import Template.group
-import tool.parse.pattern.DependencyPattern
-import java.io.File
+
 import org.slf4j.LoggerFactory
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
+import edu.washington.cs.knowitall.collection.immutable.graph.Graph
+import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
+
+import Template.group
+import collection.immutable.graph.pattern.{Pattern, Match}
+import tool.parse.graph.DependencyPattern
 
 class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
 extends GeneralExtractor(pattern, patternCount, maxPatternCount) {

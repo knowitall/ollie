@@ -1,12 +1,10 @@
 package edu.washington.cs.knowitall.pattern.eval
 
-import edu.washington.cs.knowitall.common.Resource._
-import edu.washington.cs.knowitall.common.Random
-import edu.washington.cs.knowitall.common.Analysis
-import scopt.OptionParser
 import java.io.File
-import scala.io.Source
-import java.io.PrintWriter
+
+import edu.washington.cs.knowitall.common.{Random, Analysis}
+
+import scopt.OptionParser
 
 object StatisticalSignificance {
   abstract class Settings {

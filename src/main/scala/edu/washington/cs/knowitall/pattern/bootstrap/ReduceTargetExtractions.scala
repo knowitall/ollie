@@ -3,6 +3,7 @@ package pattern
 package bootstrap
 
 import scala.io.Source
+
 import org.slf4j.LoggerFactory
 
 object ReduceTargetExtractions {

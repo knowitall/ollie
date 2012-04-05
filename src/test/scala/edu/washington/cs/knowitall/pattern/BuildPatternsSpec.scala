@@ -1,16 +1,12 @@
 package edu.washington.cs.knowitall
 package pattern
 
-import org.junit._
-import org.junit.Assert._
-import org.specs.Specification
-import org.specs.runner.JUnit4
 import org.junit.runner.RunWith
-import org.specs.runner.JUnitSuiteRunner
+import org.specs.runner.JUnit4
+import org.specs.Specification
 import tool.parse.graph.DependencyGraph
-import tool.parse.graph.Dependencies
 import tool.stem.MorphaStemmer
-import tool.parse.pattern.CaptureNodeMatcher
+import org.specs.runner.JUnitSuiteRunner
 
 @RunWith(classOf[JUnitSuiteRunner])
 class BuildPatternsTest extends JUnit4(BuildPatternsSpec)

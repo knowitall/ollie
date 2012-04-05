@@ -1,30 +1,16 @@
-package edu.washington.cs.knowitall.pattern
+package edu.washington.cs.knowitall.pattern.template
 
-import java.io.File
-import java.io.PrintWriter
-import scala.collection.immutable
+import java.io.{PrintWriter, File}
+
 import scala.collection.immutable
 import scala.io.Source
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{NodeMatcher, ConjunctiveNodeMatcher}
 import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.common.enrich.Traversables._
-import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOncePairIntTo
-import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOnceTo
-import edu.washington.cs.knowitall.tool.parse.pattern.CaptureEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.ConjunctiveNodeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.DependencyPattern
-import edu.washington.cs.knowitall.tool.parse.pattern.DirectedEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.EdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.LabelEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.Matcher
-import edu.washington.cs.knowitall.tool.parse.pattern.RegexEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.RegexNodeMatcher
-import scalaz.Scalaz._
+import edu.washington.cs.knowitall.pattern.{SlotMatcher, RelationMatcher, ExtractorPattern, ExtractionPartMatcher}
+import edu.washington.cs.knowitall.tool.parse.graph.{RegexNodeMatcher, PostagNodeMatcher, DependencyPattern, DependencyNode}
+
 import scopt.OptionParser
-import edu.washington.cs.knowitall.tool.parse.pattern.PostagNodeMatcher
-import edu.washington.cs.knowitall.tool.parse.pattern.TrivialNodeMatcher
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.parse.pattern.NodeMatcher
-import scala.collection.immutable
 
 object GeneralizeTemplates {
   abstract class Settings {

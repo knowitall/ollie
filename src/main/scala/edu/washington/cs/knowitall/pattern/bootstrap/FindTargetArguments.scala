@@ -1,9 +1,12 @@
-package edu.washington.cs.knowitall
-package pattern.bootstrap
+package edu.washington.cs.knowitall.pattern.bootstrap
 
-import tool.stem.MorphaStemmer
-import scala.io.Source
+import scala.Array.canBuildFrom
 import scala.collection.mutable
+import scala.io.Source
+
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+
+import FindCommon.{zip3, proper, cleanArg}
 
 object FindTargetArguments {
   import FindCommon._

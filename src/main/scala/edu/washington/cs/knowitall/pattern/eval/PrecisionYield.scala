@@ -1,11 +1,11 @@
 package edu.washington.cs.knowitall.pattern.eval
 
-import edu.washington.cs.knowitall.common.Resource._
+import java.io.{PrintWriter, File}
+
+import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.Analysis
+
 import scopt.OptionParser
-import java.io.File
-import scala.io.Source
-import java.io.PrintWriter
 
 object PrecisionYield {
   abstract class Settings {

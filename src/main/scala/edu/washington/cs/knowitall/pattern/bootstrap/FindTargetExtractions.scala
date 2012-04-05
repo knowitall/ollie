@@ -1,16 +1,16 @@
-package edu.washington.cs.knowitall
-package pattern
-package bootstrap
+package edu.washington.cs.knowitall.pattern.bootstrap
+
+import scala.Array.canBuildFrom
+import scala.Option.option2Iterable
+import scala.io.Source
 
 import org.slf4j.LoggerFactory
 
+import edu.washington.cs.knowitall.pattern.OpenParse
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+
+import FindCommon.{zip3, stripPostag, proper, cleanArg}
 import scopt.OptionParser
-
-import scala.collection
-import scala.collection.mutable
-import scala.io.Source
-
-import tool.stem.MorphaStemmer
 
 object FindTargetExtractions {
   import FindCommon._

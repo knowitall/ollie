@@ -1,10 +1,10 @@
 package edu.washington.cs.knowitall.pattern.eval
 
-import edu.washington.cs.knowitall.common.Resource._
-import edu.washington.cs.knowitall.common.Analysis
+import java.io.{PrintWriter, File}
+
+import edu.washington.cs.knowitall.common.Resource.using
+
 import scopt.OptionParser
-import java.io.File
-import java.io.PrintWriter
 
 object RankPatterns {
   abstract class Settings {

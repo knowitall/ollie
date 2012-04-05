@@ -1,9 +1,11 @@
 package edu.washington.cs.knowitall.pattern.extract
 
+import scala.Option.option2Iterable
 import scala.collection.immutable
-import edu.washington.cs.knowitall.tool.postag.PosTagger
+
 import edu.washington.cs.knowitall.collection.immutable.Interval
-import edu.washington.cs.knowitall.pattern.extract.Extraction._
+import edu.washington.cs.knowitall.pattern.extract.Extraction.{ClausalComponent, AdverbialModifier}
+import edu.washington.cs.knowitall.tool.postag.PosTagger
 
 class ExtractionPart(val string: String, val interval: Interval) extends Ordered[ExtractionPart] {
   override def compare(that: ExtractionPart) = 

@@ -1,17 +1,23 @@
 package edu.washington.cs.knowitall
 package pattern
 
-import java.io.File
-import java.io.PrintWriter
+import java.io.{PrintWriter, File}
+
+import scala.Option.option2Iterable
+import scala.collection.immutable
 import scala.io.Source
-import scala.collection
-import common.Timing._
-import tool.parse._
-import tool.stem._
-import tool.parse.pattern._
-import tool.parse.graph._
+
 import org.slf4j.LoggerFactory
 
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, CaptureNodeMatcher}
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Matcher
+import edu.washington.cs.knowitall.collection.immutable.graph.{UpEdge, DownEdge, Bipath}
+import edu.washington.cs.knowitall.tool.parse.graph.{PostagNodeMatcher, DependencyPattern, DependencyNodeMatcher, DependencyNode, DependencyGraph}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+
+import edu.washington.cs.knowitall.common.Timing.{time, Seconds}
+import scalaz.Scalaz._
+import scalaz._
 import scopt.OptionParser
 
 object BuildPatterns {
@@ -292,7 +298,7 @@ object KeepCommonPatterns {
     var rows = 0
     var keepers = 0
 
-    var patterns = collection.immutable.Map[String, Int]().withDefaultValue(0)
+    var patterns = scala.collection.immutable.Map[String, Int]().withDefaultValue(0)
     val firstSource = Source.fromFile(args(0), "UTF8")
     for (line <- firstSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")
@@ -352,7 +358,7 @@ object KeepDiversePatterns {
     var rows = 0
     var keepers = 0
 
-    var patterns = collection.immutable.Map[String, Set[Int]]().withDefaultValue(Set())
+    var patterns = immutable.Map[String, Set[Int]]().withDefaultValue(Set())
     val firstSource = Source.fromFile(settings.inputFile, "UTF8")
     for (line <- firstSource.getLines) {
       val Array(rel, arg1, arg2, lemmas, pattern, text, deps, _*) = line.split("\t")

@@ -1,8 +1,10 @@
 package edu.washington.cs.knowitall.pattern.eval
 
-import edu.washington.cs.knowitall.common.Analysis
-import scopt.OptionParser
 import java.io.File
+
+import edu.washington.cs.knowitall.common.Analysis
+
+import scopt.OptionParser
 
 object GroupScoredBy {
   def main(args: Array[String]) = {

@@ -1,11 +1,12 @@
-package edu.washington.cs.knowitall
-package pattern.eval
+package edu.washington.cs.knowitall.pattern.eval
 
-import edu.washington.cs.knowitall.common.Resource._
-import scopt.OptionParser
+import java.io.{PrintWriter, File}
+
 import scala.io.Source
-import java.io.File
-import java.io.PrintWriter
+
+import edu.washington.cs.knowitall.common.Resource.using
+
+import scopt.OptionParser
 
 object Score {
   abstract class Settings {

@@ -3,19 +3,14 @@ package pattern
 package extract
 
 import scala.Option.option2Iterable
+
 import org.slf4j.LoggerFactory
-import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.tool.parse.graph.Graph
-import edu.washington.cs.knowitall.tool.parse.pattern.Match
-import edu.washington.cs.knowitall.tool.parse.pattern.Pattern
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
+import edu.washington.cs.knowitall.collection.immutable.graph.Graph
+import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
+
 import GeneralExtractor.logger
-import tool.parse.graph.DependencyGraph
-import tool.parse.graph.DependencyNode
-import tool.parse.graph.Graph
-import tool.parse.pattern.Match
-import tool.parse.pattern.Pattern
-import java.io.File
-import tool.parse.pattern.DependencyPattern
 
 
 class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
