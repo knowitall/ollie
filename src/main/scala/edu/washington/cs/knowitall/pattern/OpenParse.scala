@@ -1,253 +1,42 @@
 package edu.washington.cs.knowitall
 package pattern
 
-import java.io.{PrintWriter, File}
-import scala.Option.option2Iterable
-import scala.collection.JavaConversions.{iterableAsScalaIterable, asScalaBuffer}
-import scala.collection.{SortedSet, Set}
+import java.io.File
+import java.io.PrintWriter
+
+import scala.collection.Set
 import scala.io.Source
+
 import org.slf4j.LoggerFactory
-import edu.washington.cs.knowitall.collection.immutable.Interval
-import edu.washington.cs.knowitall.common.Timing
+
+import OpenParse.validMatch
 import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.pattern.extract.Extraction.{Part, AdverbialModifier, ClausalComponent}
-import edu.washington.cs.knowitall.pattern.extract.{SimpleExtraction, ExtendedExtraction, PatternExtractorType}
-import edu.washington.cs.knowitall.tool.parse.graph.{Graph, DirectedEdge}
+import edu.washington.cs.knowitall.common.Timing
+import edu.washington.cs.knowitall.pattern.extract.PatternExtractorType
+import edu.washington.cs.knowitall.tool.parse.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.pattern.Match
-import OpenParse.{logger, expandRelation, expandArgument, VALID_ARG_POSTAG}
-import extract.{TemplateExtractor, SpecificExtractor, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
-import scopt.OptionParser
-import tool.parse.graph.{Direction, DependencyNode, DependencyGraph}
-import tool.parse.pattern.DependencyPattern
-import tool.stem.MorphaStemmer
 import edu.washington.cs.knowitall.tool.postag.PosTagger
+import extract.DetailedExtraction
+import extract.Extraction
+import extract.GeneralExtractor
+import extract.PatternExtractor
+import extract.TemplateExtractor
+import scopt.OptionParser
+import tool.parse.graph.DependencyGraph
+import tool.parse.graph.DependencyNode
 
 object OpenParse {
   val LEMMA_BLACKLIST = PosTagger.simplePrepositions + "like" + "be"
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
-  
+
   val CHUNK_SIZE = 10000
-  
-  implicit def implicitBuildExtraction = buildExtraction(true) _
+
+  implicit def implicitBuildExtraction = Extraction.fromMatch(true) _
   implicit def implicitValidMatch = validMatch(true) _
-  
-  private val attributionPattern = DependencyPattern.deserialize("{old} <ccomp< {rel} >nsubj> {arg}")
-  private val conditionalPattern = DependencyPattern.deserialize("{old} <ccomp< {rel} >nsubj> {arg}")
-  def buildExtraction(expand: Boolean)(graph: DependencyGraph, m: Match[DependencyNode], ex: PatternExtractor): Option[DetailedExtraction] = {
-    def clausalComponent(node: DependencyNode, until: Set[DependencyNode]) = {
-      attributionPattern.apply(graph.graph, node) match {
-        case List(m) => 
-          assume(m.nodeGroups.get("rel").isDefined)
-          assume(m.nodeGroups.get("arg").isDefined)
-          
-          val rel = m.nodeGroups("rel").node
-          val arg = m.nodeGroups("arg").node
-          
-          val Part(expandedRelNodes, expandedRelText) = expandRelation(graph, rel, until + arg)
-          val expandedArg = expandArgument(graph, arg, until + rel)
-          
-          Some(ClausalComponent(Part(expandedRelNodes, expandedRelText), Part(expandedArg, DetailedExtraction.nodesToString(expandedArg))))
-        case _ => None
-      }
-    }
-    
-    def adverbialModifier(node: DependencyNode, until: Set[DependencyNode]): Option[AdverbialModifier] = {
-      val neighbors = graph.graph.neighbors(node, dedge => dedge.dir == Direction.Down && dedge.edge.label == "advcl")
-      val clause: SortedSet[DependencyNode] = neighbors.flatMap(graph.graph.inferiors(_))(scala.collection.breakOut)
-      if (clause.isEmpty) None
-      else Some(AdverbialModifier(Part(clause, DetailedExtraction.nodesToString(clause))))
-    }
-    
-    val groups = m.nodeGroups
-
-    val rels = groups.filter(_._1 startsWith "rel").toSeq.sortBy(_._1).map(_._2.node)
-    if (rels.isEmpty) (throw new IllegalArgumentException("no rel: " + m))
-    val arg1 = groups.get("arg1").map(_.node) getOrElse (throw new IllegalArgumentException("no arg1: " + m))
-    val arg2 = groups.get("arg2").map(_.node) getOrElse (throw new IllegalArgumentException("no arg2: " + m))
-
-    val expandedArg1 = if (expand) expandArgument(graph, arg1, rels.toSet) else SortedSet(arg1)
-    val expandedArg2 = if (expand) expandArgument(graph, arg2, rels.toSet) else SortedSet(arg2)
-    val Part(expandedRelNodes, expandedRelText) = 
-      if (expand) {
-        val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2))
-        Part(expansions.map(_.nodes).reduce(_++_), expansions.map(_.text).mkString(" "))
-      } else Part(SortedSet.empty[DependencyNode] ++ rels, rels.map(_.text).mkString(" "))
-    
-    val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
-    val clausal = rels.flatMap(rel => clausalComponent(rel, nodes)).headOption
-    val modifier = rels.flatMap(rel => adverbialModifier(rel, nodes)).headOption
-    
-    if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
-      logger.debug("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
-      None
-    }
-    else Some(new DetailedExtraction(ex, m, new Part(expandedArg1), Part(expandedRelNodes, expandedRelText), new Part(expandedArg2), clausal=clausal, modifier=modifier))
-  }
 
   def validMatch(restrictArguments: Boolean)(graph: Graph[DependencyNode])(m: Match[DependencyNode]) = {
     !restrictArguments || VALID_ARG_POSTAG.contains(m.nodeGroups("arg1").node.postag) && VALID_ARG_POSTAG.contains(m.nodeGroups("arg2").node.postag)
-  }
-
-  def neighborsUntil(graph: DependencyGraph, node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
-    val lefts = inferiors.takeWhile(_ != node).reverse
-    val rights = inferiors.dropWhile(_ != node).drop(1)
-
-    val indices = Interval.span(node.indices :: lefts.takeWhile(!until(_)).map(_.indices) ++ rights.takeWhile(!until(_)).map(_.indices))
-
-    // use the original dependencies nodes in case some information
-    // was lost.  For example, of is collapsed into the edge prep_of
-    graph.nodes.filter(node => node.indices.max >= indices.min && node.indices.max <= indices.max)
-  }
-
-  def expandAdjacent(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
-    def takeAdjacent(interval: Interval, nodes: List[DependencyNode], pool: List[DependencyNode]): List[DependencyNode] = pool match {
-      // can we add the top node?
-      case head :: tail if (head.indices borders interval) && !until.contains(head) =>
-        takeAdjacent(interval union head.indices, head :: nodes, tail)
-      // otherwise abort
-      case _ => nodes
-    }
-
-    // it might be possible to simply have an adjacency restriction
-    // in this condition
-    def cond(e: Graph.Edge[DependencyNode]) =
-      labels.contains(e.label)
-    val inferiors = graph.graph.inferiors(node, cond).toList.sortBy(_.indices)
-
-    // split into nodes left and right of node
-    val lefts = inferiors.takeWhile(_ != node).reverse
-    val rights = inferiors.dropWhile(_ != node).drop(1)
-
-    // take adjacent nodes from each list
-    val withLefts = takeAdjacent(node.indices, List(node), lefts)
-    val expanded = takeAdjacent(node.indices, withLefts, rights)
-
-    SortedSet(expanded: _*)
-  }
-
-  def expand(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode], labels: Set[String]) = {
-    // don't restrict to adjacent (by interval) because prep_of, etc.
-    // remove some nodes that we want to expand across.  In the end,
-    // we get the span over the inferiors.  Do go beneath until
-    // nodes because we need them for neighborsUntil.
-    def cond(e: Graph.Edge[DependencyNode]) =
-      labels.contains(e.label)
-    val inferiors = graph.graph.inferiors(node, cond)
-    
-    // get all nodes connected by an nn edge
-    val nns = graph.graph.connected(node, dedge => dedge.edge.label == "nn")
-    
-    // order the nodes by their indices
-    val ordered = (inferiors ++ nns).toList.sortBy(_.indices)
-    
-    // get neighbors, moving left and right, until a bad node is it
-    neighborsUntil(graph, node, ordered, until)
-  }
-
-  def augment(graph: DependencyGraph, node: DependencyNode, without: Set[DependencyNode], pred: Graph.Edge[DependencyNode] => Boolean): List[SortedSet[DependencyNode]] = {
-    // don't restrict to adjacent (by interval) because prep_of, etc.
-    // remove some nodes that we want to expand across.  In the end,
-    // we get the span over the inferiors.
-    graph.graph.successors(node, pred).map(SortedSet[DependencyNode]() ++ graph.graph.inferiors(_)).toList
-  }
-
-  /**
-    *  Return the components next to the node.
-    *  @param  node  components will be found adjacent to this node
-    *  @param  labels  components may be connected by edges with any of these labels
-    *  @param  without  components may not include any of these nodes
-    */
-  def components(graph: DependencyGraph, node: DependencyNode, labels: Set[String], without: Set[DependencyNode], nested: Boolean) = {
-    // nodes across an allowed label to a subcomponent
-    val across = graph.graph.neighbors(node, (dedge: DirectedEdge[_]) => dedge.dir match {
-      case Direction.Down if labels.contains(dedge.edge.label) => true
-      case _ => false
-    })
-
-    val components = across.flatMap { start =>
-      // get inferiors without passing back to node
-      val inferiors = graph.graph.inferiors(start,
-        (e: Graph.Edge[DependencyNode]) =>
-          // make sure we don't cycle out of the component
-          e.dest != node &&
-            // make sure we don't descend into another component
-            // i.e. "John M. Synge who came to us with his play direct
-            // from the Aran Islands , where the material for most of
-            // his later works was gathered" if nested is false
-            (nested || !labels.contains(e.label)))
-
-      // make sure none of the without nodes are in the component
-      if (without.forall(!inferiors.contains(_))) {
-        val span = Interval.span(inferiors.map(_.indices).toSeq)
-        Some(graph.nodes.filter(node => span.superset(node.indices)))
-      }
-      else None
-    }
-
-    components.flatten.toList
-  }
-
-  def expandArgument(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
-    val labels =
-      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod", "neg")
-
-    def expandNode(node: DependencyNode) = {
-      val expansion = expand(graph, node, until, labels)
-      if (expansion.exists(_.isProperNoun)) expansion
-      else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref", "prepc_of"), until, false)
-    }
-
-    // expand over any conjunction/disjunction edges
-    val nodes = graph.graph.connected(node, (dedge: DirectedEdge[_]) =>
-      dedge.edge.label == "conj_and" || dedge.edge.label == "conj_or")
-
-    if (nodes.size == 1) {
-      // there are no conjunctive edges
-      expandNode(node)
-    }
-    else {
-      val flat = nodes.map(expandNode).flatten
-      val span = Interval.span(flat.map(_.indices).toSeq)
-      // take the nodes that cover all the nodes found
-      graph.nodes.filter(node => span.superset(node.indices))
-    }
-  }
-
-  def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): Part = {
-    val nounLabels =
-      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod", "neg")
-
-    // count the adjacent dobj edges.  We will only expand across
-    // dobj components if there is exactly one adjacent dobj edge.
-    // This edge may already be used, but in that case we won't 
-    // expand over it because of the until set.
-    val dobjCount = graph.graph.edges(node).count(_.label == "dobj")
-    val iobjCount = graph.graph.edges(node).count(_.label == "iobj")
-
-    var attachLabels = Set[String]()
-    if (dobjCount == 1) attachLabels += "dobj"
-    if (iobjCount == 1) attachLabels += "iobj"
-
-    def pred(edge: Graph.Edge[DependencyNode]) = edge.label == "advmod" && edge.dest.postag == "RB" ||
-      edge.label == "aux" || edge.label == "cop" || edge.label == "auxpass" || edge.label == "prt"
-
-    val expandNounLabels = expand(graph, node, until, nounLabels)
-    // how many dobj edges are there
-    val expansion = expandNounLabels ::
-      // make sure that we don't use a label that was
-      // already captured by expandNounlabels.  This
-      // can happen when a verb edges goes between two
-      // noun labels.
-      ((augment(graph, node, until, pred).map(_--expandNounLabels)) :+
-      // add subcomponents
-        SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)).filter(!_.isEmpty)
-
-    val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
-
-    // perform a more complicated node->text transformation
-    val texts = sorted.map(DetailedExtraction.nodesToString(_))
-    Part(expansion.reduce(_ ++ _), texts.mkString(" "))
   }
 
   def loadExtractors(extractorType: PatternExtractorType,
@@ -320,11 +109,11 @@ object OpenParse {
       var showAll: Boolean = false
       var verbose: Boolean = false
       var collapseVB: Boolean = false
-      
+
       var parallel: Boolean = false
       var invincible: Boolean = false
     }
-    
+
     val parser = new OptionParser("applypat") {
       opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => settings.patternFile = Option(new File(v)) })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
@@ -357,80 +146,79 @@ object OpenParse {
     val restrictArguments: Boolean = true,
     val keepDuplicates: Boolean = false)
 
-    def run(settings: Settings) {
-      // load the individual extractors
-      val extractors = loadExtractors(settings.extractorType, settings.patternFile)
+  def run(settings: Settings) {
+    // load the individual extractors
+    val extractors = loadExtractors(settings.extractorType, settings.patternFile)
 
-      // create a standalone extractor
-      val configuration = settings.configuration
-      val extractor = new OpenParse(extractors, configuration)
+    // create a standalone extractor
+    val configuration = settings.configuration
+    val extractor = new OpenParse(extractors, configuration)
 
-      logger.info("performing extractions")
-      var chunkCount = 0
-      val extractionCount = new java.util.concurrent.atomic.AtomicInteger
-      val startTime = System.nanoTime();
-      using(settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
-        using(Source.fromFile(settings.sentenceFilePath, "UTF-8")) { sentenceSource =>
-          for (group <- sentenceSource.getLines.grouped(CHUNK_SIZE)) {
-            chunkCount = chunkCount + 1
-            if (settings.outputFile.isDefined) {
-              // provide some nice information about where we are
-              println("summary: "+extractionCount+" extractions, "+chunkCount*CHUNK_SIZE+" sentences, "+Timing.Seconds.format(System.nanoTime()-startTime)+" seconds");
-            }
-            val lines = if (settings.parallel) group.par else group
-              
-            for (line <- lines) {
+    logger.info("performing extractions")
+    var chunkCount = 0
+    val extractionCount = new java.util.concurrent.atomic.AtomicInteger
+    val startTime = System.nanoTime();
+    using(settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
+      using(Source.fromFile(settings.sentenceFilePath, "UTF-8")) { sentenceSource =>
+        for (group <- sentenceSource.getLines.grouped(CHUNK_SIZE)) {
+          chunkCount = chunkCount + 1
+          if (settings.outputFile.isDefined) {
+            // provide some nice information about where we are
+            println("summary: " + extractionCount + " extractions, " + chunkCount * CHUNK_SIZE + " sentences, " + Timing.Seconds.format(System.nanoTime() - startTime) + " seconds");
+          }
+          val lines = if (settings.parallel) group.par else group
+
+          for (line <- lines) {
+            try {
+              val parts = line.split("\t")
+              require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
+
               try {
-                val parts = line.split("\t")
-                require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
+                val pickled = parts.last
+                val dgraph = DependencyGraph.deserialize(pickled)
+                val text = if (parts.length > 1) parts(0) else dgraph.text
+                logger.debug("text: " + text)
+                logger.debug("graph: " + pickled)
 
-                try {
-                  val pickled = parts.last
-                  val dgraph = DependencyGraph.deserialize(pickled)
-                  val text = if (parts.length > 1) parts(0) else dgraph.text
-                  logger.debug("text: " + text)
-                  logger.debug("graph: " + pickled)
-
-                  if (settings.verbose) {
-                    writer.println("text: " + text)
-                    writer.println("deps: " + pickled)
-                  }
-
-                  val extractions = extractor.extract(dgraph)
-                  extractionCount.addAndGet(extractions.size)
-                  val results = for ((conf, extr) <- extractions) yield {
-                    val resultText =
-                      if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")"
-                      else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled
-                    Result(conf, extr, resultText)
-                  }
-
-                  writer.synchronized {
-                    for (result <- results) {
-                      writer.println(result)
-                    }
-                  }
-
-                  if (settings.verbose) writer.println()
-                } catch {
-                  case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
+                if (settings.verbose) {
+                  writer.println("text: " + text)
+                  writer.println("deps: " + pickled)
                 }
+
+                val extractions = extractor.extract(dgraph)
+                extractionCount.addAndGet(extractions.size)
+                val results = for ((conf, extr) <- extractions) yield {
+                  val resultText =
+                    if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")"
+                    else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled
+                  Result(conf, extr, resultText)
+                }
+
+                writer.synchronized {
+                  for (result <- results) {
+                    writer.println(result)
+                  }
+                }
+
+                if (settings.verbose) writer.println()
+              } catch {
+                case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
               }
-              catch {
-                case e if settings.invincible =>
-                case e => throw e
-              }
+            } catch {
+              case e if settings.invincible =>
+              case e => throw e
             }
           }
         }
       }
     }
+  }
 }
 
 class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Configuration) {
   import OpenParse._
-  
-  def this(extractors: Seq[PatternExtractor]) = 
+
+  def this(extractors: Seq[PatternExtractor]) =
     this(extractors, new OpenParse.Configuration())
 
   def simplifyGraph(dgraph: DependencyGraph) = {
@@ -451,9 +239,9 @@ class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Conf
     val dgraph = simplifyGraph(dg)
 
     /**
-      * Check if the PatternExtractor gives a deterministic confidence.
-      * If so, make sure it is above the threshold.
-      */
+     * Check if the PatternExtractor gives a deterministic confidence.
+     * If so, make sure it is above the threshold.
+     */
     def confidenceOverThreshold(extractor: PatternExtractor, threshold: Double) = {
       extractor.confidence match {
         // there is an independent confidence so do the check
@@ -465,10 +253,10 @@ class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Conf
     }
 
     /**
-      * Quick checks to see if an extraction is possible.  This
-      * is an optimization, so the checks should be considerably
-      * faster than running the extractors.
-      */
+     * Quick checks to see if an extraction is possible.  This
+     * is an optimization, so the checks should be considerably
+     * faster than running the extractors.
+     */
     def possibleExtraction(extractor: PatternExtractor, dgraph: DependencyGraph) = {
       extractor.pattern.edgeMatchers.forall { matcher =>
         dgraph.dependencies.exists(matcher.canMatch(_))
@@ -476,7 +264,7 @@ class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Conf
     }
 
     // implicit methods on individual extractors
-    val build = buildExtraction(configuration.expandExtraction) _
+    val build = Extraction.fromMatch(configuration.expandExtraction) _
     val valid = validMatch(configuration.restrictArguments) _
 
     val extrs = for {
@@ -497,22 +285,23 @@ class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Conf
 
     val reduced = if (configuration.keepDuplicates) {
       extrs
-    }
-    else {
+    } else {
       // toSet to remove exact duplicates
       val set = extrs.toSet
-      
-      val reduced = set filterNot { case (thisConf, thisExtr) =>
-        set exists { case (thatConf, thatExtr) =>
-          // the relations are identical
-          thisExtr.rel == thatExtr.rel &&
-          // this confidence is lower than that
-          thisConf < thatConf &&
-          // one of the other argument is a substring of the other
-          (thatExtr.arg1Text.contains(thisExtr.arg1Text) || thatExtr.arg2Text.contains(thisExtr.arg2Text))
-        }
+
+      val reduced = set filterNot {
+        case (thisConf, thisExtr) =>
+          set exists {
+            case (thatConf, thatExtr) =>
+              // the relations are identical
+              thisExtr.rel == thatExtr.rel &&
+                // this confidence is lower than that
+                thisConf < thatConf &&
+                // one of the other argument is a substring of the other
+                (thatExtr.arg1Text.contains(thisExtr.arg1Text) || thatExtr.arg2Text.contains(thisExtr.arg2Text))
+          }
       }
-      
+
       reduced.toSeq
     }
 
