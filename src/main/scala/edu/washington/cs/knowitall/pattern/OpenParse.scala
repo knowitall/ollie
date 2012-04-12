@@ -79,11 +79,10 @@ object OpenParse {
   }
 
   abstract class Settings {
-    def patternFile: Option[File]
+    def modelFile: File
     def outputFile: Option[File]
 
     def sentenceFilePath: String
-    def extractorType: PatternExtractorType
 
     def confidenceThreshold: Double
 
@@ -105,11 +104,10 @@ object OpenParse {
 
   def main(args: Array[String]) {
     object settings extends Settings {
-      var patternFile: Option[File] = None
+      var modelFile: File = _
       var outputFile: Option[File] = None
 
       var sentenceFilePath: String = null
-      var extractorType: PatternExtractorType = null
 
       var confidenceThreshold = 0.0;
 
@@ -124,7 +122,7 @@ object OpenParse {
     }
 
     val parser = new OptionParser("applypat") {
-      opt(Some("p"), "patterns", "<file>", "pattern file", { v: String => settings.patternFile = Option(new File(v)) })
+      opt(Some("m"), "model", "<file>", "model file", { path: String => settings.modelFile = new File(path) })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
       opt("o", "output", "output file (otherwise stdout)", { path => settings.outputFile = Some(new File(path)) })
 
@@ -137,7 +135,6 @@ object OpenParse {
       opt("p", "parallel", "", { settings.parallel = true })
       opt("invincible", "", { settings.invincible = true })
 
-      arg("type", "type of extractor", { v: String => settings.extractorType = PatternExtractorType(v) })
       arg("sentences", "sentence file", { v: String => settings.sentenceFilePath = v })
     }
 
@@ -156,12 +153,9 @@ object OpenParse {
     val keepDuplicates: Boolean = false)
 
   def run(settings: Settings) {
-    // load the individual extractors
-    val extractors = loadExtractors(settings.extractorType, settings.patternFile)
-
     // create a standalone extractor
     val configuration = settings.configuration
-    val extractor = new OpenParse(extractors, configuration)
+    val extractor = OpenParse.fromModelFile(settings.modelFile, configuration)
 
     logger.info("performing extractions")
     var chunkCount = 0

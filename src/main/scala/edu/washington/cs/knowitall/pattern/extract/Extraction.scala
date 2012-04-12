@@ -98,6 +98,8 @@ object Extraction {
     def this(nodes: Iterable[DependencyNode]) = {
       this(SortedSet[DependencyNode]() ++ nodes, DetailedExtraction.nodesToString(nodes))
     }
+
+    def span = Interval.span(nodes.map(_.indices))
   }
   case class ClausalComponent(rel: Part, arg: Part) {
     def text = arg.text + " " + rel.text
