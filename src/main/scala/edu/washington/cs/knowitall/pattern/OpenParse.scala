@@ -1,6 +1,7 @@
 package edu.washington.cs.knowitall.pattern
 
 import java.io.{PrintWriter, File}
+import java.net.URL
 
 import scala.collection.Set
 import scala.io.Source
@@ -22,6 +23,13 @@ object OpenParse {
   val LEMMA_BLACKLIST = PosTagger.simplePrepositions + "like" + "be"
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
+
+  def defaultModelUrl: URL = {
+    val path = "openparse.model"
+    val url = this.getClass.getClassLoader.getResource(path)
+    require(url != null, "Default model could not be found: " + path);
+    url
+  }
   
   // factory methods
   def fromModelSource(source: Source, configuration: Configuration = new Configuration()) = {
@@ -36,6 +44,14 @@ object OpenParse {
   def fromModelFile(file: File, configuration: Configuration = new Configuration()) = {
     using (Source.fromFile(file)) { source =>
       OpenParse.fromModelSource(source, configuration)
+    }
+  }
+
+  def fromModelUrl(url: URL, configuration: Configuration = new Configuration()) = {
+    using (url.openStream()) { stream =>
+      using (Source.fromInputStream(stream)) { source =>
+        fromModelSource(source)
+      }
     }
   }
 
@@ -79,10 +95,10 @@ object OpenParse {
   }
 
   abstract class Settings {
-    def modelFile: File
+    def modelUrl: URL
     def outputFile: Option[File]
 
-    def sentenceFilePath: String
+    def sentenceFile: File
 
     def confidenceThreshold: Double
 
@@ -104,10 +120,10 @@ object OpenParse {
 
   def main(args: Array[String]) {
     object settings extends Settings {
-      var modelFile: File = _
+      var modelUrl: URL = OpenParse.defaultModelUrl
       var outputFile: Option[File] = None
 
-      var sentenceFilePath: String = null
+      var sentenceFile: File = null
 
       var confidenceThreshold = 0.0;
 
@@ -122,7 +138,11 @@ object OpenParse {
     }
 
     val parser = new OptionParser("applypat") {
-      opt(Some("m"), "model", "<file>", "model file", { path: String => settings.modelFile = new File(path) })
+      opt(Some("m"), "model", "<file>", "model file", { path: String => 
+        val file = new File(path)
+        require(file.exists, "file does not exist: " + path)
+        settings.modelUrl = file.toURI.toURL 
+      })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
       opt("o", "output", "output file (otherwise stdout)", { path => settings.outputFile = Some(new File(path)) })
 
@@ -135,7 +155,11 @@ object OpenParse {
       opt("p", "parallel", "", { settings.parallel = true })
       opt("invincible", "", { settings.invincible = true })
 
-      arg("sentences", "sentence file", { v: String => settings.sentenceFilePath = v })
+      arg("sentences", "sentence file", { path: String => 
+        val file = new File(path)
+        require(file.exists, "file does not exist: " + path)
+        settings.sentenceFile = file
+      })
     }
 
     if (parser.parse(args)) {
@@ -155,14 +179,14 @@ object OpenParse {
   def run(settings: Settings) {
     // create a standalone extractor
     val configuration = settings.configuration
-    val extractor = OpenParse.fromModelFile(settings.modelFile, configuration)
+    val extractor = OpenParse.fromModelUrl(settings.modelUrl, configuration)
 
     logger.info("performing extractions")
     var chunkCount = 0
     val extractionCount = new java.util.concurrent.atomic.AtomicInteger
     val startTime = System.nanoTime();
     using(settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
-      using(Source.fromFile(settings.sentenceFilePath, "UTF-8")) { sentenceSource =>
+      using(Source.fromFile(settings.sentenceFile, "UTF-8")) { sentenceSource =>
         for (group <- sentenceSource.getLines.grouped(CHUNK_SIZE)) {
           chunkCount = chunkCount + 1
           if (settings.outputFile.isDefined) {
