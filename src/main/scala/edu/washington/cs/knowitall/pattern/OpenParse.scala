@@ -176,68 +176,83 @@ object OpenParse {
     val restrictArguments: Boolean = true,
     val keepDuplicates: Boolean = false)
 
-  def run(settings: Settings) {
+  def deserialize(line: String): Option[DependencyGraph] = {
+    val pickled = line.split("\t").last
+    try {
+      Some(DependencyGraph.deserialize(pickled))
+    } catch {
+      case e: DependencyGraph.SerializationException => 
+        logger.error("could not deserialize graph.", e)
+        None
+    }
+  }
+
+  def run(settings: Settings, parse: String=>Option[DependencyGraph] = deserialize) {
     // create a standalone extractor
     val configuration = settings.configuration
     val extractor = OpenParse.fromModelUrl(settings.modelUrl, configuration)
 
+    def summary(extractionCount: Int, sentenceCount: Int, ms: Long) = {
+      "summary: " + extractionCount + " extractions, " + sentenceCount + " sentences, " + Timing.Seconds.format(ms) + ", " + Timing.Minutes.format(ms)
+    }
+
     logger.info("performing extractions")
-    var chunkCount = 0
+    var sentenceCount = 0
     val extractionCount = new java.util.concurrent.atomic.AtomicInteger
     val startTime = System.nanoTime();
     using(settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))) { writer =>
       using(Source.fromFile(settings.sentenceFile, "UTF-8")) { sentenceSource =>
         for (group <- sentenceSource.getLines.grouped(CHUNK_SIZE)) {
-          chunkCount = chunkCount + 1
           if (settings.outputFile.isDefined) {
-            // provide some nice information about where we are
-            println("summary: " + extractionCount + " extractions, " + chunkCount * CHUNK_SIZE + " sentences, " + Timing.Seconds.format(System.nanoTime() - startTime) + " seconds");
+            println(summary(extractionCount.get, sentenceCount, System.nanoTime - startTime))
           }
           val lines = if (settings.parallel) group.par else group
+          sentenceCount += lines.size
 
-          for (line <- lines) {
+          for {
+            line <- lines
+            dgraph <- parse(line)
+          } {
             try {
-              val parts = line.split("\t")
-              require(parts.length <= 2, "each line in sentence file must have no more than two columns: " + line)
+              val text = dgraph.text
+              val pickled = dgraph.serialize
 
-              try {
-                val pickled = parts.last
-                val dgraph = DependencyGraph.deserialize(pickled)
-                val text = if (parts.length > 1) parts(0) else dgraph.text
-                logger.debug("text: " + text)
-                logger.debug("graph: " + pickled)
+              logger.debug("text: " + text)
+              logger.debug("graph: " + pickled)
 
-                if (settings.verbose) {
+              if (settings.verbose) {
+                writer.synchronized {
                   writer.println("text: " + text)
                   writer.println("deps: " + pickled)
                 }
-
-                val extractions = extractor.extract(dgraph)
-                extractionCount.addAndGet(extractions.size)
-                val results = for ((conf, extr) <- extractions) yield {
-                  val resultText =
-                    if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")"
-                    else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled
-                  Result(conf, extr, resultText)
-                }
-
-                writer.synchronized {
-                  for (result <- results) {
-                    writer.println(result)
-                  }
-                }
-
-                if (settings.verbose) writer.println()
-              } catch {
-                case e: DependencyGraph.SerializationException => logger.error("could not deserialize graph.", e)
               }
+
+              val extractions = extractor.extract(dgraph)
+              extractionCount.addAndGet(extractions.size)
+              val results = for ((conf, extr) <- extractions) yield {
+                val resultText =
+                  if (settings.verbose) "extraction: " + ("%1.6f" format conf) + " " + extr.toString + " with (" + extr.extractor.pattern.toString + ")"
+                  else ("%1.6f" format conf) + "\t" + extr + "\t" + extr.extractor.pattern + "\t" + text + "\t" + pickled
+                Result(conf, extr, resultText)
+              }
+
+              writer.synchronized {
+                for (result <- results) {
+                  writer.println(result)
+                }
+              }
+
+              if (settings.verbose) writer.println()
             } catch {
+              // never fail if invicible
               case e if settings.invincible =>
-              case e => throw e
             }
           }
         }
       }
+    }
+    if (settings.outputFile.isDefined) {
+      println(summary(extractionCount.get, sentenceCount, System.nanoTime - startTime))
     }
   }
 }
