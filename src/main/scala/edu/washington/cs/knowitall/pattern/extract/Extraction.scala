@@ -160,12 +160,10 @@ object Extraction {
     } else Some(new DetailedExtraction(ex, m, new Part(expandedArg1), Part(expandedRelNodes, expandedRelText), new Part(expandedArg2), clausal = clausal, modifier = modifier))
   }
   
+  private val argumentExpansionLabels = Set("det", "prep_of", "amod", "num", "number", "nn", "poss", "quantmod", "neg")
   def expandArgument(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
-    val labels =
-      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod", "neg")
-
     def expandNode(node: DependencyNode) = {
-      val expansion = expand(graph, node, until, labels)
+      val expansion = expand(graph, node, until, argumentExpansionLabels)
       if (expansion.exists(_.isProperNoun)) expansion
       else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref", "prepc_of"), until, false)
     }
@@ -187,9 +185,6 @@ object Extraction {
   }
 
   def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): Part = {
-    val nounLabels =
-      Set("det", "prep_of", "amod", "num", "nn", "poss", "quantmod", "neg")
-
     // count the adjacent dobj edges.  We will only expand across
     // dobj components if there is exactly one adjacent dobj edge.
     // This edge may already be used, but in that case we won't 
@@ -204,7 +199,7 @@ object Extraction {
     def pred(edge: Graph.Edge[DependencyNode]) = edge.label == "advmod" && edge.dest.postag == "RB" ||
       edge.label == "aux" || edge.label == "cop" || edge.label == "auxpass" || edge.label == "prt"
 
-    val expandNounLabels = expand(graph, node, until, nounLabels)
+    val expandNounLabels = expand(graph, node, until, argumentExpansionLabels)
     // how many dobj edges are there
     val expansion = expandNounLabels ::
       // make sure that we don't use a label that was
