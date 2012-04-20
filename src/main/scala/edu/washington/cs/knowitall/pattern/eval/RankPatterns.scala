@@ -46,7 +46,7 @@ object RankPatterns {
       }
     } { writer =>
       for ((pattern, (p, y)) <- grouped.toSeq.sortBy(_._2).reverse) {
-        println(pattern+"\t"+p+"\t"+y)
+        writer.println(pattern+"\t"+p+"\t"+y)
       }
     }
   }
