@@ -196,19 +196,30 @@ object Extraction {
     if (dobjCount == 1) attachLabels += "dobj"
     if (iobjCount == 1) attachLabels += "iobj"
 
-    def pred(edge: Graph.Edge[DependencyNode]) = edge.label == "advmod" && edge.dest.postag == "RB" ||
-      edge.label == "aux" || edge.label == "cop" || edge.label == "auxpass" || edge.label == "prt"
+    def pred(edge: Graph.Edge[DependencyNode]) = 
+      // make sure we don't re-add the relation node
+      edge.dest != node && (
+          // attach adverbs
+          edge.label == "advmod" && edge.dest.postag == "RB" ||
+          edge.label == "aux" || edge.label == "cop" || edge.label == "auxpass" || edge.label == "prt")
 
+    // expand across noun label for relational nouns
+    // i.e. "He is the *best* president of the USA"
     val expandNounLabels = expand(graph, node, until, argumentExpansionLabels)
-    // how many dobj edges are there
-    val expansion = expandNounLabels ::
+    
+    // modifiers on copulars are stored on a different node
+    // i.e. in "he *will* be the president"
+    val cops = graph.graph.predecessors(node, (e: Graph.Edge[DependencyNode])=>e.label == "cop").headOption
+    val expandCopLabels = cops.map(cop => augment(graph, cop, until, pred)).getOrElse(List.empty)
+    
+    val expansion = expandCopLabels ++ (expandNounLabels ::
       // make sure that we don't use a label that was
       // already captured by expandNounlabels.  This
       // can happen when a verb edges goes between two
       // noun labels.
       ((augment(graph, node, until, pred).map(_--expandNounLabels)) :+
       // add subcomponents
-        SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)).filter(!_.isEmpty)
+        SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)).filter(!_.isEmpty))
 
     val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
 
