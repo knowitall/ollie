@@ -36,7 +36,7 @@ object RankPatterns {
       .mapValues { scoreds =>
         val yld = scoreds.map(scored => if (scored.score.getOrElse(throw new IllegalArgumentException("unscored extraction: " + scored))) 1 else 0).sum
         val precision = yld.toDouble / scoreds.size.toDouble
-        (precision, yld)
+        (precision, scoreds.size)
       }
 
     using {
