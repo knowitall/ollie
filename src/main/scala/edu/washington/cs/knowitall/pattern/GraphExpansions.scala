@@ -70,11 +70,13 @@ object GraphExpansions {
     // don't restrict to adjacent (by interval) because prep_of, etc.
     // remove some nodes that we want to expand across.  In the end,
     // we get the span over the inferiors.
-    graph.graph.successors(node, pred).map(SortedSet[DependencyNode]() ++ graph.graph.inferiors(_)).toList
+    graph.graph.successors(node, pred).map { successor =>
+      SortedSet[DependencyNode]() ++ graph.graph.inferiors(successor)
+    }.toList
   }
 
   /**
-    *  Return the components next to the node.
+    *  Find all nodes in a components next to the node.
     *  @param  node  components will be found adjacent to this node
     *  @param  labels  components may be connected by edges with any of these labels
     *  @param  without  components may not include any of these nodes
