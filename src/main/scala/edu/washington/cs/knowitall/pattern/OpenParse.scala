@@ -30,17 +30,17 @@ object OpenParse {
     require(url != null, "Default model could not be found: " + path);
     url
   }
-  
+
   // factory methods
   def fromModelSource(source: Source, configuration: Configuration = new Configuration()) = {
     val it = source.getLines
     val head = it.next
-    
+
     val typ = PatternExtractorType(head)
     val extractors = typ.fromLines(it)
     new OpenParse(extractors, configuration)
   }
-  
+
   def fromModelFile(file: File, configuration: Configuration = new Configuration()) = {
     using (Source.fromFile(file)) { source =>
       OpenParse.fromModelSource(source, configuration)
@@ -50,7 +50,7 @@ object OpenParse {
   def fromModelUrl(url: URL, configuration: Configuration = new Configuration()) = {
     using (url.openStream()) { stream =>
       using (Source.fromInputStream(stream)) { source =>
-        fromModelSource(source)
+        fromModelSource(source, configuration)
       }
     }
   }
@@ -69,7 +69,7 @@ object OpenParse {
     {
       logger.info("reading patterns")
 
-      // sort by inverse count so frequent patterns appear first 
+      // sort by inverse count so frequent patterns appear first
       (extractorType match {
         case TemplateExtractor =>
           TemplateExtractor.fromFile(
@@ -111,7 +111,7 @@ object OpenParse {
     def parallel: Boolean
     def invincible: Boolean
 
-    def configuration = new Configuration(
+    def configuration: Configuration = new Configuration(
       confidenceThreshold = this.confidenceThreshold,
       expandExtraction = this.expandArguments,
       simplifyVBPostags = this.collapseVB,
@@ -138,10 +138,10 @@ object OpenParse {
     }
 
     val parser = new OptionParser("applypat") {
-      opt(Some("m"), "model", "<file>", "model file", { path: String => 
+      opt(Some("m"), "model", "<file>", "model file", { path: String =>
         val file = new File(path)
         require(file.exists, "file does not exist: " + path)
-        settings.modelUrl = file.toURI.toURL 
+        settings.modelUrl = file.toURI.toURL
       })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
       opt("o", "output", "output file (otherwise stdout)", { path => settings.outputFile = Some(new File(path)) })
@@ -155,7 +155,7 @@ object OpenParse {
       opt("p", "parallel", "", { settings.parallel = true })
       opt("invincible", "", { settings.invincible = true })
 
-      arg("sentences", "sentence file", { path: String => 
+      arg("sentences", "sentence file", { path: String =>
         val file = new File(path)
         require(file.exists, "file does not exist: " + path)
         settings.sentenceFile = file
@@ -181,7 +181,7 @@ object OpenParse {
     try {
       Some(DependencyGraph.deserialize(pickled))
     } catch {
-      case e: DependencyGraph.SerializationException => 
+      case e: DependencyGraph.SerializationException =>
         logger.error("could not deserialize graph.", e)
         None
     }
