@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openparse</artifactId>
   <name>openparse</name>
-  <version>1.0.3</version>
+  <version>1.0.4-SNAPSHOT</version>
   <parent>
     <groupId>edu.washington.cs.knowitall</groupId>
     <artifactId>knowitall</artifactId>
