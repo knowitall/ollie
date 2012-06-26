@@ -9,6 +9,7 @@ import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{NodeMatch
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.pattern.{SlotMatcher, RelationMatcher, ExtractorPattern, ExtractionPartMatcher}
 import edu.washington.cs.knowitall.tool.parse.graph.{RegexNodeMatcher, PostagNodeMatcher, DependencyPattern, DependencyNode}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import scopt.OptionParser
 
@@ -114,12 +115,12 @@ object GeneralizeTemplates {
 
         ((template, new ExtractorPattern(matchers)), count)
     }
-    
+
     using (
       settings.destFile match {
         case Some(file) => new PrintWriter(file, "UTF8")
         case None => new PrintWriter(System.out)
-      }) 
+      })
     { writer =>
       templates map { case ((template, pattern), count) => Iterable(template, pattern, count).mkString("\t") } foreach writer.println
     }

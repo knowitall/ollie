@@ -1,49 +1,31 @@
 package edu.washington.cs.knowitall.pattern.template
 
-import java.io.File
-import java.io.PrintWriter
+import java.io.{PrintWriter, File}
+
+import scala.Option.option2Iterable
+import scala.annotation.elidable
+import scala.collection.immutable
 import scala.io.Source
 import scala.util.matching.Regex
+
 import org.slf4j.LoggerFactory
 
-import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOncePairIntTo
-import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOnceTo
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.CaptureEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyPattern
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
-import edu.washington.cs.knowitall.tool.parse.graph.RegexEdgeMatcher
-import edu.washington.cs.knowitall.tool.postag.PosTagger
-
-import scopt.OptionParser
-
-import edu.washington.cs.knowitall.collection.immutable.graph.Direction
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.parse.graph.RegexNodeMatcher
-
-import scala.collection.immutable
-
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Matcher
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.ConjunctiveNodeMatcher
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.EdgeMatcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Matcher, ConjunctiveNodeMatcher, DirectedEdgeMatcher, CaptureEdgeMatcher}
 import edu.washington.cs.knowitall.collection.immutable.Bag
+import edu.washington.cs.knowitall.common.Resource.using
+import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOncePairTo
+import edu.washington.cs.knowitall.pattern.{SlotMatcher, RelationMatcher, ExtractorPattern, ArgumentMatcher}
+import edu.washington.cs.knowitall.tool.parse.graph.{RegexNodeMatcher, RegexEdgeMatcher, PostagNodeMatcher, LabelEdgeMatcher, DependencyPattern, DependencyNode}
+import edu.washington.cs.knowitall.tool.postag.PosTagger
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
+import scalaz.Scalaz._
 import scalaz._
-import Scalaz._
-
-import edu.washington.cs.knowitall.common.enrich.Traversables._
-import scala.collection.immutable.SortedSet
-import scala.collection.immutable
-import edu.washington.cs.knowitall.tool.parse.graph.PostagNodeMatcher
-import edu.washington.cs.knowitall.pattern.ExtractorPattern
-import edu.washington.cs.knowitall.pattern.RelationMatcher
-import edu.washington.cs.knowitall.pattern.ArgumentMatcher
-import edu.washington.cs.knowitall.pattern.SlotMatcher
+import scopt.OptionParser
 
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
-  
+
   abstract class Settings {
     def sourceFile: File
     def destFile: Option[File]
@@ -51,18 +33,18 @@ object BuildTemplates {
     def minCount: Int
     def relationSemantics: Boolean
     def slotSemantics: Boolean
-    
+
     def debug: Option[File]
     def fromHistogram: Boolean
-    
+
     def filterNnEdge: Boolean
     def filterAmodEdge: Boolean
     def filterSideRel: Boolean
     def filterPrepMismatch: Boolean
-    
+
     val minimumSemanticsCount = 5
   }
-  
+
   def main(args: Array[String]) {
     val settings = new Settings {
       var sourceFile: File = null
@@ -70,10 +52,10 @@ object BuildTemplates {
       var templateFile: Option[File] = None
       var minCount: Int = 5
       var semantics: Boolean = false
-      
+
       var debug: Option[File] = None
       var fromHistogram: Boolean = false
-      
+
       var filterNnEdge = false
       var filterAmodEdge = false
       var filterSideRel = false
@@ -82,32 +64,32 @@ object BuildTemplates {
       var relationSemantics = false
       var slotSemantics = false
     }
-    
+
     val parser = new OptionParser("buildtemp") {
       arg("source", "file with source relation, pattern pairs", { path: String => settings.sourceFile = new File(path) })
       argOpt("dest", "optional parameter to specify output to a file", { path: String => settings.destFile = Some(new File(path)) })
       opt("t", "reltemplates", "relation templates", { path: String => settings.templateFile = Some(new File(path)) })
       intOpt("n", "minimum", "minimum frequency for a pattern", { min: Int => settings.minCount = min })
-      
+
       opt("relation-semantics", "add lexical restrictions", { settings.relationSemantics = true })
       opt("slot-semantics", "add lexical restrictions", { settings.slotSemantics = true })
       opt("filter-nnedge", "filter nn edges", {settings.filterNnEdge = true} )
       opt("filter-amodedge", "filter amod edges", {settings.filterAmodEdge = true} )
       opt("filter-siderel", "filter relation on side", {settings.filterSideRel = true} )
       opt("filter-prepmismatch", "filter prep mismatch", {settings.filterPrepMismatch = true} )
-      
+
       opt("from-histogram", "input is the histogram", { settings.fromHistogram = true })
       opt("d", "debug", "directory to output debug files", { path: String => settings.debug = Some(new File(path)) })
     }
-    
+
     if (parser.parse(args)) {
       run(settings)
     }
   }
-  
-  def order(items: TraversableOnce[((Any, Any), Attrib)]) = 
+
+  def order(items: TraversableOnce[((Any, Any), Attrib)]) =
     items.toSeq.sortBy(item => (-item._2.count, item._1.toString))
-    
+
   def output(file: File, items: TraversableOnce[((Any, Any), Attrib)]): Unit = {
     using (new PrintWriter(file, "UTF8")) { pw =>
       outputDetailed(pw, items)
@@ -120,7 +102,7 @@ object BuildTemplates {
         writer.println(rel + "\t" + pattern + "\t" + attrib.count)
     }
   }
-    
+
   def outputDetailed(file: File, items: TraversableOnce[((Any, Any), Attrib)]): Unit = {
     using (new PrintWriter(file, "UTF8")) { pw =>
       outputDetailed(pw, items)
@@ -133,7 +115,7 @@ object BuildTemplates {
         writer.println(rel + "\t" + pattern + "\t" + attrib.count + "\t" + attrib.slots.asMap.mkString("\t"))
     }
   }
-  
+
   def outputLookup[K, V](file: File, items: Iterable[(K, Iterable[V])]) = {
     using (new PrintWriter(file, "UTF8")) { pw =>
       items.foreach { case (key, values) =>
@@ -141,46 +123,46 @@ object BuildTemplates {
       }
     }
   }
-  
-  case class Attrib(count: Int, slots: Bag[String] = Bag.empty, rels: SortedSet[String] = SortedSet.empty, mismatch: Boolean = false) {
+
+  case class Attrib(count: Int, slots: Bag[String] = Bag.empty, rels: immutable.SortedSet[String] = immutable.SortedSet.empty, mismatch: Boolean = false) {
     def plus(that: Attrib) = Attrib(this.count + that.count, this.slots merge that.slots, this.rels ++ that.rels, this.mismatch | that.mismatch)
   }
   implicit def AttribSemigroup[T]: Semigroup[Attrib] = semigroup(_ plus _)
-  implicit def AttribZero[T]: Zero[Attrib] = zero(Attrib(0, Bag.empty[String], SortedSet.empty[String]))
-  
-  
+  implicit def AttribZero[T]: Zero[Attrib] = zero(Attrib(0, Bag.empty[String], immutable.SortedSet.empty[String]))
+
+
   def run(settings: Settings) {
     val prepRegex = new Regex("^(.*?)\\s+((?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
-    
+
     def relPrep(rel: String) = {
       rel match {
         case prepRegex(rel, prep) => Some(prep)
         case rel => None
       }
     }
-    
-    def relationOnSide: PartialFunction[ExtractorPattern, Boolean] =  
+
+    def relationOnSide: PartialFunction[ExtractorPattern, Boolean] =
     { case pattern =>
         pattern.nodeMatchers.head.isInstanceOf[RelationMatcher] ||
         pattern.nodeMatchers.tail.isInstanceOf[RelationMatcher]
-    }  
-        
-    def nnEdge: PartialFunction[ExtractorPattern, Boolean] = 
-    { case pattern => pattern.baseEdgeMatchers.exists { 
+    }
+
+    def nnEdge: PartialFunction[ExtractorPattern, Boolean] =
+    { case pattern => pattern.baseEdgeMatchers.exists {
         case m: LabelEdgeMatcher => m.label == "nn"
         case _ => false
       }
     }
-    
-    def amodEdge: PartialFunction[ExtractorPattern, Boolean] = 
-    { case pattern => pattern.baseEdgeMatchers.exists { 
+
+    def amodEdge: PartialFunction[ExtractorPattern, Boolean] =
+    { case pattern => pattern.baseEdgeMatchers.exists {
         case m: LabelEdgeMatcher => m.label == "amod"
         case _ => false
       }
     }
-      
-    def prepMismatch: PartialFunction[((String, ExtractorPattern)), Boolean] = 
-    { case ((rel, pattern)) => 
+
+    def prepMismatch: PartialFunction[((String, ExtractorPattern)), Boolean] =
+    { case ((rel, pattern)) =>
         relPrep(rel) match {
           case Some(relationPrep) =>
             val edgePreps = pattern.baseEdgeMatchers.collect {
@@ -190,7 +172,7 @@ object BuildTemplates {
           case None => false
         }
     }
-    
+
     // extract lemmas from a relation string
     def baseRelLemmas(rel: String): Option[String] = {
       def clean(rel: String) = {
@@ -201,7 +183,7 @@ object BuildTemplates {
         case rel => clean(rel)
       }
     }
-    
+
     // lookup a relation in a map to get the template
     val templatesMap = settings.templateFile.map { templateFile =>
       using(Source.fromFile(templateFile)) { source =>
@@ -246,14 +228,14 @@ object BuildTemplates {
             // create the histogram from the patterned file
             source.getLines.map { line =>
               val Array(rel, _, _, _, pattern, _, _, slots @ _*) = line.split("\t")
-              val slotBag: Bag[String] = 
+              val slotBag: Bag[String] =
                 if (settings.slotSemantics) Bag.from(slots.iterator.filter(_.forall(_.isLetter)))
                 else Bag.empty
-              ((rel, pattern), Attrib(1, slotBag, SortedSet.empty))
+              ((rel, pattern), Attrib(1, slotBag, immutable.SortedSet.empty))
             }.mergeKeys
           }
         }
-      
+
       // deserialize the patterns after creating the histogram
       // for efficiency
       val histogram = serializedHistogram.map {
@@ -261,7 +243,7 @@ object BuildTemplates {
           ((rel, new ExtractorPattern(DependencyPattern.deserialize(pattern))), attrib)
       }
       assume(serializedHistogram.size == histogram.size)
-      
+
       histogram
     }
 
@@ -269,7 +251,7 @@ object BuildTemplates {
       val result = histogram.iterator.map {
         case item @ ((rel, pattern), attrib) =>
           val relPrepOption = relPrep(rel)
-          
+
           val patternContainsPrep = pattern.baseEdgeMatchers.exists {
             case m: LabelEdgeMatcher if m.label startsWith "prep_" => true
             case _ => false
@@ -298,25 +280,25 @@ object BuildTemplates {
 
           import scalaz._
           import Scalaz._
-          
-          val newMatchers = 
+
+          val newMatchers =
             if (!patternContainsPrep || !relPrepOption.isDefined || mismatch) None
-            else 
+            else
               (for {
                 relPrep <- relPrepOption
                 zipper <- pattern.matchers.zipperEnd
                 found <- zipper findPrevious target(relPrep)
               } yield {
                 found.modify { m =>
-                  new CaptureEdgeMatcher[DependencyNode]("prep", 
-                    new DirectedEdgeMatcher[DependencyNode](m.asInstanceOf[DirectedEdgeMatcher[_]].direction, 
+                  new CaptureEdgeMatcher[DependencyNode]("prep",
+                    new DirectedEdgeMatcher[DependencyNode](m.asInstanceOf[DirectedEdgeMatcher[_]].direction,
                       new RegexEdgeMatcher("prep_(.*)".r)))
                 }.toStream.toList
               }).orElse(throw new IllegalStateException(rel + " -> " + relPrepOption.toString + " -> " + pattern))
-          
+
           ((template, newMatchers.map(matchers => new ExtractorPattern(new DependencyPattern(matchers))).getOrElse(pattern)), attrib.copy(mismatch=mismatch))
       }.mergeKeys
-      
+
       assume(result.values.iterator.map(_.count).sum == histogram.iterator.map(_._2.count).sum)
       result
     }
@@ -360,24 +342,24 @@ object BuildTemplates {
 
       result
     }
-    
+
     def addSlotSemantics(histogram: Iterable[((String, ExtractorPattern), Attrib)]) = {
       if (settings.slotSemantics) {
         histogram.flatMap { case ((rel, pattern), attrib) =>
           val hasSlot = pattern.matchers.exists(_.isInstanceOf[SlotMatcher])
-          
+
           if (!hasSlot) Some(((rel, pattern), attrib))
           else {
             val semantics = attrib.slots.asMap.filter(_._2 >= 5)
-            
+
             if (semantics.isEmpty) None
             else {
-	          val matchers = pattern.matchers.map { 
-	            case m: SlotMatcher => 
+	          val matchers = pattern.matchers.map {
+	            case m: SlotMatcher =>
 	              new SlotMatcher(m.alias, new ConjunctiveNodeMatcher(m.matcher, new RegexNodeMatcher(semantics.keys.toSeq.sorted.mkString("|").r)))
 	            case m => m
 	          }
-	          
+
 	          Some((rel, new ExtractorPattern(matchers)), attrib)
             }
           }
@@ -385,7 +367,7 @@ object BuildTemplates {
       }
       else histogram
     }
-    
+
     logger.info("Building histogram...")
     val histogram = buildHistogram(settings.sourceFile)
     settings.debug map { dir =>
@@ -406,25 +388,25 @@ object BuildTemplates {
     //output (new File(dir, "filtered-del-prepsmatch.txt"), (histogram.iterator filterNot prepsMatch).toSeq.sortBy(-_._2))
     }
     logger.info((histogram.values.iterator.map(_.count).sum - filtered.values.iterator.map(_.count).sum).toString + " items removed.")
-    
+
     logger.info("Generalizing prepositions...")
     val generalizedPreposition = generalizePrepositions(filtered)
     settings.debug.map { dir =>
       output(new File(dir, "generalized-prep.txt"), order(generalizedPreposition))
     }
-    
+
     logger.info("Generalizing relations...")
     val generalizedRelation = generalizeRelation(generalizedPreposition)
     settings.debug.map { dir =>
       output(new File(dir, "generalized-rel.txt"), order(generalizedRelation))
     }
-    
+
     logger.info("Adding slot semantics...")
     val withSlotSemantics = addSlotSemantics(generalizedRelation)
     settings.debug.map { dir =>
       output(new File(dir, "semantics-slot.txt"), order(generalizedRelation))
     }
-    
+
     val cleaned = withSlotSemantics
       .filter {
         case ((template, pat), attrib) =>
@@ -438,7 +420,7 @@ object BuildTemplates {
     settings.debug.map { dir =>
       output(new File(dir, "cleaned.txt"), order(cleaned))
     }
-    
+
     logger.info("Removing duplicates...")
     val dedup = cleaned.groupBy { case ((template, pat), attrib) =>
       def filter(matchers: Iterable[Matcher[_]]) = matchers.filter {
@@ -453,7 +435,7 @@ object BuildTemplates {
     settings.debug.map { dir =>
       output(new File(dir, "dedup.txt"), order(dedup))
     }
-    
+
     logger.info("Writing templates...")
     using {
       settings.destFile match {

@@ -1,6 +1,4 @@
-package edu.washington.cs.knowitall
-package pattern
-package bootstrap
+package edu.washington.cs.knowitall.pattern.bootstrap
 
 import scala.io.Source
 
@@ -30,9 +28,9 @@ object ReduceTargetExtractions {
 
     // keep relations with more than 15 seeds
     // and more than 0 lemmas
-    val relations: Set[String] = 
+    val relations: Set[String] =
       (for {
-        (rel, count) <- relationCounts; 
+        (rel, count) <- relationCounts;
         if (count > 15)
       } yield (rel))(scala.collection.breakOut)
     logger.info("keeping " + relations.size + "/" + relationCounts.size + " relations")
@@ -40,10 +38,10 @@ object ReduceTargetExtractions {
     // keep seeds that occur more than once
     val seeds =
       for {
-        (seed @ (rel, arg1, arg2, lemmas), count) <- seedCounts; 
+        (seed @ (rel, arg1, arg2, lemmas), count) <- seedCounts;
         if count > 1 && relations.contains(rel)
       } yield (seed)
-    
+
     logger.info("keeping " + seeds.size + "/" + seedCounts.size + " seeds")
 
     logger.info("printing seeds to keep")

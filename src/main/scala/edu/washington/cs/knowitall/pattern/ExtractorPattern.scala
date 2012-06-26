@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, NodeMatcher, EdgeMatcher, CaptureNodeMatcher}
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{TrivialNodeMatcher, Matcher}
 import edu.washington.cs.knowitall.tool.parse.graph.{LabelEdgeMatcher, DependencyPattern, DependencyNode}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import scalaz.Scalaz._
 import scalaz._
@@ -26,62 +27,62 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
     // keep everything else the same
     case m => m
   }})
-  
+
   override def canEqual(that: Any) = that.isInstanceOf[ExtractorPattern]
   override def equals(that: Any) = that match {
     case that: ExtractorPattern => (that canEqual this) && this.matchers == that.matchers
     case _ => false
   }
-  
+
   def valid: Boolean = {
-    def existsEdge(pred: LabelEdgeMatcher=>Boolean) = 
+    def existsEdge(pred: LabelEdgeMatcher=>Boolean) =
       this.baseEdgeMatchers.collect {
         case e: LabelEdgeMatcher => e
       }exists(pred)
-      
+
     /* check for multiple prep edges */
     def multiplePreps = this.baseEdgeMatchers.collect {
       case e: LabelEdgeMatcher => e
     }.count(_.label.contains("prep")) > 1
-    
+
     /* check for a conj_and edge */
     def conjAnd = existsEdge(_.label == "conj_and")
-    
+
     /* check for a conj_and edge */
     def conjOr = existsEdge(_.label == "conj_or")
-    
+
     /* eliminate all conj edges */
     def conj = existsEdge(_.label startsWith "conj")
-    
+
     def slotBordersNN = {
       import scalaz._
       import Scalaz._
-      
+
       def isNN(m: Matcher[DependencyNode]) = m match {
-        case e: NodeMatcher[_] => 
+        case e: NodeMatcher[_] =>
           e.baseNodeMatchers exists {
             case m: LabelEdgeMatcher if m.label == "nn" => true
             case _ => false
           }
         case _ => false
       }
-      
+
       def isSlot(m: Matcher[DependencyNode]) = m match {
         case m: SlotMatcher => true
         case _ => false
       }
-      
+
       this.matchers.toZipper.map(_.positions.toStream.exists { z =>
         def focusedOnNN(z: Option[Zipper[Matcher[DependencyNode]]]) = z.map(z => isNN(z.focus)).getOrElse(false)
         isSlot(z.focus) && (focusedOnNN(z.previous) || focusedOnNN(z.next))
       }).getOrElse(false)
     }
-    
+
     if (existsEdge(_.label == "dep")) {
       logger.debug("invalid: dep edge: " + this.toString)
       return false
     }
-    
+
     if (existsEdge(_.label == "dep")) {
       logger.debug("invalid: dep edge: " + this.toString)
       return false
@@ -93,7 +94,7 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
         case m: CaptureNodeMatcher[_] => m.alias.startsWith("slot")
         case _ => false
       }
-      
+
       !this.nodeMatchers.isEmpty && (isSlot(this.nodeMatchers.head) || isSlot(this.nodeMatchers.last))
     }
 
@@ -127,7 +128,7 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
       true
     }
   }
-  
+
   /* determine if the pattern is symmetric, such as:
    *   {arg1} >prep> {rel} <prep< {arg2}
    */
@@ -142,7 +143,7 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
       case (Nil, Nil) => true
       case _ => false
     }
-    
+
     compare(matchers, matchers.reverse)
   }
 }
@@ -163,7 +164,7 @@ object ExtractorPattern {
 sealed abstract class ExtractionPartMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
   def this(alias: String) = this(alias, new TrivialNodeMatcher[DependencyNode])
-  
+
   def withMatcher(matcher: NodeMatcher[DependencyNode]): ExtractionPartMatcher
 }
 
@@ -174,7 +175,7 @@ class ArgumentMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) exten
     case that: ExtractionPartMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
     case _ => false
   }
-  
+
   override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new ArgumentMatcher(this.alias, matcher)
 }
 
@@ -185,7 +186,7 @@ extends ExtractionPartMatcher(alias, matcher) {
     case that: RelationMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
     case _ => false
   }
-  
+
   override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new RelationMatcher(this.alias, matcher)
 }
 
@@ -196,6 +197,6 @@ extends ExtractionPartMatcher(alias, matcher) {
     case that: SlotMatcher => (that canEqual this) && super.equals(that.asInstanceOf[Any])
     case _ => false
   }
-  
+
   override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new SlotMatcher(this.alias, matcher)
 }

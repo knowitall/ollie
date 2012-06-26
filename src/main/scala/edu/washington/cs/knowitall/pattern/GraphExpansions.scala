@@ -1,6 +1,5 @@
 package edu.washington.cs.knowitall.pattern
 
-import scala.Option.option2Iterable
 import scala.collection.Set
 import scala.collection.SortedSet
 
@@ -55,13 +54,13 @@ object GraphExpansions {
     def cond(e: Graph.Edge[DependencyNode]) =
       labels.contains(e.label)
     val inferiors = graph.graph.inferiors(node, cond)
-    
+
     // get all nodes connected by an nn edge
     val nns = graph.graph.connected(node, dedge => dedge.edge.label == "nn")
-    
+
     // order the nodes by their indices
     val ordered = (inferiors ++ nns).toList.sortBy(_.indices)
-    
+
     // get neighbors, moving left and right, until a bad node is it
     neighborsUntil(graph, node, ordered, until)
   }

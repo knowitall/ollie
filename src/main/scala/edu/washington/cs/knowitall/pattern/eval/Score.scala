@@ -18,7 +18,7 @@ object Score {
     def skipAll: Boolean
     def keepSkipped: Boolean
   }
-  
+
   def main(args: Array[String]) = {
     object settings extends Settings {
       var extractionFile: File = _
@@ -29,7 +29,7 @@ object Score {
       var skipAll = false
       var keepSkipped = false
     }
-    
+
     val parser = new OptionParser("scoreextr") {
       arg("extrs", "extractions", { path: String => settings.extractionFile = new File(path) })
       arg("output", "scored output", { path: String => settings.outputFile = new File(path) })
@@ -71,7 +71,7 @@ object Score {
       case None =>
     }
   }
-  
+
   def loadScoredFile(file: File): Seq[Scored] = {
     using(Source.fromFile(file, "UTF8")) { source =>
       source.getLines.map { line =>
@@ -101,16 +101,16 @@ object Score {
         case _ => promptScore(index, extr, confidence, rest)
       }
     }
-    
+
     var golden = gold
-    
+
     val scored = for {
       (line, index) <- lines.zipWithIndex
       val Array(confidence, extr, rest @ _*) = line.split("\t")
       val conf = confidence.toDouble
-      
+
       if (conf >= confidenceThreshold)
-      
+
       val scoreOption = gold.get(extr) match {
         case Some(score) => Some(score)
         case None if prompt => promptScore(index, extr, confidence, rest)
@@ -121,9 +121,9 @@ object Score {
         case Some(score) =>
           // update golden set
           golden += extr -> score
-        case None => 
+        case None =>
       }
-      
+
       // output
       Scored(scoreOption, conf, extr, rest)
     }
@@ -147,7 +147,7 @@ object Scored {
     val confidence = parts(1).toDouble
     val extraction = parts(2)
     val extra = parts.drop(3)
-    
+
     Scored(Some(score), confidence, extraction, extra)
   }
 }

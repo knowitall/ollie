@@ -8,9 +8,8 @@ import scala.io.Source
 
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
 import edu.washington.cs.knowitall.common.Resource
-
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
 import edu.washington.cs.knowitall.tool.parse.graph.{PostagNodeMatcher, LabelEdgeMatcher, DependencyPattern, DependencyGraph}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 object AnalyzePatterns {
   def main(args: Array[String]) {
@@ -61,7 +60,7 @@ object CountPatternComponents {
         val Array(_, _, _, _, pickledPattern, _, _, _*) = line.split("\t", -1)
         val pattern = new ExtractorPattern(DependencyPattern.deserialize(pickledPattern))
         val labels = (pattern.edgeMatchers.toList).flatMap { _ match {
-              case e: DirectedEdgeMatcher[_] if e.matcher.isInstanceOf[LabelEdgeMatcher] => 
+              case e: DirectedEdgeMatcher[_] if e.matcher.isInstanceOf[LabelEdgeMatcher] =>
                 Some(e.matcher.asInstanceOf[LabelEdgeMatcher].label)
               case _ => None
             }
@@ -69,22 +68,22 @@ object CountPatternComponents {
         val postags = (pattern.baseNodeMatchers.toList).collect {
           case m: PostagNodeMatcher => m.postag
         }
-        
+
         for (l <- labels) {
           edgeCounts += l -> (edgeCounts(l)+1)
         }
-        
+
         for (postag <- postags) {
           postagCounts += postag -> (postagCounts(postag)+1)
         }
       }
     }
-    
+
     println("Postag counts: ")
     for ((k, v) <- postagCounts.toList.sortBy(_._2).reverse) {
       println(k + "\t" + v)
     }
-    
+
     println()
     println("Edge counts: ")
     for ((k, v) <- edgeCounts.toList.sortBy(_._2).reverse) {
@@ -106,36 +105,36 @@ object CountSentenceComponents {
         val graph = DependencyGraph.deserialize(pickledGraph)
         val labels = (graph.graph.edges).toList.map(_.label )
         val postags = (graph.graph.vertices).toList.map(_.postag)
-        
+
         for (l <- labels) {
           edgeCounts += l -> (edgeCounts(l)+1)
         }
-        
+
         for (postag <- postags) {
           postagCounts += postag -> (postagCounts(postag)+1)
         }
-        
+
         for (edge <- graph.graph.edges) {
           val piece1 = edge.source.postag + " " + edge.label + " " + edge.dest.postag
           val piece2 = edge.dest.postag + " " + edge.label + " " + edge.source.postag
-          
+
           pieceCounts += piece1 -> (pieceCounts(piece1)+1)
           pieceCounts += piece2 -> (pieceCounts(piece2)+1)
         }
       }
     }
-    
+
     println("Postag counts: ")
     for ((k, v) <- postagCounts.toList.sortBy(_._2).reverse) {
       println(k + "\t" + v)
     }
-    
+
     println()
     println("Edge counts: ")
     for ((k, v) <- edgeCounts.toList.sortBy(_._2).reverse) {
       println(k + "\t" + v)
     }
-    
+
     println()
     println("Piece counts: ")
     for ((k, v) <- pieceCounts.toList.sortBy(_._2).reverse) {

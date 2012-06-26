@@ -1,31 +1,24 @@
 package edu.washington.cs.knowitall.pattern.extract
 
-import edu.washington.cs.knowitall.pattern.GraphExpansions._
-import edu.washington.cs.knowitall.pattern.OpenParse
+import scala.collection.{SortedSet, Set}
 
-import scala.Array.canBuildFrom
-import scala.collection.SortedSet
-import scala.collection.Set
-
-import edu.washington.cs.knowitall.collection.immutable.Interval
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Pattern
-import edu.washington.cs.knowitall.collection.immutable.graph.DirectedEdge
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
-import edu.washington.cs.knowitall.collection.immutable.graph.Direction
-import edu.washington.cs.knowitall.collection.immutable.graph.Graph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyPattern
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.collection.immutable.graph.{Direction, Graph, DirectedEdge}
+import edu.washington.cs.knowitall.collection.immutable.Interval
+import edu.washington.cs.knowitall.pattern.GraphExpansions.{expand, components, augment}
+import edu.washington.cs.knowitall.pattern.OpenParse
+import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
+import edu.washington.cs.knowitall.tool.stem.Stemmer
 
-import Extraction._
+import Extraction.{Part, ClausalComponent, AdverbialModifier}
 
 abstract class Extraction(val relLemmas: Set[String]) {
   def arg1Text: String
   def relText: String
   def arg2Text: String
 
-  def this(relText: String) = this(relText.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST)
+  def this(relText: String) = this(relText.split(" ").map(implicitly[Stemmer].lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST)
 
   override def equals(that: Any) = that match {
     case that: Extraction => (that canEqual this) && that.arg1Text == this.arg1Text && that.relText == this.relText && that.arg2Text == this.arg2Text
@@ -51,7 +44,7 @@ class SimpleExtraction(
 
   def this(arg1Text: String, relText: String, arg2Text: String) = this(arg1Text,
     relText,
-    relText.split(" ").map(MorphaStemmer.instance.lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST,
+    relText.split(" ").map(implicitly[Stemmer].lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST,
     arg2Text)
 
   def replaceRelation(relation: String) =
@@ -159,7 +152,7 @@ object Extraction {
       None
     } else Some(new DetailedExtraction(ex, m, new Part(expandedArg1), Part(expandedRelNodes, expandedRelText), new Part(expandedArg2), clausal = clausal, modifier = modifier))
   }
-  
+
   private val argumentExpansionLabels = Set("det", "prep_of", "amod", "num", "number", "nn", "poss", "quantmod", "neg")
   def expandArgument(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): SortedSet[DependencyNode] = {
     def expandNode(node: DependencyNode) = {
@@ -187,7 +180,7 @@ object Extraction {
   def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): Part = {
     // count the adjacent dobj edges.  We will only expand across
     // dobj components if there is exactly one adjacent dobj edge.
-    // This edge may already be used, but in that case we won't 
+    // This edge may already be used, but in that case we won't
     // expand over it because of the until set.
     val dobjCount = graph.graph.edges(node).count(_.label == "dobj")
     val iobjCount = graph.graph.edges(node).count(_.label == "iobj")
@@ -196,7 +189,7 @@ object Extraction {
     if (dobjCount == 1) attachLabels += "dobj"
     if (iobjCount == 1) attachLabels += "iobj"
 
-    def pred(edge: Graph.Edge[DependencyNode]) = 
+    def pred(edge: Graph.Edge[DependencyNode]) =
       // make sure we don't re-add the relation node
       edge.dest != node && (
           // attach adverbs
@@ -206,12 +199,12 @@ object Extraction {
     // expand across noun label for relational nouns
     // i.e. "He is the *best* president of the USA"
     val expandNounLabels = expand(graph, node, until, argumentExpansionLabels)
-    
+
     // modifiers on copulars are stored on a different node
     // i.e. in "he *will* be the president"
     val cops = graph.graph.predecessors(node, (e: Graph.Edge[DependencyNode])=>e.label == "cop").headOption
     val expandCopLabels = cops.map(cop => augment(graph, cop, until, pred)).getOrElse(List.empty)
-    
+
     val expansion = expandCopLabels ++ (expandNounLabels ::
       // make sure that we don't use a label that was
       // already captured by expandNounlabels.  This

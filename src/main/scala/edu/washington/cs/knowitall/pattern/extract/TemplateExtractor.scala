@@ -1,6 +1,4 @@
-package edu.washington.cs.knowitall
-package pattern
-package extract
+package edu.washington.cs.knowitall.pattern.extract
 
 import scala.util.matching.Regex
 
@@ -8,16 +6,15 @@ import org.slf4j.LoggerFactory
 
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
-import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
+import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import Template.group
-import collection.immutable.graph.pattern.{Pattern, Match}
-import tool.parse.graph.DependencyPattern
 
-class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int) 
+class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int)
 extends GeneralExtractor(pattern, patternCount, maxPatternCount) {
   override def extract(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
+    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     val extractions = super.extractWithMatches(dgraph)
@@ -28,7 +25,7 @@ extends GeneralExtractor(pattern, patternCount, maxPatternCount) {
 
 case object TemplateExtractor extends PatternExtractorType {
   val logger = LoggerFactory.getLogger(this.getClass)
-  
+
   override def fromLines(lines: Iterator[String]): List[PatternExtractor] = {
     val patterns: List[(Template, Pattern[DependencyNode], Int)] = lines.map { line =>
       line.split("\t") match {
@@ -64,7 +61,7 @@ case class Template(template: String, be: Boolean) {
       "be"
     }
     else ""
-      
+
     val modals = extr.rel.nodes.filter(_.postag startsWith "MD")
 
     // horrible escape is required.  See JavaDoc for Match.replaceAll
@@ -82,7 +79,7 @@ case class Template(template: String, be: Boolean) {
         rel = regex.replaceAllIn(rel, "$1 " + prefix)
       }
     }
-    
+
     extr.replaceRelation(rel)
   }
 

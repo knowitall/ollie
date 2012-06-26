@@ -1,6 +1,4 @@
-package edu.washington.cs.knowitall
-package pattern
-package extract
+package edu.washington.cs.knowitall.pattern.extract
 
 import java.io.File
 
@@ -12,8 +10,8 @@ import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
-  def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
+  def extract(dgraph: DependencyGraph)(implicit
+    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[DetailedExtraction]
   def confidence(extr: Extraction): Double
   def confidence: Option[Double] // independent confidence
@@ -23,13 +21,13 @@ abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
 
 abstract class PatternExtractorType {
   def fromFile(file: File): Seq[PatternExtractor] = {
-    using (Source.fromFile(file, "UTF8")) { source => 
+    using (Source.fromFile(file, "UTF8")) { source =>
       fromLines(source.getLines)
     }
-    
+
   }
   def fromLines(lines: Iterator[String]): Seq[PatternExtractor]
-  
+
   def name = this.getClass.getSimpleName
 }
 

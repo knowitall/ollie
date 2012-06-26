@@ -1,13 +1,11 @@
-package edu.washington.cs.knowitall
-package pattern
-package extract
+package edu.washington.cs.knowitall.pattern.extract
 
 import scala.Array.canBuildFrom
-import edu.washington.cs.knowitall.collection.immutable.graph.{Graph}
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
+import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Pattern
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 
 class SpecificExtractor(val relation: String, 
   val relationLemmas: List[String], 

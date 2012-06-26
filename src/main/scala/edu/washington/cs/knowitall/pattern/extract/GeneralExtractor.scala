@@ -1,23 +1,20 @@
-package edu.washington.cs.knowitall
-package pattern
-package extract
-
-import scala.Option.option2Iterable
+package edu.washington.cs.knowitall.pattern.extract
 
 import org.slf4j.LoggerFactory
 
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import GeneralExtractor.logger
 
 
 class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
   import GeneralExtractor._
-  
+
   protected def extractWithMatches(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
+    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     // apply pattern and keep valid matches
@@ -32,28 +29,28 @@ class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, 
     }
   }
 
-  override def extract(dgraph: DependencyGraph)(implicit 
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
+  override def extract(dgraph: DependencyGraph)(implicit
+    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     logger.debug("pattern: " + pattern)
-    
+
     val extractions = this.extractWithMatches(dgraph).map(_._1)
     if (!extractions.isEmpty) logger.debug("extractions: " + extractions.mkString(", "))
-    
+
     extractions
   }
 
   override def confidence(extr: Extraction): Double = {
     this.confidence.get
   }
-  
-  override def confidence: Option[Double] = 
+
+  override def confidence: Option[Double] =
     Some(patternCount.toDouble / maxPatternCount.toDouble)
 }
 
 case object GeneralExtractor extends PatternExtractorType {
   val logger = LoggerFactory.getLogger(this.getClass)
-    
+
   def fromLines(lines: Iterator[String]): List[GeneralExtractor] = {
     val patterns: List[(Pattern[DependencyNode], Int)] = lines.map { line =>
         line.split("\t") match {

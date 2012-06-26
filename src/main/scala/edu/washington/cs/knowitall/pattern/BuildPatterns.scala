@@ -3,19 +3,17 @@ package pattern
 
 import java.io.{PrintWriter, File}
 
-import scala.Option.option2Iterable
 import scala.collection.immutable
 import scala.io.Source
 
 import org.slf4j.LoggerFactory
 
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, CaptureNodeMatcher}
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Matcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Matcher, Pattern, CaptureNodeMatcher}
 import edu.washington.cs.knowitall.collection.immutable.graph.{UpEdge, DownEdge, Bipath}
+import edu.washington.cs.knowitall.common.Timing.{time, Seconds}
 import edu.washington.cs.knowitall.tool.parse.graph.{PostagNodeMatcher, DependencyPattern, DependencyNodeMatcher, DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
-import edu.washington.cs.knowitall.common.Timing.{time, Seconds}
 import scalaz.Scalaz._
 import scalaz._
 import scopt.OptionParser
@@ -47,17 +45,17 @@ object BuildPatterns {
       main(settings)
     }
   }
- 
+
  def main(settings: Settings) {
    def validGraph(graph: DependencyGraph) = {
      // make sure there is a verb
      graph.nodes.exists(node => "(?i)^VB".r.findFirstIn(node.postag).isDefined)
    }
-   
+
     // file with dependencies
     val source = Source.fromFile(settings.sourcePath, "UTF-8")
     val writer = settings.destPath.map(dest => new PrintWriter(new File(dest), "UTF8")).getOrElse(new PrintWriter(System.out))
-    
+
     logger.info("chunk size: " + CHUNK_SIZE)
     logger.info("pattern length: " + settings.length)
 
@@ -92,7 +90,7 @@ object BuildPatterns {
         }
         catch {
           case e: NoRelationNodeException => logger.warn(e.toString)
-          case e: DependencyGraph.SerializationException => 
+          case e: DependencyGraph.SerializationException =>
             logger.error("could not deserialize graph: " + deps, e)
         }
       })
@@ -108,7 +106,7 @@ object BuildPatterns {
     source.close
     writer.close
   }
- 
+
    def findBipaths(lemmas: Set[String], graph: DependencyGraph, maxLength: Option[Int]) = {
     // build a set of all the possible combinations that don't use a
     // node with the same text twice
@@ -140,7 +138,7 @@ object BuildPatterns {
       val paths = graph.graph.bipaths(nodes, maxLength)
 
       // restrict to paths that go up and then down
-      paths.filter(bipath => bipath.path.length > 0 && 
+      paths.filter(bipath => bipath.path.length > 0 &&
           bipath.path.dropWhile(_.isInstanceOf[UpEdge[_]]).dropWhile(_.isInstanceOf[DownEdge[_]]).isEmpty)
     }
   }
@@ -177,9 +175,9 @@ object BuildPatterns {
 
       val zipper = DependencyPattern.create(bip).matchers.toZipper.get
 
-      val zipperReplaced = try { Some((zipper /: replacements){ 
+      val zipperReplaced = try { Some((zipper /: replacements){
         case (zipper, (target, rep)) =>
-          val zipperMatch = 
+          val zipperMatch =
             // find an exact match
             zipper.findZ {
               case m: DependencyNodeMatcher => m.text == target
@@ -206,10 +204,10 @@ object BuildPatterns {
       zipperReplaced.map(zipper => new ExtractorPattern(zipper.toStream.toList))
     }
   }
-  
+
   /**
     * Find patterns in the graph that connect arg1, rel, and arg2.
-    * 
+    *
     * @param  graph  the graph to find the pattern in.
     * @param  rel  the relation
     * @param  arg1  the argument 1
@@ -222,14 +220,14 @@ object BuildPatterns {
   }
 
   def findPatterns(graph: DependencyGraph, lemmas: Set[String], replacements: Map[String, String], rel: String, maxLength: Option[Int]): List[(ExtractorPattern, List[String])] = {
-    def valid(pattern: Pattern[DependencyNode]) = 
+    def valid(pattern: Pattern[DependencyNode]) =
       // make sure arg1 comes first
       pattern.matchers.find(_
         .isInstanceOf[CaptureNodeMatcher[_]]).map(_
         .asInstanceOf[CaptureNodeMatcher[_]].alias == "arg1").getOrElse(false)
-      
+
     val patterns = findPattern(graph, lemmas, replacements, maxLength)
-    
+
     val filtered = patterns.filter(valid).toList
 
     val relLemmas = rel.split(" ").toList filter lemmas
@@ -242,7 +240,7 @@ object BuildPatterns {
       def replaceRels(zipper: Zipper[Matcher[DependencyNode]]) = {
         def replaceRels(zipper: Zipper[Matcher[DependencyNode]], rels: List[(String, Int)]): Zipper[Matcher[DependencyNode]] = rels match {
           case Nil => zipper
-          case (rel, i) :: xs => 
+          case (rel, i) :: xs =>
             // find the rel node
             val relZipper = zipper.findZ(_ match {
               case nm: DependencyNodeMatcher => nm.text.split("\\s+").contains(rel)
@@ -250,15 +248,15 @@ object BuildPatterns {
             }) getOrElse {
               throw new NoRelationNodeException("No relation node ("+rel+") in pattern: " + pattern)
             }
-    
+
             // replace rel
             val postag = relZipper.focus.asInstanceOf[DependencyNodeMatcher].postag
             val alias = if (i == 0 && xs.isEmpty) "rel" else "rel" + i
             val updated = relZipper.update(new CaptureNodeMatcher(alias, new PostagNodeMatcher(postag)))
-            
+
             replaceRels(updated, xs)
         }
-        
+
         replaceRels(zipper, relLemmas.zipWithIndex)
       }
 
@@ -320,7 +318,7 @@ object KeepCommonPatterns {
     }
     secondSource.close()
 
-    System.err.println(keepers+" patterns that occur more than "+min+"times") 
+    System.err.println(keepers+" patterns that occur more than "+min+"times")
   }
 }
 
@@ -331,7 +329,7 @@ object KeepDiversePatterns {
     def outputFile: Option[File]
     def debugFile: Option[File]
   }
-  
+
   def main(args: Array[String]) {
     val settings = new Settings {
       var inputFile: File = _
@@ -350,7 +348,7 @@ object KeepDiversePatterns {
       run(settings)
     }
   }
-    
+
   def run(settings: Settings) {
     val min = settings.min
     System.err.println("minimum relations per pattern: "+min)
@@ -369,7 +367,7 @@ object KeepDiversePatterns {
 
     System.err.println(rows+" rows")
     System.err.println(patterns.size+" unique patterns")
-    
+
     val secondSource = Source.fromFile(settings.inputFile, "UTF8")
     val outputWriter = settings.outputFile.map(new PrintWriter(_)).getOrElse(new PrintWriter(System.out))
     val debugWriter = settings.debugFile.map(new PrintWriter(_))
@@ -388,6 +386,6 @@ object KeepDiversePatterns {
     outputWriter.close()
     secondSource.close()
 
-    System.err.println(keepers+" patterns that occur more than "+min+"times") 
+    System.err.println(keepers+" patterns that occur more than "+min+"times")
   }
 }
