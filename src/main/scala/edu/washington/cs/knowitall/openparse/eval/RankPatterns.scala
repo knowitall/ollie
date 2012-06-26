@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern.eval
+package edu.washington.cs.knowitall.openparse.eval
 
 import java.io.{PrintWriter, File}
 

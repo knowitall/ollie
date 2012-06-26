@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern
+package edu.washington.cs.knowitall.openparse
 
 import org.junit.runner.RunWith
 import org.specs.runner.{JUnit4, JUnitSuiteRunner}

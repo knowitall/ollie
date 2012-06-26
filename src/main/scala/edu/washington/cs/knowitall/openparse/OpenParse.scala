@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern
+package edu.washington.cs.knowitall.openparse
 
 import java.io.{PrintWriter, File}
 import java.net.URL
@@ -12,8 +12,8 @@ import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.Timing
-import edu.washington.cs.knowitall.pattern.OpenParse.validMatch
-import edu.washington.cs.knowitall.pattern.extract.{TemplateExtractor, PatternExtractorType, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
+import edu.washington.cs.knowitall.openparse.OpenParse.validMatch
+import edu.washington.cs.knowitall.openparse.extract.{TemplateExtractor, PatternExtractorType, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.postag.PosTagger
 

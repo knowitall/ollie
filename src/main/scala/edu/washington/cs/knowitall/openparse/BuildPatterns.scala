@@ -1,5 +1,4 @@
-package edu.washington.cs.knowitall
-package pattern
+package edu.washington.cs.knowitall.openparse
 
 import java.io.{PrintWriter, File}
 

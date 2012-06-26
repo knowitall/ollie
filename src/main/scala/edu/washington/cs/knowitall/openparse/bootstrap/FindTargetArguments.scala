@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern.bootstrap
+package edu.washington.cs.knowitall.openparse.bootstrap
 
 import scala.Array.canBuildFrom
 import scala.collection.mutable

@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern.bootstrap
+package edu.washington.cs.knowitall.openparse.bootstrap
 
 import scala.Array.canBuildFrom
 import scala.Option.option2Iterable
@@ -6,7 +6,7 @@ import scala.io.Source
 
 import org.slf4j.LoggerFactory
 
-import edu.washington.cs.knowitall.pattern.OpenParse
+import edu.washington.cs.knowitall.openparse.OpenParse
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
 import FindCommon.{zip3, stripPostag, proper, cleanArg}

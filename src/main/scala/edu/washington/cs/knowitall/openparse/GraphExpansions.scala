@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern
+package edu.washington.cs.knowitall.openparse
 
 import scala.collection.Set
 import scala.collection.SortedSet

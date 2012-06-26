@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern
+package edu.washington.cs.knowitall.openparse
 
 import org.junit._
 import org.junit.Assert._

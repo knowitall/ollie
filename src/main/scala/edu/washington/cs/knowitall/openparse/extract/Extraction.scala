@@ -1,12 +1,12 @@
-package edu.washington.cs.knowitall.pattern.extract
+package edu.washington.cs.knowitall.openparse.extract
 
 import scala.collection.{SortedSet, Set}
 
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 import edu.washington.cs.knowitall.collection.immutable.graph.{Direction, Graph, DirectedEdge}
 import edu.washington.cs.knowitall.collection.immutable.Interval
-import edu.washington.cs.knowitall.pattern.GraphExpansions.{expand, components, augment}
-import edu.washington.cs.knowitall.pattern.OpenParse
+import edu.washington.cs.knowitall.openparse.GraphExpansions.{expand, components, augment}
+import edu.washington.cs.knowitall.openparse.OpenParse
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import edu.washington.cs.knowitall.tool.stem.Stemmer

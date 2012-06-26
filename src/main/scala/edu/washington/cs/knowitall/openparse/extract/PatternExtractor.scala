@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern.extract
+package edu.washington.cs.knowitall.openparse.extract
 
 import java.io.File
 

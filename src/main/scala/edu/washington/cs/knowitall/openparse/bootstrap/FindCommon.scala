@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern.bootstrap
+package edu.washington.cs.knowitall.openparse.bootstrap
 
 import scala.util.matching.Regex
 

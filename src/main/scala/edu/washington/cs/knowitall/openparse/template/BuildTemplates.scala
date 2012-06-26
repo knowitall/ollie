@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.pattern.template
+package edu.washington.cs.knowitall.openparse.template
 
 import java.io.{PrintWriter, File}
 
@@ -14,7 +14,7 @@ import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Matcher, 
 import edu.washington.cs.knowitall.collection.immutable.Bag
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOncePairTo
-import edu.washington.cs.knowitall.pattern.{SlotMatcher, RelationMatcher, ExtractorPattern, ArgumentMatcher}
+import edu.washington.cs.knowitall.openparse.{SlotMatcher, RelationMatcher, ExtractorPattern, ArgumentMatcher}
 import edu.washington.cs.knowitall.tool.parse.graph.{RegexNodeMatcher, RegexEdgeMatcher, PostagNodeMatcher, LabelEdgeMatcher, DependencyPattern, DependencyNode}
 import edu.washington.cs.knowitall.tool.postag.PosTagger
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
