@@ -267,7 +267,7 @@ class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Conf
   def this(extractors: Seq[PatternExtractor]) =
     this(extractors, new OpenParse.Configuration())
 
-  def simplifyGraph(dgraph: DependencyGraph) = {
+  def simplifyGraph(dgraph: DependencyGraph): DependencyGraph = {
     var graph = dgraph
 
     if (configuration.simplifyPostags) {
@@ -280,8 +280,10 @@ class OpenParse(extractors: Seq[PatternExtractor], configuration: OpenParse.Conf
 
     graph
   }
+  
+  def apply(dg: DependencyGraph) = extract(dg)
 
-  def extract(dg: DependencyGraph) = {
+  def extract(dg: DependencyGraph): Seq[(Double, DetailedExtraction)] = {
     val dgraph = simplifyGraph(dg)
 
     /**
