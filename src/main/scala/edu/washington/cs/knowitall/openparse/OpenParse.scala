@@ -26,12 +26,16 @@ object OpenParse {
 
   def defaultModelUrl: URL = {
     val path = "openparse.model"
-    val url = this.getClass.getClassLoader.getResource(path)
+    val url = this.getClass.getResource(path)
     require(url != null, "Default model could not be found: " + path);
     url
   }
 
   // factory methods
+  def fromDefaultModel(configuration: Configuration = new Configuration()) = {
+    fromModelUrl(defaultModelUrl, configuration)
+  }
+  
   def fromModelSource(source: Source, configuration: Configuration = new Configuration()) = {
     val it = source.getLines
     val head = it.next
