@@ -32,7 +32,7 @@ object OpenParse {
   }
 
   // factory methods
-  def fromDefaultModel(configuration: Configuration = new Configuration()) = {
+  def loadWithDefaultModel(configuration: Configuration = new Configuration()) = {
     fromModelUrl(defaultModelUrl, configuration)
   }
   
