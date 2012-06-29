@@ -1,0 +1,21 @@
+Arg1 Cleanup feature                   -1.9911
+Arg1 comes after arg2                  -0.4447
+Args both start and end with nouns      0.1728
+Extr has attribution?                    0.795
+Extr has enabledBy?                     1.0193
+Hyp words near rel                     -0.5114
+If before arg1 and no enabledBy?       -1.6637
+OpenParse Confidence                    1.1633
+Prep right after arg2?                 -0.5315
+Prep right before arg1?                 -0.249
+Rel contains VBD                        0.6359
+Rel contains VBG                       -0.5304
+Rel contains VBP                        0.4956
+Rel ends with of                       -0.2109
+Rel head is a communication verb?      -0.9221
+Rel starts with "be"?                  -0.5923
+Sentence starts with extr?              0.3414
+That before rel                        -0.2542
+Vacuous rel+arg2                       -1.5148
+Verb after arg2?                        0.2108
+Intercept                              -0.1432
