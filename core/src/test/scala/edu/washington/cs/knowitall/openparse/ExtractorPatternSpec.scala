@@ -1,15 +1,16 @@
 package edu.washington.cs.knowitall.openparse
 
+import org.junit._
+import org.junit.Assert._
+import org.specs2.mutable.Specification
 import org.junit.runner.RunWith
-import org.specs.runner.{JUnit4, JUnitSuiteRunner}
-import org.specs.Specification
+import org.specs2.runner.JUnitRunner
 
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyPattern
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
-@RunWith(classOf[JUnitSuiteRunner])
-class ExtractorPatternTest extends JUnit4(ExtractorPatternSpec)
-object ExtractorPatternSpec extends Specification {
+@RunWith(classOf[JUnitRunner])
+object ExtractorPatternSpecTest extends Specification {
   def testSymmetric(pattern: String, symmetric: Boolean) {
     (pattern + " is " + (if (symmetric) "symmetric" else "not symmetric")) in {
       new ExtractorPattern(DependencyPattern.deserialize(pattern)).symmetric must be_==(symmetric)

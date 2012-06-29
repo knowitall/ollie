@@ -61,9 +61,9 @@
       <version>1.6-1</version>
     </dependency>
     <dependency>
-      <groupId>org.scala-tools.testing</groupId>
-      <artifactId>specs_2.9.1</artifactId>
-      <version>1.6.9</version>
+      <groupId>org.specs2</groupId>
+      <artifactId>specs2_2.9.2</artifactId>
+      <version>1.11</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

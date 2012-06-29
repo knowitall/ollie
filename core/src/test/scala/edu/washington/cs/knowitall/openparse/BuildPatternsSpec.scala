@@ -1,15 +1,16 @@
 package edu.washington.cs.knowitall.openparse
 
+import org.junit._
+import org.junit.Assert._
+import org.specs2.mutable.Specification
 import org.junit.runner.RunWith
-import org.specs.runner.{JUnit4, JUnitSuiteRunner}
-import org.specs.Specification
+import org.specs2.runner.JUnitRunner
 
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
-@RunWith(classOf[JUnitSuiteRunner])
-class BuildPatternsTest extends JUnit4(BuildPatternsSpec)
-object BuildPatternsSpec extends Specification {
+@RunWith(classOf[JUnitRunner])
+object BuildPatternsSpecTest extends Specification {
   def findPatterns(row: (String, String, String, String, String), maxLength: Option[Int] = None) = {
     val (rel, arg1, arg2, lemmasString, pickled) = row
     val lemmas = lemmasString.split("\\s+").toSet

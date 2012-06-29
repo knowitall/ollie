@@ -1,15 +1,16 @@
 package edu.washington.cs.knowitall.openparse
 
+import org.junit._
+import org.junit.Assert._
+import org.specs2.mutable.Specification
 import org.junit.runner.RunWith
-import org.specs.runner.{JUnit4, JUnitSuiteRunner}
-import org.specs.Specification
+import org.specs2.runner.JUnitRunner
 
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
-@RunWith(classOf[JUnitSuiteRunner])
-class OpenParseTest extends JUnit4(OpenParseSpec)
-object OpenParseSpec extends Specification {
+@RunWith(classOf[JUnitRunner])
+object OpenParseSpecTest extends Specification {
   val openparse = OpenParse.loadWithDefaultModel()
 
   "OpenParse finds an example extraction" in {
