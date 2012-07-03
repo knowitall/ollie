@@ -16,7 +16,6 @@ import edu.washington.cs.knowitall.tool.parse.StanfordParser
 import edu.washington.cs.knowitall.openparse.OpenParse.validMatch
 import edu.washington.cs.knowitall.openparse.extract.{TemplateExtractor, PatternExtractorType, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
-import edu.washington.cs.knowitall.tool.postag.PosTagger
 
 import scopt.OptionParser
 

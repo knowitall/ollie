@@ -15,12 +15,12 @@ import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.openparse.OpenParse.validMatch
 import edu.washington.cs.knowitall.openparse.extract.{TemplateExtractor, PatternExtractorType, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
-import edu.washington.cs.knowitall.tool.postag.PosTagger
+import edu.washington.cs.knowitall.tool.postag.Postagger
 
 import scopt.OptionParser
 
 object OpenParse {
-  val LEMMA_BLACKLIST = PosTagger.simplePrepositions + "like" + "be"
+  val LEMMA_BLACKLIST = Postagger.simplePrepositions + "like" + "be"
   val VALID_ARG_POSTAG = Set("NN", "NNS", "NNP", "NNPS", "JJ", "JJS", "CD", "PRP")
   val logger = LoggerFactory.getLogger(this.getClass)
 

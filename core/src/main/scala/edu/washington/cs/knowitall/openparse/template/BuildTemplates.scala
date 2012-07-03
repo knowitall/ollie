@@ -16,7 +16,7 @@ import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOncePairTo
 import edu.washington.cs.knowitall.openparse.{SlotMatcher, RelationMatcher, ExtractorPattern, ArgumentMatcher}
 import edu.washington.cs.knowitall.tool.parse.graph.{RegexNodeMatcher, RegexEdgeMatcher, PostagNodeMatcher, LabelEdgeMatcher, DependencyPattern, DependencyNode}
-import edu.washington.cs.knowitall.tool.postag.PosTagger
+import edu.washington.cs.knowitall.tool.postag.Postagger
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import scalaz.Scalaz._
@@ -132,7 +132,7 @@ object BuildTemplates {
 
 
   def run(settings: Settings) {
-    val prepRegex = new Regex("^(.*?)\\s+((?:"+PosTagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
+    val prepRegex = new Regex("^(.*?)\\s+((?:"+Postagger.prepositions.map(_.replaceAll(" ", "_")).mkString("|")+"))$")
 
     def relPrep(rel: String) = {
       rel match {

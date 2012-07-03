@@ -4,7 +4,7 @@ import scala.collection.immutable
 
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.openparse.extract.Extraction.{ClausalComponent, AdverbialModifier}
-import edu.washington.cs.knowitall.tool.postag.PosTagger
+import edu.washington.cs.knowitall.tool.postag.Postagger
 
 class ExtractionPart(val string: String, val interval: Interval) extends Ordered[ExtractionPart] {
   override def compare(that: ExtractionPart) =
@@ -48,12 +48,12 @@ object ExtendedExtraction {
   def from(extrs: Seq[(Double, DetailedExtraction)]) = {
     // keep extractions that end with a one-word preposition
     val prepositionEnding = extrs.filter { case (conf, extr) =>
-      PosTagger.simplePrepositions(extr.rel.text drop (1 + extr.rel.text lastIndexOf ' '))
+      Postagger.simplePrepositions(extr.rel.text drop (1 + extr.rel.text lastIndexOf ' '))
     }
 
     // break off the preposition
     val split: Seq[(String, String, (Double, DetailedExtraction))] = prepositionEnding.map { case (conf, extr) =>
-      val preps = PosTagger.prepositions.filter(extr.rel.text endsWith _)
+      val preps = Postagger.prepositions.filter(extr.rel.text endsWith _)
       val longest = preps.maxBy(_.length)
       (extr.rel.text.dropRight(longest.length + 1), longest, (conf, extr))
     }
