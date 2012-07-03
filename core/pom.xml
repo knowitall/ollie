@@ -42,11 +42,13 @@
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
       <version>1.0.3</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-core</artifactId>
       <version>1.0.3</version>
+      <scope>test</scope>
     </dependency>
     <!-- Test -->
     <dependency>

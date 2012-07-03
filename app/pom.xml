@@ -66,6 +66,19 @@
       <version>1.11</version>
       <scope>test</scope>
     </dependency>
+    <!-- Logging -->
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-classic</artifactId>
+      <version>1.0.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>ch.qos.logback</groupId>
+      <artifactId>logback-core</artifactId>
+      <version>1.0.3</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <sourceDirectory>src/main/scala</sourceDirectory>
