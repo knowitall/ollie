@@ -30,7 +30,7 @@ Follow these steps to get started:
 
 ## Building
 
-Building ReVerb from source requires Apache Maven (<http://maven.apache.org>).
+Building Ollie from source requires Apache Maven (<http://maven.apache.org>).
 Run this command to download the required dependencies, compile, and create a
 single jar file.
 
@@ -51,7 +51,7 @@ To modify the Ollie source code in Eclipse, use the M2Eclipse plugin along with
 ScalaIDE.  You can then import the project using File > Import > 
 Existing Maven Projects.
 
-## Including ReVerb as a Dependency
+## Including Ollie as a Dependency
 
 ## Contributors
 * Michael Schmitz <http://www.schmitztech.com>>
