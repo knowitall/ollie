@@ -79,7 +79,13 @@ class OllieExtraction(
   def nodes = arg1.nodes ++ rel.nodes ++ arg2.nodes
 
   override def toString = {
-    "(%s; %s; %s)[%s; %s]".format(arg1.text, rel.text, arg2.text, enabler.map(_.text), attribution.map(_.text))
+    val extentions = Iterable(
+        enabler.map("enabler="+_.text), 
+        attribution.map("attrib="+_.text)).flatten match {
+      case Nil => ""
+      case list => list.mkString("[", ";", "]")
+    }
+    "(%s; %s; %s)".format(arg1.text, rel.text, arg2.text) + extentions
   }
 }
 
