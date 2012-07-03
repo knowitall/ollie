@@ -100,7 +100,7 @@ object OllieCli {
               // potentially transform to a parallel collection
               val sentences = if (settings.parallel) group.par else group
               for (sentence <- sentences) {
-                if (!settings.tabbed) println("'" + sentence + "'")
+                if (!settings.tabbed) println(sentence)
 
                 // parse the sentence
                 val graph = parser.dependencyGraph(sentence)
@@ -123,7 +123,7 @@ object OllieCli {
             case e: Exception if settings.invincible => e.printStackTrace
           }
         }
-        
+
         System.err.println("completed in " + Timing.Seconds.format(ns) + " seconds")
       }
     }
@@ -136,13 +136,17 @@ object OllieCli {
         new Iterator[String]() {
           var sentences: Iterator[String] = Iterator.empty
 
-          def hasNext = sentences.hasNext || lines.hasNext
+          def hasNext = { 
+            lines.dropWhile(_.trim.isEmpty) // skip empty lines
+            sentences.hasNext || lines.hasNext
+          }
+
           def next = {
             if (sentences.hasNext) {
               sentences.next()
             } else {
-              lines.dropWhile(_.trim.isEmpty) // skip empty lines
               val text = lines.takeWhile(!_.trim.isEmpty).mkString(" ")
+              println(text)
               sentences = sentencer.sentences(text).iterator
               sentences.next()
             }
