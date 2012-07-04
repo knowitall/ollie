@@ -21,6 +21,7 @@ object OllieExtractionFeatures {
   val prepTag = Pattern.compile("IN|TO|WP")
   val ingStart = Pattern.compile("^[a-zA-Z]+ing.*")
   val verbStart = Pattern.compile("VB*")
+  val relationVerb = Pattern.compile("VB|VBD|VBZ|VBN|VBP|MD")
 
   def sentenceHasQuestionMark(inst: OllieExtractionInstance): Double = {
 
@@ -150,6 +151,9 @@ object OllieExtractionFeatures {
 
   def arg2ComesBeforeArg1(inst: OllieExtractionInstance): Double =
     inst.extr.arg2.span < inst.extr.arg1.span && !(inst.extr.arg1.span intersects inst.extr.arg2.span)
+    
+  def arg2ComesBeforeRel(inst: OllieExtractionInstance): Double =
+    inst.extr.arg2.span < inst.extr.rel.span && !(inst.extr.rel.span intersects inst.extr.arg2.span)
 
   def relCommunicationVerb(inst: OllieExtractionInstance): Double = {
     inst.extr.rel.nodes.exists{node =>
@@ -286,17 +290,40 @@ object OllieExtractionFeatures {
       }
     }
   }
+  
+    // Is there a preposition in the span of rel?
+  def prepInArg2(inst: OllieExtractionInstance): Double = {
+
+    inst.extr.arg2.nodes.exists(node=>prepTag.matcher(node.postag).matches)
+
+  }
+
+  // does the pattern "... NN* ... VB* ... NN* ... " exist in arg1 or arg2?
+  def nounVerbNounInArg(arg1: Boolean)(inst: OllieExtractionInstance): Double = {
+    val tokenSet = if (arg1) inst.extr.arg1.nodes else inst.extr.arg2.nodes
+    val tokens = tokenSet.iterator.toSeq
+    val firstNN = tokens.indexWhere(_.isNoun)
+    val firstVB = tokens.drop(firstNN).indexWhere(_.isVerb)
+    val secondNN = tokens.drop(firstNN + firstVB).indexWhere(_.isNoun)
+    
+    def tokensExist = !Seq(firstNN, firstVB, secondNN).exists(_ == -1)
+    def correctIndices = (firstNN < (firstNN + firstVB) < (firstNN + firstVB + secondNN))
+    tokensExist && correctIndices
+  }
 
   // The full set of all implemented features in this format is commented out below this method
   def getFeatures(): SortedMap[String, OllieExtractionInstance => Double] = {
     SortedMap(
       "Arg1 comes after arg2" -> arg2ComesBeforeArg1,
+      "Arg2 comes before Rel" -> arg2ComesBeforeRel,
       "Args both start and end with nouns" -> argsStartEndWithNoun,
       "Extr has attribution?" -> extrHasAttribution,
       "Extr has enabledBy?" -> extrHasEnabledBy,
       "If before arg1 and no enabledBy?" -> ifBeforeArg1,
       "Hyp words near rel" -> hypWordsNearRel,
       "OpenParse Confidence" -> openParseConfidence,
+      "Noun-Verb-Noun in arg2" -> nounVerbNounInArg(arg1=false),
+      "Prep in arg2?" -> prepInArg2,
       "Prep right after arg2?" -> prepRightAfterArg2,
       "Prep right before arg1?" -> prepRightBeforeArg1,
       "Rel contains VBD" -> (relContainsPostag("VBD")),
