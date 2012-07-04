@@ -9,7 +9,6 @@ import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
 import edu.washington.cs.knowitall.openparse.OpenParse
 import edu.washington.cs.knowitall.tool.parse.StanfordParser
 import scopt.OptionParser
-import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
 import edu.washington.cs.knowitall.tool.sentence.Sentencer
 import edu.washington.cs.knowitall.common.Timing
 
@@ -59,7 +58,6 @@ object OllieCli {
       })
 
       opt("t", "tabbed", "output in TSV format", { settings.tabbed = true })
-      opt("s", "split", "split input text", { settings.splitInput = true })
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
       opt("invincible", "ignore errors", { settings.invincible = true })
     }
@@ -76,9 +74,7 @@ object OllieCli {
     val ollieExtractor = new Ollie(OpenParse.fromModelUrl(OpenParse.defaultModelUrl))
     val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
 
-    val sentencer =
-      if (settings.splitInput) Some(new OpenNlpSentencer)
-      else None
+    val sentencer = None
 
     System.err.println("\nRunning extractor...")
     using(settings.inputFile match {
@@ -94,6 +90,7 @@ object OllieCli {
         if (settings.tabbed) println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
         val ns = Timing.time {
           val lines = parseLines(source.getLines, sentencer)
+          println(lines.size)
           try {
             // group the lines so we can parallelize
             for (group <- lines.grouped(CHUNK_SIZE)) {
@@ -129,29 +126,9 @@ object OllieCli {
     }
   }
 
-  def parseLines(lines: Iterator[String], sentencer: Option[Sentencer]) = {
+  def parseLines(linesParam: Iterator[String], sentencer: Option[Sentencer]) = {
     sentencer match {
-      case None => lines
-      case Some(sentencer) =>
-        new Iterator[String]() {
-          var sentences: Iterator[String] = Iterator.empty
-
-          def hasNext = { 
-            lines.dropWhile(_.trim.isEmpty) // skip empty lines
-            sentences.hasNext || lines.hasNext
-          }
-
-          def next = {
-            if (sentences.hasNext) {
-              sentences.next()
-            } else {
-              val text = lines.takeWhile(!_.trim.isEmpty).mkString(" ")
-              println(text)
-              sentences = sentencer.sentences(text).iterator
-              sentences.next()
-            }
-          }
-        }.filter(!_.trim.isEmpty)
+      case None => linesParam
     }
   }
 }
