@@ -291,7 +291,7 @@ object OllieExtractionFeatures {
     }
   }
   
-    // Is there a preposition in the span of rel?
+  // Is there a preposition in the span of arg2?
   def prepInArg2(inst: OllieExtractionInstance): Double = {
 
     inst.extr.arg2.nodes.exists(node=>prepTag.matcher(node.postag).matches)
