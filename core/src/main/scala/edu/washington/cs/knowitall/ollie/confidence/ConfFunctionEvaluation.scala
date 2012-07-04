@@ -13,7 +13,7 @@ object ConfFunctionEvaluation {
 
   val NUM_TRIALS = 1
   
-  val trainingFraction = 0.99
+  val trainingFraction = 0.998
 
   def infoPrint(str: String): Unit = System.err.println(str)
   
@@ -65,6 +65,8 @@ object ConfFunctionEvaluation {
       println("Test Yield\tTest Avg Prec\tTest PrecVar\tTrain Yield\tTrain Avg Prec\tTrain PrecVar")
       trainOutput.zipAll(testOutput, "", "").toList.foreach(p => println("%s\t%s".format(p._1, p._2)))
     }
+    
+    printPrecRecall
   }
   
   def evalTabDelimitedColumns: String = {
