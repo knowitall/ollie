@@ -8,6 +8,7 @@ import scala.util.Random
 
 import edu.washington.cs.knowitall.ollie.confidence.FeatureSet
 import edu.washington.cs.knowitall.ollie.confidence.OllieExtractionFeatures
+import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
 import weka.classifiers.functions.Logistic
 import weka.classifiers.Classifier
@@ -25,8 +26,8 @@ class OllieWekaConfFunction(
 }
 
 object OllieWekaClassifierTrainer {
-  val trainingUrls = Seq("default-training.txt").map { name =>
-    Option(this.getClass.getClassLoader.getResource(name)).getOrElse {
+  val trainingResources = Seq("default-training.txt").map { name =>
+    Option(OllieIndependentConfFunction.getClass.getResource(name)).getOrElse {
       throw new FileNotFoundException("Could not find training data resource: " + name)
     }
   }
@@ -36,7 +37,7 @@ object OllieWekaClassifierTrainer {
     println("Loading classifier data...")
     val featureSet = new WekaExampleSet(new FeatureSet(OllieExtractionFeatures.getFeatures()))
 
-    val dataInputs = trainingUrls.map(_.openStream())
+    val dataInputs = trainingResources.map(_.openStream())
     val rawData = dataInputs.map(loadLabeledExtractions(_).toList)
     val trainingData = Random.shuffle(rawData.reduce(_ ++ _))
     dataInputs.foreach(_.close())

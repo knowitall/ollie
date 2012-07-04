@@ -20,7 +20,7 @@ object OllieExtractionFeatures {
   val hasQuestionMark = Pattern.compile(".*\\?.*")
   val prepTag = Pattern.compile("IN|TO|WP")
   val ingStart = Pattern.compile("^[a-zA-Z]+ing.*")
-  val verbStart = Pattern.compile("VBZ?")
+  val verbStart = Pattern.compile("VB*")
 
   def sentenceHasQuestionMark(inst: OllieExtractionInstance): Double = {
 
