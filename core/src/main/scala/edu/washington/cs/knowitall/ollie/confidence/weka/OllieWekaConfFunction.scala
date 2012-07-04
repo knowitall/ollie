@@ -27,7 +27,7 @@ class OllieWekaConfFunction(
 
 object OllieWekaClassifierTrainer {
   val trainingResources = Seq("default-training.txt").map { name =>
-    Option(OllieIndependentConfFunction.getClass.getResource(name)).getOrElse {
+    Option(OllieWekaClassifierTrainer.getClass.getResource(name)).getOrElse {
       throw new FileNotFoundException("Could not find training data resource: " + name)
     }
   }
