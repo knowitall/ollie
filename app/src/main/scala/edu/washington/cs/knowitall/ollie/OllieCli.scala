@@ -22,6 +22,7 @@ object OllieCli {
     def inputFile: Option[File]
     def outputFile: Option[File]
     def confidenceThreshold: Double
+    def openparseConfidenceThreshold: Double
 
     def splitInput: Boolean
     def tabbed: Boolean
@@ -37,6 +38,7 @@ object OllieCli {
       var inputFile: Option[File] = None
       var outputFile: Option[File] = None
       var confidenceThreshold: Double = 0.0
+      var openparseConfidenceThreshold: Double = 0.05
 
       var splitInput: Boolean = false
       var tabbed: Boolean = false
@@ -54,8 +56,12 @@ object OllieCli {
         settings.outputFile = Some(new File(path))
       })
 
-      doubleOpt(Some("t"), "threshold", "<threshold>", "confidence threshold for OpenParse extractor component", { t: Double =>
+      doubleOpt(Some("t"), "threshold", "<threshold>", "confidence threshold for Ollie extractor", { t: Double =>
         settings.confidenceThreshold = t
+      })
+      
+      doubleOpt(None, "openparse-threshold", "<threshold>", "confidence threshold for OpenParse component", { t: Double =>
+        settings.openparseConfidenceThreshold = t
       })
 
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
@@ -73,7 +79,10 @@ object OllieCli {
     System.err.println("Loading models...")
     val parser = new StanfordParser()
 
-    val ollieExtractor = new Ollie(OpenParse.fromModelUrl(OpenParse.defaultModelUrl))
+    val openparse = OpenParse.withDefaultModel(
+        new OpenParse.Configuration(
+            confidenceThreshold = settings.openparseConfidenceThreshold))
+    val ollieExtractor = new Ollie(openparse)
     val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
 
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
