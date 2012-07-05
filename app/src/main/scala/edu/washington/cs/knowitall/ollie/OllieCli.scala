@@ -57,8 +57,8 @@ object OllieCli {
         settings.confidenceThreshold = t
       })
 
-      opt("t", "tabbed", "output in TSV format", { settings.tabbed = true })
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
+      opt("tabbed", "output in TSV format", { settings.tabbed = true })
       opt("invincible", "ignore errors", { settings.invincible = true })
     }
 
@@ -75,8 +75,8 @@ object OllieCli {
     val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
 
     val sentencer = None
-
-    System.err.println("\nRunning extractor...")
+    
+    System.err.println("\nRunning extractor on " + (settings.inputFile match { case None => "standard input" case Some(f) => f.getName }) + "...")
     using(settings.inputFile match {
       case Some(input) => Source.fromFile(input, "UTF-8")
       case None => Source.stdin
@@ -87,17 +87,20 @@ object OllieCli {
         case None => new PrintWriter(System.out)
       }) { writer =>
 
-        if (settings.tabbed) println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
+        if (settings.tabbed) writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
         val ns = Timing.time {
           val lines = parseLines(source.getLines, sentencer)
-          println(lines.size)
           try {
             // group the lines so we can parallelize
-            for (group <- lines.grouped(CHUNK_SIZE)) {
+            val grouped = if (settings.parallel) lines.grouped(CHUNK_SIZE) else lines.map(Seq(_))
+            for (group <- grouped) {
               // potentially transform to a parallel collection
               val sentences = if (settings.parallel) group.par else group
               for (sentence <- sentences) {
-                if (!settings.tabbed) println(sentence)
+                if (!settings.tabbed) {
+                  writer.println(sentence)
+                  writer.flush()
+                }
 
                 // parse the sentence
                 val graph = parser.dependencyGraph(sentence)
@@ -107,13 +110,18 @@ object OllieCli {
                 
                 extrs.toSeq.sortBy(-_._1).foreach { case (conf, e) =>
                   if (settings.tabbed) {
-                    println(Iterable(conf, e.extr.arg1.text, e.extr.rel.text, e.extr.arg2.text, e.extr.enabler, e.extr.attribution, e.sent.serialize, e.sent.text).mkString("\t"))
+                    writer.println(Iterable(conf, e.extr.arg1.text, e.extr.rel.text, e.extr.arg2.text, e.extr.enabler, e.extr.attribution, e.sent.serialize, e.sent.text).mkString("\t"))
                   } else {
-                    println(conf + ": " + e.extr)
+                    writer.println(conf + ": " + e.extr)
                   }
+                  
+                  writer.flush()
                 }
 
-                if (!settings.tabbed) println()
+                if (!settings.tabbed) { 
+                  writer.println()
+                  writer.flush()
+                }
               }
             }
           } catch {
