@@ -74,4 +74,10 @@ project.  The source for for `ollie-app` is an excellent example.
 If you use Ollie in your academic work, please cite Ollie with the following 
 BibTeX citation:
 
-TODO
+    @inproceedings{ollie-emnlp12,
+      author = {Mausam and Michael Schmitz and Robert Bart and Stephen Soderland and Oren Etzioni},
+      title = {Open Language Learning for Information Extraction},
+      booktitle = {Proceedings of Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning
+   (EMNLP-CONLL)},
+      year = {2012}
+    }
