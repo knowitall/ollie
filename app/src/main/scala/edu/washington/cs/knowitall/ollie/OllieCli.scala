@@ -89,7 +89,7 @@ object OllieCli {
 
         if (settings.tabbed) writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
         val ns = Timing.time {
-          val lines = parseLines(source.getLines, sentencer)
+          val lines = parseLines(source.getLines, sentencer) filter (!_.isEmpty)
           try {
             // group the lines so we can parallelize
             val grouped = if (settings.parallel) lines.grouped(CHUNK_SIZE) else lines.map(Seq(_))
