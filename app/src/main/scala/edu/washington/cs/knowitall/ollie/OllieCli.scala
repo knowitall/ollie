@@ -110,7 +110,7 @@ object OllieCli {
                 // extract sentence and compute confidence
                 val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.getConf(extr), extr))
                 
-                extrs.toSeq.sortBy(-_._1).foreach { case (conf, e) =>
+                (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach { case (conf, e) =>
                   if (settings.tabbed) {
                     writer.println(Iterable(conf, e.extr.arg1.text, e.extr.rel.text, e.extr.arg2.text, e.extr.enabler, e.extr.attribution, e.sent.serialize, e.sent.text).mkString("\t"))
                   } else {
