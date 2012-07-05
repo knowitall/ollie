@@ -11,6 +11,7 @@ import edu.washington.cs.knowitall.tool.parse.StanfordParser
 import scopt.OptionParser
 import edu.washington.cs.knowitall.tool.sentence.Sentencer
 import edu.washington.cs.knowitall.common.Timing
+import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
 
 /** An entry point to use Ollie on the command line.
   */
@@ -58,6 +59,7 @@ object OllieCli {
       })
 
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
+      opt("s", "split", "split text into sentences", { settings.splitInput = true })
       opt("tabbed", "output in TSV format", { settings.tabbed = true })
       opt("invincible", "ignore errors", { settings.invincible = true })
     }
@@ -74,7 +76,7 @@ object OllieCli {
     val ollieExtractor = new Ollie(OpenParse.fromModelUrl(OpenParse.defaultModelUrl))
     val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
 
-    val sentencer = None
+    val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
     
     System.err.println("\nRunning extractor on " + (settings.inputFile match { case None => "standard input" case Some(f) => f.getName }) + "...")
     using(settings.inputFile match {
@@ -134,9 +136,10 @@ object OllieCli {
     }
   }
 
-  def parseLines(linesParam: Iterator[String], sentencer: Option[Sentencer]) = {
+  def parseLines(lines: Iterator[String], sentencer: Option[Sentencer]) = {
     sentencer match {
-      case None => linesParam
+      case None => lines
+      case Some(sentencer) => new SentenceIterator(sentencer, lines.buffered)
     }
   }
 }
