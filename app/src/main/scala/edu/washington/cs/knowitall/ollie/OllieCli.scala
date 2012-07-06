@@ -12,6 +12,7 @@ import scopt.OptionParser
 import edu.washington.cs.knowitall.tool.sentence.Sentencer
 import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
+import java.text.DecimalFormat
 
 /** An entry point to use Ollie on the command line.
   */
@@ -87,6 +88,8 @@ object OllieCli {
 
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
     
+    val confFormatter = new DecimalFormat("#.###")
+    
     System.err.println("\nRunning extractor on " + (settings.inputFile match { case None => "standard input" case Some(f) => f.getName }) + "...")
     using(settings.inputFile match {
       case Some(input) => Source.fromFile(input, "UTF-8")
@@ -97,6 +100,11 @@ object OllieCli {
         case Some(output) => new PrintWriter(output, "UTF-8")
         case None => new PrintWriter(System.out)
       }) { writer =>
+        // print prompt if standard input
+        if (!settings.outputFile.isDefined) {
+          System.out.print("> ")
+          System.out.flush()
+        }
 
         if (settings.tabbed) writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
         val ns = Timing.time {
@@ -118,15 +126,19 @@ object OllieCli {
 
                 // extract sentence and compute confidence
                 val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.getConf(extr), extr))
-                
-                (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach { case (conf, e) =>
-                  if (settings.tabbed) {
-                    writer.println(Iterable(conf, e.extr.arg1.text, e.extr.rel.text, e.extr.arg2.text, e.extr.enabler, e.extr.attribution, e.sent.serialize, e.sent.text).mkString("\t"))
-                  } else {
-                    writer.println(conf + ": " + e.extr)
+
+                extrs match {
+                  case Nil => writer.println("No extractions found.")
+                  case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach {
+                    case (conf, e) =>
+                      if (settings.tabbed) {
+                        writer.println(Iterable(confFormatter.format(conf), e.extr.arg1.text, e.extr.rel.text, e.extr.arg2.text, e.extr.enabler, e.extr.attribution, e.sent.serialize, e.sent.text).mkString("\t"))
+                      } else {
+                        writer.println(confFormatter.format(conf) + ": " + e.extr)
+                      }
+
+                      writer.flush()
                   }
-                  
-                  writer.flush()
                 }
 
                 if (!settings.tabbed) { 
