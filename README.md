@@ -20,11 +20,10 @@ If you want to run Ollie on a small amount of text without modifying the source
 code, you can use an executable file that can be run from the command line.
 Follow these steps to get started:
 
-1.  Download the latest Ollie source from https://github.com/knowitall/ollie.
+1.  Download the latest Ollie binary from
+    http://knowitall.cs.washington.edu/ollie/ollie-app-latest.jar.
 
-2.  Run `mvn clean package`.
-
-3.  Run `java -Xmx512m -jar ollie-app-VERSION.jar yourfile.txt`.  Omit the
+3.  Run `java -Xmx512m -jar ollie-app-latest.jar yourfile.txt`.  Omit the
     input file for an interactive console.
 
 ## Building
