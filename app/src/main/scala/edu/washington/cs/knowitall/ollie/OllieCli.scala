@@ -59,6 +59,8 @@ object OllieCli {
         settings.outputFile = Some(new File(path))
       })
 
+      opt("h", "help", "usage information", { settings.showUsage = true })
+
       doubleOpt(Some("t"), "threshold", "<threshold>", "confidence threshold for Ollie extractor", { t: Double =>
         settings.confidenceThreshold = t
       })
@@ -76,6 +78,9 @@ object OllieCli {
 
     if (argumentParser.parse(args)) {
       if (settings.showUsage) {
+        println()
+        println("Ollie takes sentences as input, one per line.")
+        println("The response is \"confidence: extraction\", one extraction per line.")
         println(argumentParser.usage)
       }
       else {
