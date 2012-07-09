@@ -4,11 +4,11 @@ Ollie is a program that automatically identifies and extracts binary
 relationships from English sentences.  Ollie is designed for Web-scale
 information extraction, where target relations are not specified in advance.
 
-Ollie is our second-generation information extraction system superceding
-ReVerb.  Whereas ReVerb operates on flat sequences of tokens, Ollie operates on
-the tree-like (graph with only small cycles) representation of a sentence using
-Stanford's compression of the dependencies.  This allows Ollie to capture
-expression that ReVerb misses, such as long-range relations.
+Ollie is our second-generation information extraction system .  Whereas <a
+href="http://reverb.cs.washington.edu/">ReVerb</a> operates on flat sequences
+of tokens, Ollie works with the tree-like (graph with only small cycles)
+representation using Stanford's compression of the dependencies.  This allows
+Ollie to capture expression that ReVerb misses, such as long-range relations.
 
 Ollie also captures context that modifies a binary relation.  Presently Ollie
 handles attribution (He said/she believes) and enabling conditions (if X
@@ -40,16 +40,37 @@ is the version number.
 
 ## Command Line Interface
 
-Once you have build Ollie, you can run it from the command line.  Ollie takes
-sentences, one-per-line as input or splits text into sentences if `--split` is
-specified.  Run Ollie with `--usage` to see full usage.  There are many
-useful options; for example you can run Ollie in parallel using `--parallel`.
+Once you have built Ollie, you can run it from the command line.
+
+  java -Xmx512m -jar ollie-app-VERSION.jar yourfile.txt
+
+Omit the input file for an interactive console.
+
+Ollie takes sentences, one-per-line as input or splits text into sentences if
+`--split` is specified.  Run Ollie with `--usage` to see full usage.  There are
+many useful options; for example you can run Ollie in parallel using
+`--parallel`.
+
+## Graphical Interface
+
+Ollie works ontop of a subcomponent called OpenParse.  The distinction is
+largely technical; OpenParse does not handle attribution and enabling condition
+and uses a coarser confidence metric.  You can use a GUI application to
+visualize the OpenParse extractions in a parse tree.  To use it, you will need
+to have [graphviz](http://www.graphviz.org/) installed.  You can run the GUI
+with:
+
+  java -Xmx512m -cp ollie-app-VERSION.jar edu.washington.cs.knowitall.openparse.OpenParseGui
+
+By default, this application will look for graphviz's `dot` program at
+`/usr/bin/dot`.  You can specify a location with the `--graphviz` parameter.
 
 ## Using Eclipse
 
 To modify the Ollie source code in Eclipse, use the [M2Eclipse
-plugin](http://www.sonatype.org/m2eclipse/) along with ScalaIDE.  You can then
-import the project using File > Import > Existing Maven Projects.
+plugin](http://www.sonatype.org/m2eclipse/) along with
+[ScalaIDE](http://scala-ide.org/).  You can then import the project using File
+> Import > Existing Maven Projects.
 
 ## Including Ollie as a Dependency
 
@@ -63,7 +84,9 @@ The best way to find the latest version is to browse [Maven Central](http://sear
 
 `ollie-core` does not include a way to parse sentences.  You will need to use a
 parser supplied by the [nlptools](https://github.com/knowitall/nlptools)
-project.  The source for for `ollie-app` is an excellent example.
+project.  The source for for `ollie-app` is an excellent example of a project
+using `ollie-core` as a dependency.  `ollie-app` supplies a parser from
+[nlptools](https://github.com/knowitall/nlptools).
 
 ## Contributors
 * Michael Schmitz <http://www.schmitztech.com>>
@@ -76,7 +99,6 @@ BibTeX citation:
     @inproceedings{ollie-emnlp12,
       author = {Mausam and Michael Schmitz and Robert Bart and Stephen Soderland and Oren Etzioni},
       title = {Open Language Learning for Information Extraction},
-      booktitle = {Proceedings of Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning
-   (EMNLP-CONLL)},
+      booktitle = {Proceedings of Conference on Empirical Methods in Natural Language Processing and Computational Natural Language Learning (EMNLP-CONLL)},
       year = {2012}
     }
