@@ -12,7 +12,39 @@ Ollie to capture expression that ReVerb misses, such as long-range relations.
 
 Ollie also captures context that modifies a binary relation.  Presently Ollie
 handles attribution (He said/she believes) and enabling conditions (if X
-then...).
+then).
+
+## Examples
+
+### Enabling Condition
+
+    sentence: If I slept past noon, I'd be late for work.
+    extraction: (I; 'd be late for; work)[enabler=If I slept past noon]
+
+### Attribution
+
+    sentence: Some people say Barack Obama was not born in the United States.
+    extraction: (Barack Obama; was not born in; the United States)[attrib=Some people say]
+
+    sentence: Early astronomers believe that the earth is the center of the universe.
+    extraction: (the earth; is the center of; the universe)[attrib=Early astronomers believe]
+
+### Long-range
+
+    sentence: After winning the Superbowl, the Saints are now the top dogs of the NFL.
+    extraction: (the Saints; are now the top dogs of; the NFL)
+
+### Relational noun
+
+    sentence: Microsoft co-founder Bill Gates spoke at a conference on Monday.
+    extraction: (Bill Gates; be co-founder of; Microsoft)
+
+
+### N-ary extractions
+
+    sentence: I learned that the 2012 Sasquatch music festival is scheduled for May 25th until May 28th.
+    extraction: (the 2012 Sasquatch music festival; is scheduled until; May 28th)
+    extraction: (the 2012 Sasquatch music festival; is scheduled for; May 25th)
 
 ## Quick Start
 
@@ -42,7 +74,7 @@ is the version number.
 
 Once you have built Ollie, you can run it from the command line.
 
-  java -Xmx512m -jar ollie-app-VERSION.jar yourfile.txt
+    java -Xmx512m -jar ollie-app-VERSION.jar yourfile.txt
 
 Omit the input file for an interactive console.
 
@@ -60,7 +92,7 @@ visualize the OpenParse extractions in a parse tree.  To use it, you will need
 to have [graphviz](http://www.graphviz.org/) installed.  You can run the GUI
 with:
 
-  java -Xmx512m -cp ollie-app-VERSION.jar edu.washington.cs.knowitall.openparse.OpenParseGui
+    java -Xmx512m -cp ollie-app-VERSION.jar edu.washington.cs.knowitall.openparse.OpenParseGui
 
 By default, this application will look for graphviz's `dot` program at
 `/usr/bin/dot`.  You can specify a location with the `--graphviz` parameter.
