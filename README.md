@@ -101,8 +101,10 @@ By default, this application will look for graphviz's `dot` program at
 
 To modify the Ollie source code in Eclipse, use the [M2Eclipse
 plugin](http://www.sonatype.org/m2eclipse/) along with
-[ScalaIDE](http://scala-ide.org/).  You can then import the project using File
-> Import > Existing Maven Projects.
+[ScalaIDE](http://scala-ide.org/).  You can then import the project using 
+the following.
+
+    File > Import > Existing Maven Projects
 
 ## Including Ollie as a Dependency
 
@@ -120,8 +122,12 @@ project.  The source for for `ollie-app` is an excellent example of a project
 using `ollie-core` as a dependency.  `ollie-app` supplies a parser from
 [nlptools](https://github.com/knowitall/nlptools).
 
+## Contact
+
+To contact the UW about Ollie, email knowit-ollie@cs.washington.edu.
+
 ## Contributors
-* Michael Schmitz <http://www.schmitztech.com>>
+* Michael Schmitz (http://www.schmitztech.com)
 * Robert Bart (rbart at cs.washington.edu)
 
 ## Citing Ollie
