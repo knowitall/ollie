@@ -45,6 +45,8 @@ object OllieCli {
       var tabbed: Boolean = false
       var parallel: Boolean = false
       var invincible: Boolean = false
+      
+      var showUsage: Boolean = false
     }
 
     // define the argument parser
@@ -68,11 +70,17 @@ object OllieCli {
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
       opt("s", "split", "split text into sentences", { settings.splitInput = true })
       opt("tabbed", "output in TSV format", { settings.tabbed = true })
-      opt("invincible", "ignore errors", { settings.invincible = true })
+      opt("ignore-errors", "ignore errors", { settings.invincible = true })
+      opt("usage", "this usage message", { settings.showUsage = true })
     }
 
     if (argumentParser.parse(args)) {
-      run(settings)
+      if (settings.showUsage) {
+        println(argumentParser.usage)
+      }
+      else {
+        run(settings)
+      }
     }
   }
 
