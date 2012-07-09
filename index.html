@@ -1,0 +1,186 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<!-- Layout from http://www.maxdesign.com.au/articles/css-layouts/one-fixed/ -->
+<head>
+    <style type="text/css">
+        body {
+            font-family: "Verdana", sans-serif;
+        }
+        #container
+        {
+            margin: 0 auto;
+            width: 600px;
+            background:#fff;
+        }
+
+        #header
+        {
+            color:black;
+            background:white;
+            padding: 20px;
+        }
+
+        #header h1 { margin: 0; }
+        #header h3 { margin: 0; }
+
+        #navigation
+        {
+            float: left;
+            width: 600px;
+            background:#333;
+        }
+
+        #navigation ul
+        {
+            margin: 0;
+            padding: 0;
+        }
+
+        #navigation ul li
+        {
+            list-style-type: none;
+            display: inline;
+        }
+
+        #navigation li a
+        {
+            display: block;
+            float: left;
+            padding: 5px 10px;
+            color:#fff;
+            text-decoration: none;
+            border-right: 1px solid#fff;
+        }
+
+        #navigation li a:hover { background:#383; }
+
+        #content
+        {
+            clear: left;
+            padding: 20px;
+        }
+
+        #content h2
+        {
+            color:#000;
+            font-size: 160%;
+            margin: 0 0 .5em;
+            margin-top: 50px;
+            border-bottom: 1px solid black;
+        }
+
+        #footer
+        {
+            background:#ccc;
+            text-align: right;
+            padding: 20px;
+            height: 1%;
+        }
+    </style>
+    <title>Ollie - Open Information Extraction Software</title>
+</head>
+<body>
+<div id="container">
+    <div id="header">
+        <div style="float:right; width:125px; text-align:center">
+            <a href="http://www.cs.washington.edu/research/knowitall/"><img src="knowitall.jpg" style="border-style:none"/></a>
+            <br/>
+            <span style="font-size: small">
+            Part of the
+            <a href="http://www.cs.washington.edu/research/knowitall/">
+            KnowItAll Project
+            </a>
+            </span>
+        </div>
+        <h1>Ollie</h1>
+        <h3>Open Information Extraction Software</h3>
+    </div>
+    <div id="content">
+        <h2>About</h2>
+        <p>
+        Ollie is software that automatically identifies and extracts binary
+        relationships from English sentences. Ollie is designed for information
+        extraction, where the target relations cannot be specified in advance
+        and speed is important. 
+        </p>
+
+        <p>
+        To get a better idea of what Ollie does:
+        </p>
+        <ul>
+            <li>
+            Download <a href="http://knowitall.cs.washington.edu/ollie/ollie-app-latest.jar">the latest binaries</a>
+            </li>
+            <li>
+            Read 
+            <a href="http://www.cs.washington.edu/homes/mausam/papers/emnlp12a.pdf">Open Language Learning for Information Extraction</a>
+            </li>
+        </ul>
+
+
+        <h2>Code</h2>
+        <p>
+        Ollie is written in the <a href="http://www.scala-lang.org">Scala programming language</a> and is released 
+        under the full GPL3 because it depends on <a href="http://nlp.stanford.edu/software/corenlp.shtml">Stanford CoreNLP</a>.
+        For instructions on how to run Ollie or use it in your own code,
+        please see the <a href="https://github.com/knowitall/ollie/blob/master/README.md">README in the source distribution</a>.
+        </p>
+        <ul>
+            <li><a href="https://github.com/knowitall/ollie/">Ollie (on github)</a></li>
+            <li><a href="https://github.com/knowitall/ollie/blob/master/README.md">README</a></li>
+            <li><a href="http://www.gnu.org/copyleft/gpl.html">License (GPLv3)</a></li>
+        </ul>
+
+        <h2>Credits</h2>
+        <p>
+        Ollie was authored and developed by the following people at <a href="http://turing.cs.washington.edu/">the University of Washington's Turing Center</a> as part of <a href="http://www.cs.washington.edu/research/knowitall/">the KnowItAll Project</a>:
+        </p>
+        <ul>
+            <li><a href="http://www.cs.washington.edu/homes/mausam/"></a>Mausam</li>
+            <li><a href="http://www.schmitztech.com/">Michael Schmitz</a></li>
+            <li>Robert Bart</li>
+            <li><a href="http://www.cs.washington.edu/homes/soderlan/">Stephen Soderland</a></li>
+        </ul>
+        <p>
+        Ollie uses the following code and models, which are included
+        in the release:
+        </p>
+        <ul>
+            <li>
+            <a href="http://nlp.stanford.edu/software/corenlp.shtml">Stanford CoreNLP</a>
+            </li>
+            <li>
+            <a href="http://www.cs.waikato.ac.nz/ml/weka/">Weka</a>
+            </li>
+        </ul>
+
+        <h2>Contact</h2>
+        <p>
+        Please send all questions, comments, and bugs to the 
+        <a href="https://mailman.cs.washington.edu/mailman/listinfo/knowit-ollie">the Ollie mailing list</a>.
+        </p>
+
+        <h2>Links</h2>
+        <ul>
+            <li><a href="http://turing.cs.washington.edu/">Turing Center</a></li>
+            <li><a href="http://ai.cs.washington.edu/">UW Artificial Intelligence</a></li>
+        </ul>
+
+    </div>
+</div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-33264511-1']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+</body>
+</html>
