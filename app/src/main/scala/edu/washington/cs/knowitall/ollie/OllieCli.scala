@@ -39,7 +39,7 @@ object OllieCli {
       var inputFile: Option[File] = None
       var outputFile: Option[File] = None
       var confidenceThreshold: Double = 0.0
-      var openparseConfidenceThreshold: Double = 0.05
+      var openparseConfidenceThreshold: Double = 0.005
 
       var splitInput: Boolean = false
       var tabbed: Boolean = false
