@@ -108,19 +108,20 @@ object OllieCli {
         case Some(output) => new PrintWriter(output, "UTF-8")
         case None => new PrintWriter(System.out)
       }) { writer =>
-        // print prompt if standard input
-        if (!settings.outputFile.isDefined) {
-          System.out.print("> ")
-          System.out.flush()
-        }
-
         if (settings.tabbed) writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
         val ns = Timing.time {
+          // print prompt if standard input
+          if (!settings.outputFile.isDefined) {
+            System.out.print("> ")
+            System.out.flush()
+          }
+
           val lines = parseLines(source.getLines, sentencer) filter (!_.isEmpty)
           try {
             // group the lines so we can parallelize
             val grouped = if (settings.parallel) lines.grouped(CHUNK_SIZE) else lines.map(Seq(_))
             for (group <- grouped) {
+
               // potentially transform to a parallel collection
               val sentences = if (settings.parallel) group.par else group
               for (sentence <- sentences) {
@@ -153,6 +154,12 @@ object OllieCli {
                   writer.println()
                   writer.flush()
                 }
+              }
+
+              // print prompt if standard input
+              if (!settings.outputFile.isDefined) {
+                System.out.print("> ")
+                System.out.flush()
               }
             }
           } catch {
