@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
   * 
   * @author Michael Schmitz
   */
-object ReduceTargetExtractions {
+object FilterTargetExtractions {
   val logger = LoggerFactory.getLogger(this.getClass)
   
   final val MIN_RELATION_SEEDS = 15
