@@ -5,7 +5,12 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 /** OllieExtractionInstance represents an extraction coupled with
   * its source sentence.
   */
-class OllieExtractionInstance(val extr: OllieExtraction, val sent: DependencyGraph) {
+class OllieExtractionInstance(
+    /** The associated extraction. */
+    val extr: OllieExtraction, 
+    /** The associated sentence. */
+    val sent: DependencyGraph) {
+
   def tabDelimited: String = {
     val serializedGraph = sent.serialize
     val serializedExtr = extr.serialize

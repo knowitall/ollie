@@ -8,7 +8,8 @@ import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 
-abstract class Clausal {
+/** A base representation for additional context around an extraction. */
+sealed abstract class Context {
   def text: String
   def interval: Interval
 }
@@ -22,7 +23,7 @@ class EnablingCondition(
     /** The rest of the enabling condition, i.e. "it's raining" */
     val phrase: String, 
     /** The token interval of the enabling condition */
-    override val interval: Interval) extends Clausal {
+    override val interval: Interval) extends Context {
   override def text = prefix + " " + phrase
   
   def serialize: String = Seq(prefix, phrase, interval.start.toString, interval.last.toString).map(_.replaceAll("_", "_UNSC_")).mkString("_")
@@ -49,7 +50,7 @@ class Attribution(
     /** The relation of the attribution, i.e. "believes" */
     val rel: String, 
     /** The token interval of the relation of the attribution */
-    override val interval: Interval) extends Clausal {
+    override val interval: Interval) extends Context {
   override def text = arg + " " + rel
   
   def serialize: String = {
@@ -74,8 +75,11 @@ object Attribution {
 /** A representation of an Ollie extraction, i.e. we could get the following
   * extraction from the example sentence.
   * 
+  * {{{
   * When I'm dreaming David Bowie sings that Ziggy sucked up into his mind.
-  * (Ziggy, sucked up, into his mind)[attribution = "David Bowie") */
+  * (Ziggy, sucked up, into his mind)[attribution = "David Bowie") 
+  * }}} 
+  */
 class OllieExtraction(
   /** The first argument (subject) of the extraction, i.e. "Ziggy" */
   val arg1: Part,

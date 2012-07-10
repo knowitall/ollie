@@ -19,7 +19,10 @@ import scopt.OptionParser
 
 /** A main method for creating patterns from a lemma grep.  A lemma grep is
   * a file that has an extraction and a sentence that contains the lemmas
-  * in the extraction. */
+  * in the extraction. 
+  *
+  * @author Michael Schmitz
+  */
 object BuildPatterns {
   val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -290,6 +293,11 @@ object BuildPatterns {
   }
 }
 
+/** A command line application to filter out only the patterns 
+  * that occur more than the specific number of times.
+  *
+  * @author Michael Schmitz
+  */
 object KeepCommonPatterns {
   def main(args: Array[String]) {
     val min = args(1).toInt
@@ -324,6 +332,11 @@ object KeepCommonPatterns {
   }
 }
 
+/** A command line application to filter out only the patterns 
+  * that are found with the specific number of seeds. 
+  *
+  * @author Michael Schmitz
+  */
 object KeepDiversePatterns {
   abstract class Settings {
     def inputFile: File
