@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
 
+/** An implementation of logistic regression of features that can be
+  * represented as a double. */
 class OllieIndependentConfFunction(
   val featureSet: FeatureSet[OllieExtractionInstance],
   val featureWeights: Map[String, Double],

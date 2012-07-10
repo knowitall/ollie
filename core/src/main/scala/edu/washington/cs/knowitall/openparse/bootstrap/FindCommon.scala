@@ -2,6 +2,10 @@ package edu.washington.cs.knowitall.openparse.bootstrap
 
 import scala.util.matching.Regex
 
+/** Common functionality for bootstrap code.
+  * 
+  * @author Michael Schmitz
+  */
 object FindCommon {
   // tags allowed in proper arguments
   val properPostags = Set("DT", "IN", "NNP", "NNPS")

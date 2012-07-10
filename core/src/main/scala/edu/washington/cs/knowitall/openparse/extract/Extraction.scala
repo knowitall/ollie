@@ -13,6 +13,10 @@ import edu.washington.cs.knowitall.tool.stem.Stemmer
 
 import Extraction.{Part, ClausalComponent, AdverbialModifier}
 
+/** A representation of an OpenParse extraction.
+  * 
+  * @author Michael Schmitz
+  */
 abstract class Extraction(val relLemmas: Set[String]) {
   def arg1Text: String
   def relText: String
@@ -51,6 +55,10 @@ class SimpleExtraction(
     new SimpleExtraction(this.arg1Text, this.relText, this.relLemmas, this.arg2Text)
 }
 
+/** A more informative representation of an OpenParse extraction.
+  * 
+  * @author Michael Schmitz
+  */
 class DetailedExtraction(
   val extractor: PatternExtractor,
   val `match`: Match[DependencyNode],
@@ -82,7 +90,16 @@ object DetailedExtraction {
   def nodesToString(nodes: Iterable[DependencyNode]) = nodes.iterator.map(_.text).mkString(" ")
 }
 
+
+/** Includes logic for expanding relations and arguments.
+  * 
+  * @author Michael Schmitz
+  */
 object Extraction {
+  /** Representation of a part of an extraction.
+    * 
+    * @author Michael Schmitz
+    */
   case class Part(nodes: SortedSet[DependencyNode], text: String) {
     def this(nodes: SortedSet[DependencyNode]) = {
       this(nodes, DetailedExtraction.nodesToString(nodes))

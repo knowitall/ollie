@@ -12,6 +12,13 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 import FindCommon.{zip3, stripPostag, proper, cleanArg}
 import scopt.OptionParser
 
+/** Detemine valid extractions for the boostrap process. 
+  * 
+  * Extractions need frequent arguments from [[FindTargetArguments]]
+  * and cannot contain a negation word.
+  * 
+  * @author Michael Schmitz
+  */
 object FindTargetExtractions {
   import FindCommon._
 

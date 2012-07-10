@@ -9,7 +9,10 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import GeneralExtractor.logger
 
-
+/** An extractor that is purely specified by a pattern.
+  * 
+  * @author Michael Schmitz
+  */
 class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
   import GeneralExtractor._
 

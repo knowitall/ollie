@@ -14,6 +14,7 @@ import weka.classifiers.functions.Logistic
 import weka.classifiers.Classifier
 import weka.core.Instances
 
+/** A wrapper for Weka's implementation of logistic regression. */
 class OllieWekaConfFunction(
   val exampleSet: WekaExampleSet[OllieExtractionInstance],
   val classifier: Classifier) {

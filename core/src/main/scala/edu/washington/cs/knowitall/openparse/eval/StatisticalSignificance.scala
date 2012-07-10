@@ -6,6 +6,10 @@ import edu.washington.cs.knowitall.common.{Random, Analysis}
 
 import scopt.OptionParser
 
+/** Compute the statistical significance of scored extractions to a baseline.
+  * 
+  * @author Michael Schmitz
+  */
 object StatisticalSignificance {
   abstract class Settings {
     def iterations: Int
@@ -106,7 +110,6 @@ object StatisticalSignificance {
     def sample(): (Double, Double) = {
       def helper(extrs: Seq[Scored]) = {
         val sent = sentences.map(extr=>Random.choose(sentences, sentences.size, rand))
-        // val set = extrs.map(extr=>Random.choose(extrs, extrs.size, rand)).sortBy(-_.confidence)
         val set = sent.flatMap(sent => extrs.filter(sent == _.extra(0))).toSeq.sortBy(_.confidence)
         val auc = areaUnderCurve(set)
         auc
@@ -115,11 +118,6 @@ object StatisticalSignificance {
       (helper(systemExtractions), helper(baselineExtractions))
     }
 
-    /*
-    val metric = (scores: Seq[Boolean])=>Analysis.areaUnderCurve(Analysis.precisionYield(scores))
-    val pscore = bootstrapTest(systemExtractions.map(_.score.get), baselineExtractions.map(_.score.get),
-         metric, settings.iterations, rand)
-         */
     val pscore = bootstrapTestWithMetric(
       areaUnderCurve(systemExtractions),
       areaUnderCurve(baselineExtractions),

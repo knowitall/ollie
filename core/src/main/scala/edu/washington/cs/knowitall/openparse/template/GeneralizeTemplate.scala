@@ -13,6 +13,10 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import scopt.OptionParser
 
+/** Generalize semantic restrictions to semantic classes.
+  * 
+  * @author Michael Schmitz
+  */
 object GeneralizeTemplates {
   abstract class Settings {
     def sourceFile: File

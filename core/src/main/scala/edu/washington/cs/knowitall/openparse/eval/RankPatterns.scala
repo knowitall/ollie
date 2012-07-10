@@ -6,6 +6,10 @@ import edu.washington.cs.knowitall.common.Resource.using
 
 import scopt.OptionParser
 
+/** Read a scored file and rank the patterns by their precision and frequency.
+  * 
+  * @author Michael Schmitz
+  */
 object RankPatterns {
   abstract class Settings {
     def scoredFile: File

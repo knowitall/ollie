@@ -11,6 +11,13 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 
 import Template.group
 
+/** An extractor that is specified by a pattern and a template.
+  * the template can add a "to be" and/or preposition word around
+  * the relation.  It can also change the preposition word to another
+  * preposition (i.e., switch "of" to "in").
+  * 
+  * @author Michael Schmitz
+  */
 class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int)
 extends GeneralExtractor(pattern, patternCount, maxPatternCount) {
   override def extract(dgraph: DependencyGraph)(implicit

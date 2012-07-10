@@ -8,6 +8,11 @@ import edu.washington.cs.knowitall.common.Resource.using
 
 import scopt.OptionParser
 
+/** A main method to annotate extractions, 
+  * using a gold set for previously scored extractions.
+  * 
+  * @author Michael Schmitz
+  */
 object Score {
   abstract class Settings {
     def extractionFile: File

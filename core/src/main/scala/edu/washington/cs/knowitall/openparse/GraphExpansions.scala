@@ -8,6 +8,8 @@ import edu.washington.cs.knowitall.collection.immutable.graph.Direction
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 
+/** A collection of helper methods for expanding a node in a graph 
+  * and/or sentence according to some metric. */
 object GraphExpansions {
   def neighborsUntil(graph: DependencyGraph, node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
     val lefts = inferiors.takeWhile(_ != node).reverse

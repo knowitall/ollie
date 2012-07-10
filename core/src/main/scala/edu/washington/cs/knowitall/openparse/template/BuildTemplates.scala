@@ -23,6 +23,11 @@ import scalaz.Scalaz._
 import scalaz._
 import scopt.OptionParser
 
+/** A main method for building template extractors from
+  * a bootstrapping set of relations, patterns, and their count.
+  * 
+  * @author Michael Schmitz
+  */
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
 

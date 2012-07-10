@@ -12,9 +12,14 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 import scopt.OptionParser
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 
+/** Ollie is an Open Information Extractor that produces binary extractions
+  * with context.  The constructor takes an OpenParse instance.  Ollie extends
+  * OpenParse's extractions with enabling conditions and attributions.  There
+  * is also a trained confidence function for [[OllieExtractions]].
+  * 
+  * @author Michael Schmitz
+  */
 class Ollie(val openparse: OpenParse) {
-  case class Type(name: String, interval: Interval)
-
   val stemmer = new MorphaStemmer
 
   /**
@@ -32,6 +37,7 @@ class Ollie(val openparse: OpenParse) {
     extrs.map(new OllieExtractionInstance(_, dgraph))
   }
 
+  /** Identify enabling condition, i.e. "if it's raining..." */
   private def enablingAdverbialClauseHelper(extr: DetailedExtraction): Option[EnablingCondition] = {
     extr.modifier map { modifier =>
       val prefix = modifier.contents.nodes.head.text
@@ -41,6 +47,7 @@ class Ollie(val openparse: OpenParse) {
     }
   }
 
+  /** Identify attributions from clausal components, i.e. "He said..." */
   private def attribClausalComponentHelper(extr: DetailedExtraction): Option[Attribution] = {
     extr.clausal flatMap { clausal =>
       // find the first verb in the clausal rel
@@ -61,14 +68,17 @@ class Ollie(val openparse: OpenParse) {
 }
 
 object Ollie {
+  /** A collection of verbs used for communication, i.e. "said" */
   val communicationWords = using(Source.fromInputStream(classOf[Ollie].getResource("communicationWords.txt").openStream())) { source =>
     source.getLines.toSet
   }
 
+  /** A collection of verbs used for beliefs, i.e. "think" */
   val cognitiveWords = using(Source.fromInputStream(classOf[Ollie].getResource("cognitiveWords.txt").openStream())) { source =>
     source.getLines.toSet
   }
 
+  /** A collection of prefixes used for enabling conditions, i.e. "if" and "when" */
   val enablerPrefixes = using(Source.fromInputStream(classOf[Ollie].getResource("prefixWords.txt").openStream())) { source =>
     source.getLines.toSet
   }

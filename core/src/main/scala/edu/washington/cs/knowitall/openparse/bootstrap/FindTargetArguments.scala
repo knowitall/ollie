@@ -8,6 +8,12 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
 import FindCommon.{zip3, proper, cleanArg}
 
+/** Detemine valid arguments of extractions for the boostrap process. 
+  * 
+  * Only frequent proper arguments are used.
+  * 
+  * @author Michael Schmitz
+  */
 object FindTargetArguments {
   import FindCommon._
 

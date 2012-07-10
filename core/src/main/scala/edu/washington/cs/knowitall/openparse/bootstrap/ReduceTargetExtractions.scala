@@ -4,8 +4,15 @@ import scala.io.Source
 
 import org.slf4j.LoggerFactory
 
+/** Filter the target extractions.  We only want to keep extractions that
+  * occur more than once and have a relation with more than 15 seeds.
+  * 
+  * @author Michael Schmitz
+  */
 object ReduceTargetExtractions {
   val logger = LoggerFactory.getLogger(this.getClass)
+  
+  final val MIN_RELATION_SEEDS = 15
 
   def main(args: Array[String]) {
     val inputFile = Source.fromFile(args(0), "UTF8")
@@ -31,7 +38,7 @@ object ReduceTargetExtractions {
     val relations: Set[String] =
       (for {
         (rel, count) <- relationCounts;
-        if (count > 15)
+        if (count > MIN_RELATION_SEEDS)
       } yield (rel))(scala.collection.breakOut)
     logger.info("keeping " + relations.size + "/" + relationCounts.size + " relations")
 

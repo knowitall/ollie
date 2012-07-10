@@ -35,6 +35,15 @@ extends Suffix(string, interval, confidence) {
   override def toString = annotation + "/" + super.toString
 }
 
+/** A representaiton of an n-ary extraction, i.e.
+  * 
+  *   (Michael, ran, to the store, on Monday, at 2 PM)
+  * 
+  * N-ary extractions have multiple secondary arguments (objects)
+  * and these arguments include the preposition.
+  * 
+  * @author Michael Schmitz
+  */
 class ExtendedExtraction(val arg1: ExtractionPart, val rel: ExtractionPart, val suffixes: Seq[Suffix], val clausals: Seq[ClausalComponent] = Seq.empty, val modifiers: Seq[AdverbialModifier] = Seq.empty) {
   override def toString =
     "(" + arg1.string + ", " + rel.string + ", " + suffixes.map(_.string).mkString(", ") + ")"
@@ -45,6 +54,8 @@ object ExtendedExtraction {
     def compare(x: Suffix, y: Suffix) = x.interval.compare(y.interval)
   }
 
+  /** Create extended extractions from a collection of extractions
+    * from the same sentence. */
   def from(extrs: Seq[(Double, DetailedExtraction)]) = {
     // keep extractions that end with a one-word preposition
     val prepositionEnding = extrs.filter { case (conf, extr) =>

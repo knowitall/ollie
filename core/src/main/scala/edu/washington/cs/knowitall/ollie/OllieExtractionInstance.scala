@@ -2,6 +2,9 @@ package edu.washington.cs.knowitall.ollie
 
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 
+/** OllieExtractionInstance represents an extraction coupled with
+  * its source sentence.
+  */
 class OllieExtractionInstance(val extr: OllieExtraction, val sent: DependencyGraph) {
   def tabDelimited: String = {
     val serializedGraph = sent.serialize
@@ -11,7 +14,6 @@ class OllieExtractionInstance(val extr: OllieExtraction, val sent: DependencyGra
 }
 
 object OllieExtractionInstance {
-
   def deserialize(string: String): Option[OllieExtractionInstance] = {
     def error = { System.err.println("Couldn't deserialize %s".format(string)); None }
     try {

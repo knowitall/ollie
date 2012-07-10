@@ -7,6 +7,11 @@ import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
+/** An extractor that is specified only with a pattern 
+  * but only works for specific relation lemmas.
+  * 
+  * @author Michael Schmitz
+  */
 class SpecificExtractor(val relation: String, 
   val relationLemmas: List[String], 
   pattern: Pattern[DependencyNode], patternCount: Int, relationCount: Int) 

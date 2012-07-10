@@ -9,6 +9,10 @@ import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 
+/** An superclass for extractors based on patterns.
+  * 
+  * @author Michael Schmitz
+  */
 abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
   def extract(dgraph: DependencyGraph)(implicit
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],

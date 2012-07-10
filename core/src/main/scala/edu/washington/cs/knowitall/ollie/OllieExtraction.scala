@@ -13,11 +13,21 @@ abstract class Clausal {
   def interval: Interval
 }
 
-class EnablingCondition(val prefix: String, val phrase: String, override val interval: Interval) extends Clausal {
+/** A representation for an enabling condition.
+  * An example of an enabling condition is "if it's raining".
+  */
+class EnablingCondition(
+    /** The enabling condition word, i.e. "if" */
+    val prefix: String, 
+    /** The rest of the enabling condition, i.e. "it's raining" */
+    val phrase: String, 
+    /** The token interval of the enabling condition */
+    override val interval: Interval) extends Clausal {
   override def text = prefix + " " + phrase
   
   def serialize: String = Seq(prefix, phrase, interval.start.toString, interval.last.toString).map(_.replaceAll("_", "_UNSC_")).mkString("_")
 }
+
 object EnablingCondition {
   def deserialize(string: String) = {
     val Array(prefix, phrase, intervalStart, intervalLast) = try (string.split("_"))
@@ -28,7 +38,18 @@ object EnablingCondition {
   }
 }
 
-class Attribution(val arg: String, val argInterval: Interval, val rel: String, override val interval: Interval) extends Clausal {
+/** A representation for an attribution.
+  * An example of an is "Obama believes".
+  */
+class Attribution(
+    /** The argument of the attribution, i.e. "Obama" */
+    val arg: String, 
+    /** The token interval of the argument of the attribution */
+    val argInterval: Interval, 
+    /** The relation of the attribution, i.e. "believes" */
+    val rel: String, 
+    /** The token interval of the relation of the attribution */
+    override val interval: Interval) extends Clausal {
   override def text = arg + " " + rel
   
   def serialize: String = {
@@ -36,6 +57,7 @@ class Attribution(val arg: String, val argInterval: Interval, val rel: String, o
     fields.map(_.replaceAll("_", "_UNSC_")).mkString("_")
   }
 }
+
 object Attribution {
   def deserialize(string: String) = {
     val Array(arg, rel, argIntervalStart, argIntervalLast, relIntervalStart, relIntervalLast) = try (string.split("_"))
@@ -49,12 +71,22 @@ object Attribution {
   }
 }
 
+/** A representation of an Ollie extraction, i.e. we could get the following
+  * extraction from the example sentence.
+  * 
+  * When I'm dreaming David Bowie sings that Ziggy sucked up into his mind.
+  * (Ziggy, sucked up, into his mind)[attribution = "David Bowie") */
 class OllieExtraction(
+  /** The first argument (subject) of the extraction, i.e. "Ziggy" */
   val arg1: Part,
+  /** The relation of the extraction, i.e. "sucked up" */
   val rel: Part,
+  /** The second argument (object) of the extraction, i.e. "into his mind" */
   val arg2: Part,
   val confidence: Double,
+  /** The enabling condition, if any.  I.e. "When I'm dreaming" */
   val enabler: Option[EnablingCondition],
+  /** The attribution, if any.  I.e. "David Bowie sings that" */
   val attribution: Option[Attribution]) {
 
   import OllieExtraction.{serializePart, deserializePart}
@@ -73,7 +105,6 @@ class OllieExtraction(
     fieldStrings.map(_.replaceAll("\t", "_TAB_")).mkString("\t")
   }
 
-
   def text = Iterable(arg1.text, rel.text, arg2.text).mkString(" ")
 
   def nodes = arg1.nodes ++ rel.nodes ++ arg2.nodes
@@ -90,7 +121,6 @@ class OllieExtraction(
 }
 
 object OllieExtraction {
-  
   def tabDelimitedColumns = Seq("Arg1Part", "RelPart", "Arg2Part", "Confidence", "Enabler", "Attribution").mkString("\t")
 
   def deserialize(s: String): Option[OllieExtraction] = {
@@ -128,9 +158,5 @@ object OllieExtraction {
     }
     new Part(nodesSortedSet, partText)
   }
-  
-  
-  
-  
 }
 

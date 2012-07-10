@@ -17,6 +17,9 @@ import scalaz.Scalaz._
 import scalaz._
 import scopt.OptionParser
 
+/** A main method for creating patterns from a lemma grep.  A lemma grep is
+  * a file that has an extraction and a sentence that contains the lemmas
+  * in the extraction. */
 object BuildPatterns {
   val logger = LoggerFactory.getLogger(this.getClass)
 

@@ -8,8 +8,7 @@ import weka.core.Attribute
 import edu.washington.cs.knowitall.ollie.confidence.FeatureSet
 import weka.core.FastVector
 
-/**
-  * Represents a set of instances for a Weka classifier.
+/** Represents a set of instances for a Weka classifier.
   *
   * T is the input object (e.g. a sentence). The implementation
   * assumes that Double is sufficient as a return type. Some weka classifiers

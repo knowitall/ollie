@@ -7,6 +7,10 @@ import edu.washington.cs.knowitall.common.Analysis
 
 import scopt.OptionParser
 
+/** Compute precision yield point from scored extractions.
+  * 
+  * @author Michael Schmitz
+  */
 object PrecisionYield {
   abstract class Settings {
     def scoredFile: File
@@ -49,6 +53,11 @@ object PrecisionYield {
   }
 }
 
+/** Merge precision yield points into a single file, 
+  * usually so they can be graphed together.
+  * 
+  * @author Michael Schmitz
+  */
 object MergePYFiles {
   abstract class Settings {
     def files: List[File]

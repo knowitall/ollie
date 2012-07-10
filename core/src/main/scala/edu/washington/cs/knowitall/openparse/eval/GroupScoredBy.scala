@@ -6,9 +6,13 @@ import edu.washington.cs.knowitall.common.Analysis
 
 import scopt.OptionParser
 
+/** Group scored extractions by precision and yield. 
+  * 
+  * @author Michael Schmitz
+  */
 object GroupScoredBy {
   def main(args: Array[String]) = {
-    val parser = new OptionParser("precyield") {
+    val parser = new OptionParser("groupscored") {
       var scoredFile: File = _
       var column: Int = 2
 

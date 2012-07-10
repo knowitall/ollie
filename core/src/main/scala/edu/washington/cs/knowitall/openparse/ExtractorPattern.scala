@@ -12,6 +12,11 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import scalaz.Scalaz._
 import scalaz._
 
+/** A wrapper for a dependency pattern that adds some convenience methods
+  * for working with patterns intended for extraction of binary relations.
+  * 
+  * @author Michael Schmitz
+  */
 class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends DependencyPattern(matchers) {
   val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -161,6 +166,10 @@ object ExtractorPattern {
   }
 }
 
+/** A dependency node used to match an extraction part in a pattern extractor.
+  * 
+  * @author Michael Schmitz
+  */
 sealed abstract class ExtractionPartMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
   def this(alias: String) = this(alias, new TrivialNodeMatcher[DependencyNode])
@@ -168,6 +177,10 @@ extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
   def withMatcher(matcher: NodeMatcher[DependencyNode]): ExtractionPartMatcher
 }
 
+/** A dependency node used to match an argument in a pattern extractor.
+  * 
+  * @author Michael Schmitz
+  */
 class ArgumentMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) extends ExtractionPartMatcher(alias, matcher) {
   def this(alias: String) = this(alias, new TrivialNodeMatcher[DependencyNode])
   override def canEqual(that: Any) = that.isInstanceOf[ExtractionPartMatcher]
@@ -179,6 +192,10 @@ class ArgumentMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) exten
   override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new ArgumentMatcher(this.alias, matcher)
 }
 
+/** A dependency node used to match a relation in a pattern extractor.
+  * 
+  * @author Michael Schmitz
+  */
 class RelationMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends ExtractionPartMatcher(alias, matcher) {
   override def canEqual(that: Any) = that.isInstanceOf[RelationMatcher]
@@ -190,6 +207,10 @@ extends ExtractionPartMatcher(alias, matcher) {
   override def withMatcher(matcher: NodeMatcher[DependencyNode]) = new RelationMatcher(this.alias, matcher)
 }
 
+/** A dependency node used to match a slot in a pattern extractor.
+  * 
+  * @author Michael Schmitz
+  */
 class SlotMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
 extends ExtractionPartMatcher(alias, matcher) {
   override def canEqual(that: Any) = that.isInstanceOf[SlotMatcher]
