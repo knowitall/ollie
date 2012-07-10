@@ -147,7 +147,7 @@ object OllieExtractionFeatures {
   }
 
   def openParseConfidence(inst: OllieExtractionInstance): Double = {
-    scala.math.min(1.0, inst.extr.confidence)
+    scala.math.min(1.0, inst.extr.openparseConfidence)
   }
 
   def arg2ComesBeforeArg1(inst: OllieExtractionInstance): Double =

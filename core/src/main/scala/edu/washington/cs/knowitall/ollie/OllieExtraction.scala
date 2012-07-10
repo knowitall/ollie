@@ -83,7 +83,8 @@ class OllieExtraction(
   val rel: Part,
   /** The second argument (object) of the extraction, i.e. "into his mind" */
   val arg2: Part,
-  val confidence: Double,
+  /** The confidence value from OpenParse. */
+  private[ollie] val openparseConfidence: Double,
   /** The enabling condition, if any.  I.e. "When I'm dreaming" */
   val enabler: Option[EnablingCondition],
   /** The attribution, if any.  I.e. "David Bowie sings that" */
@@ -101,7 +102,7 @@ class OllieExtraction(
       case None => "None"
     }
     
-    val fieldStrings = Seq(arg1, rel, arg2).map(serializePart(_)) ++ Seq("%.05f".format(confidence), enablerString, attrString)
+    val fieldStrings = Seq(arg1, rel, arg2).map(serializePart(_)) ++ Seq("%.05f".format(openparseConfidence), enablerString, attrString)
     fieldStrings.map(_.replaceAll("\t", "_TAB_")).mkString("\t")
   }
 
@@ -126,12 +127,12 @@ object OllieExtraction {
   def deserialize(s: String): Option[OllieExtraction] = {
     def error = { System.err.println("Couldn't deserialize: %s".format(s)); None }
     s.split("\t") match {
-      case Array(arg1Part, relPart, arg2Part, confString, enablerString, attrString, _*) => {
+      case Array(arg1Part, relPart, arg2Part, openparseConfString, enablerString, attrString, _*) => {
         try {
           val parts = Seq(arg1Part, relPart, arg2Part) map deserializePart
           val enabler = if (enablerString.equals("None")) None else Some(EnablingCondition.deserialize(enablerString))
           val attribution = if (attrString.equals("None")) None else Some(Attribution.deserialize(attrString))
-          val extr = new OllieExtraction(parts(0), parts(1), parts(2), confString.toDouble, enabler, attribution)
+          val extr = new OllieExtraction(parts(0), parts(1), parts(2), openparseConfString.toDouble, enabler, attribution)
           Some(extr)
         } catch {
           case e => { e.printStackTrace; error }
