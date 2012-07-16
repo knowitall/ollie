@@ -80,10 +80,6 @@ class OpenParse(
       }
     }
 
-    // implicit methods on individual extractors
-    val build = Extraction.fromMatch(configuration.expandExtraction) _
-    val valid = validMatch(configuration.restrictArguments) _
-
     val extrs = for {
       extractor <- extractors;
       // todo: organize patterns by a reverse-lookup on edges
@@ -93,7 +89,7 @@ class OpenParse(
       if (possibleExtraction(extractor, dgraph));
 
       // extraction
-      extr <- extractor.extract(dgraph)(build, valid)
+      extr <- extractor.extract(dgraph)(this.buildExtraction, this.validateMatch)
       val conf = extractor.confidence(extr);
       if conf >= configuration.confidenceThreshold
     } yield {
@@ -124,6 +120,13 @@ class OpenParse(
 
     reduced.sortBy { case (conf, extr) => (-conf, extr.toString) }
   }
+  
+  /** Build an extraction from a match in the dependency pattern. */
+  protected val buildExtraction = Extraction.fromMatch(configuration.expandExtraction) _
+  
+  /** Validate a dependency pattern match to see if it can be expanded
+    * into an extraction. */
+  protected val validateMatch = validMatch(configuration.restrictArguments) _
 }
 
 object OpenParse {
