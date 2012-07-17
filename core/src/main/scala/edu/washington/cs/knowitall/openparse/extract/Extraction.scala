@@ -140,9 +140,13 @@ object Extraction {
 
     def adverbialModifier(node: DependencyNode, until: Set[DependencyNode]): Option[AdverbialModifier] = {
       val neighbors = graph.graph.neighbors(node, dedge => dedge.dir == Direction.Down && dedge.edge.label == "advcl")
-      val clause: SortedSet[DependencyNode] = neighbors.flatMap(graph.graph.inferiors(_))(scala.collection.breakOut)
-      if (clause.isEmpty) None
-      else Some(AdverbialModifier(Part(clause, DetailedExtraction.nodesToString(clause))))
+      val nodes = neighbors.flatMap(graph.graph.inferiors(_))
+      if (nodes.isEmpty) None
+      else {
+        val span = Interval.span(nodes.map(_.indices))
+        val clause = graph.nodes.filter(node => span.superset(node.indices))
+        Some(AdverbialModifier(Part(clause, DetailedExtraction.nodesToString(clause))))
+      }
     }
 
     val groups = m.nodeGroups
