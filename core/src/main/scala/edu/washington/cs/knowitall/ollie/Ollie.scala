@@ -22,6 +22,8 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 class Ollie(val openparse: OpenParse) {
   val stemmer = new MorphaStemmer
 
+  def this() = this(OpenParse.withDefaultModel())
+
   /**
     * primary method for getting extractions
     */
