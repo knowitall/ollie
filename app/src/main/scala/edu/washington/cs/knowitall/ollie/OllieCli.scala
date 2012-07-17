@@ -142,11 +142,19 @@ object OllieCli {
                 val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.getConf(extr), extr))
 
                 extrs match {
-                  case Nil => writer.println("No extractions found.")
+                  case Nil if !settings.tabbed => writer.println("No extractions found.")
+                  case Nil =>
                   case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach {
                     case (conf, e) =>
                       if (settings.tabbed) {
-                        writer.println(Iterable(confFormatter.format(conf), e.extr.arg1.text, e.extr.rel.text, e.extr.arg2.text, e.extr.enabler, e.extr.attribution, e.sent.serialize, e.sent.text).mkString("\t"))
+                        writer.println(Iterable(confFormatter.format(conf), 
+                          e.extr.arg1.text, 
+                          e.extr.rel.text, 
+                          e.extr.arg2.text, 
+                          e.extr.enabler.map(_.text), 
+                          e.extr.attribution.map(_.text), 
+                          e.sent.text, 
+                          e.sent.serialize).mkString("\t"))
                       } else {
                         writer.println(confFormatter.format(conf) + ": " + e.extr)
                       }
