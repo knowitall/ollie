@@ -179,7 +179,7 @@ object OpenParseGui extends SimpleSwingApplication {
   }
 
   override def main(args: Array[String]) = {
-    val parser = new OptionParser("swing") {
+    val parser = new OptionParser("openparse-gui") {
       opt(Some("m"), "model", "<file>", "model file", { v: String => Settings.modelFile = Some(new File(v)) })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", {
         t: Double => Settings.confidenceThreshold = t
