@@ -68,7 +68,7 @@ object MergePYFiles {
       var files: List[File] = Nil
     }
     
-    val parser = new OptionParser("mergebycol") {
+    val parser = new OptionParser("mergepy") {
       arglist("<file>...", "input files", { file: String => settings.files = new File(file) :: settings.files })
     }
     
@@ -80,7 +80,7 @@ object MergePYFiles {
   def run(settings: Settings) {
     val points = for ((file, i) <- settings.files.zipWithIndex) yield {
       using(io.Source.fromFile(file, "UTF8")) { source =>
-        source.getLines.map { line =>
+        source.getLines.dropWhile(line => !(line contains "\t")).map { line =>
           val Array(_, yld, prec) = line.split("\t", -1)
           (yld.toInt, (i, prec.toDouble))
         }.toList
@@ -91,7 +91,7 @@ object MergePYFiles {
     points.flatten.sortBy(_._1).reverse.groupBy(_._1).toSeq.sortBy(_._1).reverse foreach { case (grp, seq) => 
       var vec = Vector.fill[String](settings.files.size)("")
       seq.foreach { 
-        case (k, (i, v)) => vec = vec updated (i, v.toString)
+        case (k, (i, v)) => vec = vec updated (i, "%1.4f" format v)
       }
       println(grp+"\t"+vec.mkString("\t")) 
     }
