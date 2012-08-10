@@ -69,7 +69,10 @@ case class Template(template: String, be: Boolean) {
     }
     else ""
 
-    val modals = extr.rel.nodes.filter(_.postag startsWith "MD")
+    // pull out the modals because they must preceed the prefix
+    // also include "to"
+    val modals = extr.rel.nodes.filter(node => (node.postag startsWith "MD") || 
+        (node.postag == "TO"))
 
     // horrible escape is required.  See JavaDoc for Match.replaceAll
     // or https://issues.scala-lang.org/browse/SI-5437
