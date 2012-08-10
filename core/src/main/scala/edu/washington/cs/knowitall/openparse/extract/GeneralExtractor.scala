@@ -13,7 +13,7 @@ import GeneralExtractor.logger
   * 
   * @author Michael Schmitz
   */
-class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, val maxPatternCount: Int) extends PatternExtractor(pattern) {
+class GeneralExtractor(pattern: Pattern[DependencyNode], val conf: Double) extends PatternExtractor(pattern) {
   import GeneralExtractor._
 
   protected def extractWithMatches(dgraph: DependencyGraph)(implicit
@@ -44,11 +44,11 @@ class GeneralExtractor(pattern: Pattern[DependencyNode], val patternCount: Int, 
   }
 
   override def confidence(extr: Extraction): Double = {
-    this.confidence.get
+    this.conf
   }
 
   override def confidence: Option[Double] =
-    Some(patternCount.toDouble / maxPatternCount.toDouble)
+    Some(this.conf)
 }
 
 case object GeneralExtractor extends PatternExtractorType {
@@ -65,9 +65,8 @@ case object GeneralExtractor extends PatternExtractorType {
         }
       }.toList
 
-    val maxCount = patterns.maxBy(_._2)._2
-    (for ((p, count) <- patterns) yield {
-      new GeneralExtractor(p, count, maxCount)
+    (for ((p, conf) <- patterns) yield {
+      new GeneralExtractor(p, conf.toDouble)
     }).toList
   }
 }

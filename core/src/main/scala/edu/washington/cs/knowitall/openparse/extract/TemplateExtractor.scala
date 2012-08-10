@@ -18,8 +18,8 @@ import Template.group
   * 
   * @author Michael Schmitz
   */
-class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], patternCount: Int, maxPatternCount: Int)
-extends GeneralExtractor(pattern, patternCount, maxPatternCount) {
+class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], conf: Double)
+extends GeneralExtractor(pattern, conf) {
   override def extract(dgraph: DependencyGraph)(implicit
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
@@ -34,22 +34,22 @@ case object TemplateExtractor extends PatternExtractorType {
   val logger = LoggerFactory.getLogger(this.getClass)
 
   override def fromLines(lines: Iterator[String]): List[PatternExtractor] = {
-    val patterns: List[(Template, Pattern[DependencyNode], Int)] = lines.map { line =>
+    val patterns: List[(Template, Pattern[DependencyNode], Double)] = lines.map { line =>
       line.split("\t") match {
         // full information specified
-        case Array(template, pat, count) =>
-          (Template.deserialize(template), DependencyPattern.deserialize(pat), count.toInt)
+        case Array(template, pat, conf) =>
+          (Template.deserialize(template), DependencyPattern.deserialize(pat), conf.toDouble)
         // assume a count of 1 if nothing is specified
         case Array(template, pat) =>
-          logger.warn("warning: pattern has no count: " + pat);
-          (Template.deserialize(template), DependencyPattern.deserialize(pat), 1)
+          logger.warn("warning: pattern has no confidence: " + pat);
+          (Template.deserialize(template), DependencyPattern.deserialize(pat), 1.0)
         case _ => throw new IllegalArgumentException("line must have two or three columns: " +line)
       }
     }.toList
 
     val maxCount = patterns.maxBy(_._3)._3
-    (for ((template, pattern, count) <- patterns) yield {
-      new TemplateExtractor(template, pattern, count, maxCount)
+    (for ((template, pattern, conf) <- patterns) yield {
+      new TemplateExtractor(template, pattern, conf)
     }).toList
   }
 }

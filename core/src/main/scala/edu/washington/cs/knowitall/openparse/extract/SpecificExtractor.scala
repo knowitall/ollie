@@ -14,8 +14,8 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
   */
 class SpecificExtractor(val relation: String, 
   val relationLemmas: List[String], 
-  pattern: Pattern[DependencyNode], patternCount: Int, relationCount: Int) 
-extends GeneralExtractor(pattern, patternCount, relationCount) {
+  pattern: Pattern[DependencyNode], conf: Double) 
+extends GeneralExtractor(pattern, conf) {
 
   override def extract(dgraph: DependencyGraph)(implicit 
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction], 
