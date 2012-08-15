@@ -32,6 +32,8 @@ import javax.swing.{ Timer => SwingTimer, AbstractAction }
 import edu.washington.cs.knowitall.openparse.extract.PatternExtractorType
 import java.io.IOException
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.collection.immutable.graph.DirectedEdge
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 
 sealed abstract class Sentence
 object Sentence {
@@ -70,31 +72,34 @@ object Parser extends Enumeration {
 import Parser._
 
 object OpenParseGui extends SimpleSwingApplication {
-  implicit def implicitValidMatch = OpenParse.validMatch(true)_
-
   var parser: Option[DependencyParser] = None
   var extractor: Option[OpenParse] = None
   var current: Option[DependencyGraph] = None
   var gold: Map[String, Boolean] = Map.empty
   var sentences: Seq[Sentence] = Seq.empty
-  var patterns: Option[List[String]] = None
   var sentenceIndex = 0;
 
   var nodeClickEvent: String=>Unit = (nodeText: String) => Unit
 
-  case class ExtractionEntry(confidence: Double, extraction: DetailedExtraction) {
+  case class ExtractionEntry(confidence: Option[Double], `match`: Match[DependencyNode], extractor: PatternExtractor, string: String = "") {
+    def this(confidence: Double, extraction: DetailedExtraction) = this(Some(confidence), extraction.`match`, extraction.extractor, extraction.toString)
+    
+    def edges = `match`.edges
+    def nodes = `match`.nodes
+    
     private def goldString = {
-      gold.get(extraction.toString) match {
+      gold.get(string) match {
         case Some(true) => "+ "
         case Some(false) => "- "
         case None => ""
       }
     }
 
-    override def toString = goldString + ("%1.4f" format confidence) + ":" + extraction.toString
+    override def toString = goldString + confidence.map("%1.4f:" format _).getOrElse("") + string
   }
 
   object Settings {
+    var rawMatches = false
     var graphvizFile: Option[File] = None // use PATH by default
     var modelFile: Option[File] = None
     var sentenceFile: Option[File] = None
@@ -167,19 +172,24 @@ object OpenParseGui extends SimpleSwingApplication {
   def loadSentences(): Boolean = {
     choose(Settings.sentenceFile) map { file =>
       Settings.sentenceFile = Some(file)
-      this.sentences = readSentences(Settings.sentenceFile.get)
-
-      sentenceIndex = 0
-      scrollBar.value = 0
-      scrollBar.adjust()
+      loadSentences(Settings.sentenceFile.get)
     } match {
       case Some(_) => true
       case None => false
     }
   }
 
+  def loadSentences(file: File) = {
+    this.sentences = readSentences(file)
+
+    sentenceIndex = 0
+    scrollBar.value = 0
+    scrollBar.adjust()
+  }
+
   override def main(args: Array[String]) = {
     val parser = new OptionParser("openparse-gui") {
+      opt(Some("i"), "input", "<file>", "input file", { v: String => Settings.sentenceFile = Some(new File(v)) })
       opt(Some("m"), "model", "<file>", "model file", { v: String => Settings.modelFile = Some(new File(v)) })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", {
         t: Double => Settings.confidenceThreshold = t
@@ -199,6 +209,8 @@ object OpenParseGui extends SimpleSwingApplication {
       Settings.goldFile.foreach { goldFile =>
         gold = Score.loadGoldSet(goldFile)
       }
+      
+      Settings.sentenceFile.foreach { sentenceFile => loadSentences(sentenceFile) }
 
       super.main(args)
     }
@@ -217,7 +229,6 @@ object OpenParseGui extends SimpleSwingApplication {
   }
 
   def loadExtractor(extractorType: Option[PatternExtractorType]) = {
-    patterns = None
     extractor = None
   }
 
@@ -304,7 +315,7 @@ object OpenParseGui extends SimpleSwingApplication {
 
     def updateDocument(dgraph: DependencyGraph, extr: ExtractionEntry) {
       val entry = extractionList.selection.items(0)
-      val dot = dotgraph(dgraph, entry.extraction)
+      val dot = dotgraph(dgraph, entry)
       updateDocument(dgraph, dot)
     }
 
@@ -439,6 +450,16 @@ object OpenParseGui extends SimpleSwingApplication {
           contents += new MenuItem(Action("Exit") { exit() })
         }
         contents += new Menu("Options") {
+          contents += new CheckMenuItem("Raw Matches") { 
+            selected = Settings.rawMatches
+            action = Action("Raw Matches") {
+              if (this.selected) {
+                Settings.rawMatches = true
+              } else {
+                Settings.rawMatches = false
+              }
+            }
+          }
           contents += new Menu("Parser") {
             contents ++= parserOptions
           }
@@ -447,31 +468,13 @@ object OpenParseGui extends SimpleSwingApplication {
           }
           contents += new Separator()
           contents += new MenuItem(Action("Load default model") {
-            OpenParse.fromModelUrl(OpenParse.defaultModelUrl)
+            extractor = Some(OpenParse.fromModelUrl(OpenParse.defaultModelUrl))
           })
           contents += new MenuItem(Action("Load model...") {
             choose(None) map { file =>
               extractor = Some(OpenParse.fromModelFile(file))
             }
           })
-          /*
-          contents += new MenuItem(Action("Input Pattern...") {
-            Dialog.showInput(null, message="Input a pattern.", title="Input Pattern", Dialog.Message.Plain, Swing.EmptyIcon, Seq(), "") map { pat =>
-              patterns = Some(List(pat))
-              extractorType.map { ex =>
-                extractor = Some(new OpenParse(ex.fromLines(List(pat).iterator)))
-              }
-            }
-          })
-          contents += new MenuItem(Action("Load Patterns...") {
-            choosePatterns().map { px =>
-              patterns = Some(px)
-              extractorType.map { ex =>
-                extractor = Some(new OpenParse(ex.fromLines(px.iterator)))
-              }
-            }
-          })
-          */
         }
       }
     }
@@ -566,13 +569,13 @@ object OpenParseGui extends SimpleSwingApplication {
     dgraph.dot(dgraph.text, nodeStyle.toMap, Map.empty)
   }
 
-  def dotgraph(dgraph: DependencyGraph, extraction: DetailedExtraction) = {
+  def dotgraph(dgraph: DependencyGraph, extraction: ExtractionEntry) = {
     val title = "\\n" + dgraph.text + "\\n" + extraction.toString + "\\n" + extraction.`match`.pattern.toStringF((s: String) => if (s.length < 60) s else s.take(20)+"...") +
       (extraction.extractor match { case ex: TemplateExtractor => "\\n" + ex.template case _ => "" })
 
     // nodes
     val darkNodes = extraction.`match`.nodeGroups
-    val lightNodes = extraction.nodes -- darkNodes.map(_._2.node)
+    val lightNodes = extraction.nodes.toSet -- darkNodes.map(_._2.node)
     val filledNodes = (lightNodes zip Stream.continually("style=filled,fillcolor=lightgray")) ++
       (darkNodes.map { nodeGroup => val style = "style=filled,fillcolor="+(nodeGroup._1 match {
           case "rel" => "salmon1"
@@ -585,7 +588,7 @@ object OpenParseGui extends SimpleSwingApplication {
       })
 
     // edges
-    val solidEdges = extraction.edges.map(_.edge).toSet
+    val solidEdges = extraction.edges.toSet
 
     val nodeStyle = filledNodes
     val edgeStyle = (solidEdges zip Stream.continually("style=filled")) ++
@@ -610,15 +613,28 @@ object OpenParseGui extends SimpleSwingApplication {
 
   def extract(dgraph: DependencyGraph) = {
     val normedDgraph = normalize(dgraph)
-    extractor.map { extractor =>
-      val extractions = for {
-        (conf, extr) <- this.extractor.get.extract(normedDgraph)
-      } yield {
-        ExtractionEntry(conf, extr)
-      }
-
-      extractions.sortBy(_.confidence).reverse
-    }.getOrElse(Seq.empty)
+	    extractor.map { extractor =>
+    if (!Settings.rawMatches) {
+	      val extractions = for {
+	        (conf, extr) <- extractor.extract(normedDgraph)
+	      } yield {
+	        new ExtractionEntry(conf, extr)
+	      }
+	
+	      extractions.sortBy(_.confidence).reverse
+    }
+    else {
+	      val extractions = for {
+	        ex <- extractor.extractors
+	        m <- ex.pattern(normedDgraph.graph)
+	      } yield {
+	        ExtractionEntry(None, m, ex, m.nodes.iterator.map(_.string).mkString(" "))
+	      }
+	
+	      extractions.sortBy(_.confidence).reverse
+      
+    }
+	    }.getOrElse(Seq.empty)
   }
 
   def svg2xml(svgString: String) = {
