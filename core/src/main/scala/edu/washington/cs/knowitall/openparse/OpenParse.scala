@@ -2,12 +2,9 @@ package edu.washington.cs.knowitall.openparse
 
 import java.io.{PrintWriter, File}
 import java.net.URL
-
 import scala.collection.Set
 import scala.io.Source
-
 import org.slf4j.LoggerFactory
-
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.common.Resource.using
@@ -25,9 +22,9 @@ import scopt.OptionParser
   */
 class OpenParse(
     /** Patterns to use to look for extractions */
-    extractors: Seq[PatternExtractor], 
+    val extractors: Seq[PatternExtractor],
     /** Configuration options */
-    configuration: OpenParse.Configuration) {
+    val configuration: OpenParse.Configuration) {
   import OpenParse._
 
   /** Convenience constructor that uses the default configuration. */
