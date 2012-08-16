@@ -22,6 +22,7 @@ object OllieCli {
   abstract class Settings {
     def inputFile: Option[File]
     def outputFile: Option[File]
+    def modelFile: Option[File]
     def confidenceThreshold: Double
     def openparseConfidenceThreshold: Double
 
@@ -38,6 +39,7 @@ object OllieCli {
     object settings extends Settings {
       var inputFile: Option[File] = None
       var outputFile: Option[File] = None
+      var modelFile: Option[File] = None
       var confidenceThreshold: Double = 0.0
       var openparseConfidenceThreshold: Double = 0.005
 
@@ -57,6 +59,10 @@ object OllieCli {
 
       opt(Some("o"), "output", "<output-file>", "output file (otherwise stdout)", { path: String =>
         settings.outputFile = Some(new File(path))
+      })
+      
+      opt(Some("m"), "model", "<model-file>", "model file", { path: String =>
+        settings.modelFile = Some(new File(path))
       })
 
       opt("h", "help", "usage information", { settings.showUsage = true })
@@ -93,9 +99,16 @@ object OllieCli {
     System.err.println("Loading models...")
     val parser = new StanfordParser()
 
-    val openparse = OpenParse.withDefaultModel(
-        new OpenParse.Configuration(
-            confidenceThreshold = settings.openparseConfidenceThreshold))
+    val configuration = 
+      new OpenParse.Configuration(
+            confidenceThreshold = settings.openparseConfidenceThreshold)
+    
+    val openparse = settings.modelFile match {
+      case None =>
+        OpenParse.withDefaultModel(configuration)
+      case Some(file) =>
+        OpenParse.fromModelFile(file, configuration)
+    }
     val ollieExtractor = new Ollie(openparse)
     val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
 
