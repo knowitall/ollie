@@ -62,10 +62,10 @@ object Parser extends Enumeration {
   val Stanford = Value("Stanford")
   val MaltL = Value("Malt (Linear)")
 
-  def default = Stanford
+  def default = MaltL
 
   def load(parserType: Parser): DependencyParser = parserType match {
-    case Parser.Stanford => new StanfordParser()
+    case Parser.Stanford => throw new IllegalArgumentException("Stanford parser not supported due to licensing restrictions.")
     case Parser.MaltL => new MaltParser()
   }
 }

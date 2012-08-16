@@ -7,7 +7,7 @@ import OllieCli.Settings
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
 import edu.washington.cs.knowitall.openparse.OpenParse
-import edu.washington.cs.knowitall.tool.parse.StanfordParser
+import edu.washington.cs.knowitall.tool.parse.MaltParser
 import scopt.OptionParser
 import edu.washington.cs.knowitall.tool.sentence.Sentencer
 import edu.washington.cs.knowitall.common.Timing
@@ -97,7 +97,7 @@ object OllieCli {
 
   def run(settings: Settings) = {
     System.err.println("Loading models...")
-    val parser = new StanfordParser()
+    val parser = new MaltParser()
 
     val configuration = 
       new OpenParse.Configuration(

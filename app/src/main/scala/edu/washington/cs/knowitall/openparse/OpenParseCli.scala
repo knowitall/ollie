@@ -12,7 +12,7 @@ import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.Timing
-import edu.washington.cs.knowitall.tool.parse.StanfordParser
+import edu.washington.cs.knowitall.tool.parse.MaltParser
 import edu.washington.cs.knowitall.openparse.OpenParse.validMatch
 import edu.washington.cs.knowitall.openparse.extract.{TemplateExtractor, PatternExtractorType, PatternExtractor, GeneralExtractor, Extraction, DetailedExtraction}
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
@@ -77,7 +77,7 @@ object OpenParseCli {
   }
 
   def run(settings: Settings) {
-    val parser = new StanfordParser
+    val parser = new MaltParser
     def parse(line: String): Option[DependencyGraph] = {
       Some(parser.dependencyGraph(line))
     }

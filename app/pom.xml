@@ -36,18 +36,13 @@
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
-      <artifactId>nlptools-parse-stanford_2.9.2</artifactId>
-      <version>2.2.0</version>
-    </dependency>
-    <dependency>
-      <groupId>edu.washington.cs.knowitall.nlptools</groupId>
       <artifactId>nlptools-parse-malt_2.9.2</artifactId>
-      <version>2.2.0</version>
+      <version>2.2.1-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
       <artifactId>nlptools-sentence-opennlp_2.9.2</artifactId>
-      <version>2.2.0</version>
+      <version>2.2.1-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall</groupId>
