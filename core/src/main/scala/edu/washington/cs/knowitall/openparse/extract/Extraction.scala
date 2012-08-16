@@ -233,7 +233,13 @@ object Extraction {
       // noun labels.
       ((augment(graph, node, until, pred).map(_--expandNounLabels)) :+
       // add subcomponents
-        SortedSet[DependencyNode]() ++ components(graph, node, attachLabels, until, true)).filter(!_.isEmpty))
+        SortedSet[DependencyNode]() ++ 
+        components(graph, node, attachLabels, until, true)).filterNot { c =>
+          // don't add empty components
+          c.isEmpty ||
+          // don't add components with just "who" or "whom"
+          c.size == 1 && c.headOption.map(_.postag=="WP").getOrElse(false)
+        })
 
     val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
 
