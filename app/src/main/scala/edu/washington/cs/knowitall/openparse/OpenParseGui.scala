@@ -34,6 +34,7 @@ import java.io.IOException
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 import edu.washington.cs.knowitall.collection.immutable.graph.DirectedEdge
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
+import java.net.URL
 
 sealed abstract class Sentence
 object Sentence {
@@ -101,7 +102,7 @@ object OpenParseGui extends SimpleSwingApplication {
   object Settings {
     var rawMatches = false
     var graphvizFile: Option[File] = None // use PATH by default
-    var modelFile: Option[File] = None
+    var modelUrl: URL = OpenParse.defaultModelUrl
     var sentenceFile: Option[File] = None
     var confidenceThreshold: Double = 0.0
     var goldFile: Option[File] = None
@@ -190,7 +191,7 @@ object OpenParseGui extends SimpleSwingApplication {
   override def main(args: Array[String]) = {
     val parser = new OptionParser("openparse-gui") {
       opt(Some("i"), "input", "<file>", "input file", { v: String => Settings.sentenceFile = Some(new File(v)) })
-      opt(Some("m"), "model", "<file>", "model file", { v: String => Settings.modelFile = Some(new File(v)) })
+      opt(Some("m"), "model", "<file>", "model file", { v: String => Settings.modelUrl = new File(v).toURI.toURL })
       doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", {
         t: Double => Settings.confidenceThreshold = t
       })
@@ -199,12 +200,7 @@ object OpenParseGui extends SimpleSwingApplication {
     }
 
     if (parser.parse(args)) {
-      Settings.modelFile match {
-        case Some(file) =>
-          extractor = Some(OpenParse.fromModelFile(file, Settings.configuration))
-        case None =>
-          extractor = Some(OpenParse.fromModelUrl(OpenParse.defaultModelUrl, Settings.configuration))
-      }
+      extractor = Some(OpenParse.fromModelUrl(Settings.modelUrl, Settings.configuration))
 
       Settings.goldFile.foreach { goldFile =>
         gold = Score.loadGoldSet(goldFile)

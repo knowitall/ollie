@@ -13,6 +13,7 @@ import edu.washington.cs.knowitall.tool.sentence.Sentencer
 import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
 import java.text.DecimalFormat
+import java.net.URL
 
 /** An entry point to use Ollie on the command line.
   */
@@ -22,7 +23,7 @@ object OllieCli {
   abstract class Settings {
     def inputFile: Option[File]
     def outputFile: Option[File]
-    def modelFile: Option[File]
+    def modelUrl: URL
     def confidenceThreshold: Double
     def openparseConfidenceThreshold: Double
 
@@ -39,7 +40,7 @@ object OllieCli {
     object settings extends Settings {
       var inputFile: Option[File] = None
       var outputFile: Option[File] = None
-      var modelFile: Option[File] = None
+      var modelUrl: URL = OpenParse.defaultModelUrl
       var confidenceThreshold: Double = 0.0
       var openparseConfidenceThreshold: Double = 0.005
 
@@ -62,7 +63,7 @@ object OllieCli {
       })
       
       opt(Some("m"), "model", "<model-file>", "model file", { path: String =>
-        settings.modelFile = Some(new File(path))
+        settings.modelUrl = new File(path).toURI.toURL
       })
 
       opt("h", "help", "usage information", { settings.showUsage = true })
@@ -103,12 +104,7 @@ object OllieCli {
       new OpenParse.Configuration(
             confidenceThreshold = settings.openparseConfidenceThreshold)
     
-    val openparse = settings.modelFile match {
-      case None =>
-        OpenParse.withDefaultModel(configuration)
-      case Some(file) =>
-        OpenParse.fromModelFile(file, configuration)
-    }
+    val openparse = OpenParse.fromModelUrl(settings.modelUrl, configuration)
     val ollieExtractor = new Ollie(openparse)
     val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
 
