@@ -26,6 +26,9 @@ class OpenParse(
     /** Configuration options */
     val configuration: OpenParse.Configuration) {
   import OpenParse._
+  
+  extractors foreach (ex => logger.debug("loaded extractor: "+ex.toString))
+  logger.debug(configuration.toString)
 
   /** Convenience constructor that uses the default configuration. */
   def this(extractors: Seq[PatternExtractor]) =
@@ -73,17 +76,24 @@ class OpenParse(
      */
     def possibleExtraction(extractor: PatternExtractor, dgraph: DependencyGraph) = {
       extractor.pattern.edgeMatchers.forall { matcher =>
-        dgraph.dependencies.exists(matcher.canMatch(_))
+        val can = dgraph.graph.edges.exists(matcher.canMatch(_))
+        if (!can) logger.trace("No possible match: " + matcher)
+        
+        can
       }
     }
 
     val extrs = for {
       extractor <- extractors;
       // todo: organize patterns by a reverse-lookup on edges
+      
+      val _ = logger.trace("attempting extractor: " + extractor)
 
       // optimizations
       if (confidenceOverThreshold(extractor, configuration.confidenceThreshold));
       if (possibleExtraction(extractor, dgraph));
+      
+      val _ = logger.trace("applying extractor: " + extractor)
 
       // extraction
       extr <- extractor.extract(dgraph)(this.buildExtraction, this.validateMatch)
@@ -269,7 +279,7 @@ object OpenParse {
     }
   }
 
-  class Configuration(
+  case class Configuration(
     val simplifyVBPostags: Boolean = false,
     val simplifyPostags: Boolean = true,
     val confidenceThreshold: Double = 0.0,
