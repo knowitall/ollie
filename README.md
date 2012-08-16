@@ -92,10 +92,17 @@ visualize the OpenParse extractions in a parse tree.  To use it, you will need
 to have [graphviz](http://www.graphviz.org/) installed.  You can run the GUI
 with:
 
-    java -Xmx512m -cp ollie-app-VERSION.jar edu.washington.cs.knowitall.openparse.OpenParseGui
+    java -Xms512M -Xmx1g -cp ollie-app-VERSION.jar edu.washington.cs.knowitall.openparse.OpenParseGui
 
 By default, this application will look for graphviz's `dot` program at
 `/usr/bin/dot`.  You can specify a location with the `--graphviz` parameter.
+
+You can try out your own models with `Options->Load Model...`.  Your model may
+have one or more patterns in it.  If you want to see pattern matches instead of
+triple extractions, you can choose to show the raw match with `Options->Raw
+Matches`.  This will allow you to use patterns that don't capture an arg1, rel,
+and arg2.  To see an example model, look at `openparse.model` in
+`src/main/resources`.
 
 ## Using Eclipse
 
