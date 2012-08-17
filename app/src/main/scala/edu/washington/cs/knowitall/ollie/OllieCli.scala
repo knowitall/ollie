@@ -27,6 +27,8 @@ object OllieCli {
     def confidenceThreshold: Double
     def openparseConfidenceThreshold: Double
 
+    def maltModelFile: Option[File]
+
     def splitInput: Boolean
     def tabbed: Boolean
     def parallel: Boolean
@@ -44,11 +46,13 @@ object OllieCli {
       var confidenceThreshold: Double = 0.0
       var openparseConfidenceThreshold: Double = 0.005
 
+      var maltModelFile: Option[File] = None
+
       var splitInput: Boolean = false
       var tabbed: Boolean = false
       var parallel: Boolean = false
       var invincible: Boolean = false
-      
+
       var showUsage: Boolean = false
     }
 
@@ -61,9 +65,13 @@ object OllieCli {
       opt(Some("o"), "output", "<output-file>", "output file (otherwise stdout)", { path: String =>
         settings.outputFile = Some(new File(path))
       })
-      
+
       opt(Some("m"), "model", "<model-file>", "model file", { path: String =>
         settings.modelUrl = new File(path).toURI.toURL
+      })
+
+      opt(None, "malt-model", "<file>", "malt model file", { path: String =>
+        settings.maltModelFile = Some(new File(path))
       })
 
       opt("h", "help", "usage information", { settings.showUsage = true })
@@ -71,7 +79,7 @@ object OllieCli {
       doubleOpt(Some("t"), "threshold", "<threshold>", "confidence threshold for Ollie extractor", { t: Double =>
         settings.confidenceThreshold = t
       })
-      
+
       doubleOpt(None, "openparse-threshold", "<threshold>", "confidence threshold for OpenParse component", { t: Double =>
         settings.openparseConfidenceThreshold = t
       })
@@ -98,20 +106,23 @@ object OllieCli {
 
   def run(settings: Settings) = {
     System.err.println("Loading models...")
-    val parser = new MaltParser()
+    val parser = settings.maltModelFile match {
+      case None => new MaltParser()
+      case Some(file) => new MaltParser(file)
+    }
 
-    val configuration = 
+    val configuration =
       new OpenParse.Configuration(
             confidenceThreshold = settings.openparseConfidenceThreshold)
-    
+
     val openparse = OpenParse.fromModelUrl(settings.modelUrl, configuration)
     val ollieExtractor = new Ollie(openparse)
     val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
 
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
-    
+
     val confFormatter = new DecimalFormat("#.###")
-    
+
     System.err.println("\nRunning extractor on " + (settings.inputFile match { case None => "standard input" case Some(f) => f.getName }) + "...")
     using(settings.inputFile match {
       case Some(input) => Source.fromFile(input, "UTF-8")
@@ -156,13 +167,13 @@ object OllieCli {
                   case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach {
                     case (conf, e) =>
                       if (settings.tabbed) {
-                        writer.println(Iterable(confFormatter.format(conf), 
-                          e.extr.arg1.text, 
-                          e.extr.rel.text, 
-                          e.extr.arg2.text, 
-                          e.extr.enabler.map(_.text), 
-                          e.extr.attribution.map(_.text), 
-                          e.sent.text, 
+                        writer.println(Iterable(confFormatter.format(conf),
+                          e.extr.arg1.text,
+                          e.extr.rel.text,
+                          e.extr.arg2.text,
+                          e.extr.enabler.map(_.text),
+                          e.extr.attribution.map(_.text),
+                          e.sent.text,
                           e.sent.serialize).mkString("\t"))
                       } else {
                         writer.println(confFormatter.format(conf) + ": " + e.extr)
@@ -172,7 +183,7 @@ object OllieCli {
                   }
                 }
 
-                if (!settings.tabbed) { 
+                if (!settings.tabbed) {
                   writer.println()
                   writer.flush()
                 }
