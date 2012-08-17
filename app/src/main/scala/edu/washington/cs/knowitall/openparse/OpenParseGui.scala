@@ -84,10 +84,10 @@ object OpenParseGui extends SimpleSwingApplication {
 
   case class ExtractionEntry(confidence: Option[Double], `match`: Match[DependencyNode], extractor: PatternExtractor, string: String = "") {
     def this(confidence: Double, extraction: DetailedExtraction) = this(Some(confidence), extraction.`match`, extraction.extractor, extraction.toString)
-    
+
     def edges = `match`.edges
     def nodes = `match`.nodes
-    
+
     private def goldString = {
       gold.get(string) match {
         case Some(true) => "+ "
@@ -107,7 +107,7 @@ object OpenParseGui extends SimpleSwingApplication {
     var confidenceThreshold: Double = 0.0
     var goldFile: Option[File] = None
 
-    def configuration = new OpenParse.Configuration(confidenceThreshold = this.confidenceThreshold)
+    def configuration = new OpenParse.Configuration(confidenceThreshold = this.confidenceThreshold, collapseGraph = false)
   }
 
     val scrollBar = new Slider() {
@@ -205,7 +205,7 @@ object OpenParseGui extends SimpleSwingApplication {
       Settings.goldFile.foreach { goldFile =>
         gold = Score.loadGoldSet(goldFile)
       }
-      
+
       Settings.sentenceFile.foreach { sentenceFile => loadSentences(sentenceFile) }
 
       super.main(args)
@@ -446,7 +446,7 @@ object OpenParseGui extends SimpleSwingApplication {
           contents += new MenuItem(Action("Exit") { exit() })
         }
         contents += new Menu("Options") {
-          contents += new CheckMenuItem("Raw Matches") { 
+          contents += new CheckMenuItem("Raw Matches") {
             selected = Settings.rawMatches
             action = Action("Raw Matches") {
               if (this.selected) {
@@ -594,43 +594,37 @@ object OpenParseGui extends SimpleSwingApplication {
   }
 
   def parse(sentence: Sentence) = {
-    (sentence match {
+    sentence match {
       case Sentence.Text(text) =>
         loadParserIfNone()
-        parser.get.dependencyGraph(text)
+        parser.get.dependencyGraph(text).collapse
       case Sentence.Graph(dgraph) =>
         dgraph
-    }).simplifyPostags
-  }
-
-  def normalize(dgraph: DependencyGraph) = {
-    dgraph.simplifyPostags
+    }
   }
 
   def extract(dgraph: DependencyGraph) = {
-    val normedDgraph = normalize(dgraph)
-	    extractor.map { extractor =>
-    if (!Settings.rawMatches) {
-	      val extractions = for {
-	        (conf, extr) <- extractor.extract(normedDgraph)
-	      } yield {
-	        new ExtractionEntry(conf, extr)
-	      }
-	
-	      extractions.sortBy(_.confidence).reverse
-    }
-    else {
-	      val extractions = for {
-	        ex <- extractor.extractors
-	        m <- ex.pattern(normedDgraph.graph)
-	      } yield {
-	        ExtractionEntry(None, m, ex, m.nodes.iterator.map(_.string).mkString(" "))
-	      }
-	
-	      extractions.sortBy(_.confidence).reverse
-      
-    }
-	    }.getOrElse(Seq.empty)
+    extractor.map { extractor =>
+      if (!Settings.rawMatches) {
+        val extractions = for {
+          (conf, extr) <- extractor.extract(dgraph)
+        } yield {
+          new ExtractionEntry(conf, extr)
+        }
+
+        extractions.sortBy(_.confidence).reverse
+      } else {
+        val extractions = for {
+          ex <- extractor.extractors
+          m <- ex.pattern(dgraph.graph)
+        } yield {
+          ExtractionEntry(None, m, ex, m.nodes.iterator.map(_.string).mkString(" "))
+        }
+
+        extractions.sortBy(_.confidence).reverse
+
+      }
+    }.getOrElse(Seq.empty)
   }
 
   def svg2xml(svgString: String) = {

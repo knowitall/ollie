@@ -17,7 +17,7 @@ import edu.washington.cs.knowitall.tool.postag.Postagger
 import scopt.OptionParser
 
 /** OpenParse is an extractor that find binary relation in dependency graphs.
-  * 
+  *
   * @author Michael Schmitz
   */
 class OpenParse(
@@ -26,7 +26,7 @@ class OpenParse(
     /** Configuration options */
     val configuration: OpenParse.Configuration) {
   import OpenParse._
-  
+
   extractors foreach (ex => logger.debug("loaded extractor: "+ex.toString))
   logger.debug(configuration.toString)
 
@@ -38,17 +38,21 @@ class OpenParse(
   def simplifyGraph(dgraph: DependencyGraph): DependencyGraph = {
     var graph = dgraph
 
+    if (configuration.collapseGraph) {
+      graph = graph.collapse
+    }
+
     if (configuration.simplifyPostags) {
-      graph = dgraph.simplifyPostags
+      graph = graph.simplifyPostags
     }
 
     if (configuration.simplifyVBPostags) {
-      graph = dgraph.simplifyVBPostags
+      graph = graph.simplifyVBPostags
     }
 
     graph
   }
-  
+
   def apply(dg: DependencyGraph) = extract(dg)
 
   /** Find extractions in a dependency graph */
@@ -78,7 +82,7 @@ class OpenParse(
       extractor.pattern.edgeMatchers.forall { matcher =>
         val can = dgraph.graph.edges.exists(matcher.canMatch(_))
         if (!can) logger.trace("No possible match: " + matcher)
-        
+
         can
       }
     }
@@ -86,13 +90,13 @@ class OpenParse(
     val extrs = for {
       extractor <- extractors;
       // todo: organize patterns by a reverse-lookup on edges
-      
+
       val _ = logger.trace("attempting extractor: " + extractor)
 
       // optimizations
       if (confidenceOverThreshold(extractor, configuration.confidenceThreshold));
       if (possibleExtraction(extractor, dgraph));
-      
+
       val _ = logger.trace("applying extractor: " + extractor)
 
       // extraction
@@ -127,10 +131,10 @@ class OpenParse(
 
     reduced.sortBy { case (conf, extr) => (-conf, extr.toString) }
   }
-  
+
   /** Build an extraction from a match in the dependency pattern. */
   protected val buildExtraction = Extraction.fromMatch(configuration.expandExtraction) _
-  
+
   /** Validate a dependency pattern match to see if it can be expanded
     * into an extraction. */
   protected val validateMatch = validMatch(configuration.restrictArguments) _
@@ -154,7 +158,7 @@ object OpenParse {
   def withDefaultModel(configuration: Configuration = new Configuration()) = {
     fromModelUrl(defaultModelUrl, configuration)
   }
-  
+
   /** Create an OpenParse extractor reading a model from the specified source. */
   def fromModelSource(source: Source, configuration: Configuration = new Configuration()) = {
     val it = source.getLines
@@ -217,7 +221,7 @@ object OpenParse {
 
     /** execute in parallel */
     def parallel: Boolean
-    
+
     /** ignore exceptions */
     def invincible: Boolean
 
@@ -285,7 +289,8 @@ object OpenParse {
     val confidenceThreshold: Double = 0.0,
     val expandExtraction: Boolean = true,
     val restrictArguments: Boolean = true,
-    val keepDuplicates: Boolean = false)
+    val keepDuplicates: Boolean = false,
+    val collapseGraph: Boolean = true)
 
   def deserialize(line: String): Option[DependencyGraph] = {
     val pickled = line.split("\t").last
@@ -309,7 +314,7 @@ object OpenParse {
         else conf
       }
     }
-  
+
     // create a standalone extractor
     val configuration = settings.configuration
     val extractor = OpenParse.fromModelUrl(settings.modelUrl, configuration)
