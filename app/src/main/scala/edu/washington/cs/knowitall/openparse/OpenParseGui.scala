@@ -12,10 +12,6 @@ import edu.washington.cs.knowitall.openparse.eval.Score
 import swing._
 import swing.event._
 import java.io.File
-import uk.co.turingatemyhamster.graphvizs.exec.DotApp
-import uk.co.turingatemyhamster.graphvizs.exec.DotLayout
-import uk.co.turingatemyhamster.graphvizs.exec.DotOpts
-import uk.co.turingatemyhamster.graphvizs.exec.DotFormat
 import edu.washington.cs.knowitall.tool.parse._
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
@@ -35,6 +31,9 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 import edu.washington.cs.knowitall.collection.immutable.graph.DirectedEdge
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 import java.net.URL
+import java.io.InputStream
+import java.io.OutputStream
+import java.io.PrintWriter
 
 sealed abstract class Sentence
 object Sentence {
@@ -228,22 +227,50 @@ object OpenParseGui extends SimpleSwingApplication {
     extractor = None
   }
 
-  val dotapp = DotApp(Settings.graphvizFile.getOrElse(new File("/usr/bin/dot")), DotOpts(Some(DotLayout.dot), Some(DotFormat.svg)))
   def dot2svg(dotgraph: String) = {
-    import uk.co.turingatemyhamster.graphvizs.exec._
-    import uk.co.turingatemyhamster.graphvizs.exec.InputHandler._
-    import uk.co.turingatemyhamster.graphvizs.exec.OutputHandler._
     import sys.process.ProcessIO
 
-    val errHandler = OutputHandler.stringOutputHandler
-    val inputHandler = StringInputHandler
-    val outputHandler = OutputHandler.stringOutputHandler
+    trait InputHandler[A] {
+      def handle(a: A)(input: OutputStream)
+    }
+
+    trait OutputHandler[A] {
+      def handle(output: InputStream)
+      def value: A
+    }
+
+    val errHandler = new OutputHandler[String] {
+      var value: String = null
+
+      def handle(out: InputStream) {
+        value = Source.fromInputStream(out).mkString
+        out.close()
+      }
+    }
+
+    val inputHandler = new InputHandler[String] {
+      def handle(a: String)(os: OutputStream) {
+        val pw = new PrintWriter(os)
+        pw write a
+        pw.close()
+      }
+    }
+
+    val outputHandler = new OutputHandler[String] {
+      var value: String = null
+
+      def handle(out: InputStream) {
+        value = Source.fromInputStream(out).mkString
+        out.close()
+      }
+    }
     val io = new ProcessIO(inputHandler.handle(dotgraph), outputHandler.handle, errHandler.handle, false)
 
     val process = Settings.graphvizFile match {
-      case Some(x) => dotapp.process
-      case None => sys.process.Process("dot", dotapp.opts.generate)
+      case Some(file) => sys.process.Process(file.getAbsolutePath, Seq("-T", "svg"))
+      case None => sys.process.Process("dot", Seq("-T", "svg"))
     }
+
     val proc = try (process run io)
     catch {
       case e: IOException =>
