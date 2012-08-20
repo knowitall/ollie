@@ -3,7 +3,6 @@ package edu.washington.cs.knowitall.openparse
 import scopt.OptionParser
 import scala.io.Source
 import scala.util.control.Exception._
-import scala.collection.SortedSet
 import org.apache.batik.swing.JSVGCanvas
 import org.apache.batik.swing.svg.JSVGComponent
 import edu.washington.cs.knowitall.common.Resource._
@@ -34,6 +33,7 @@ import java.net.URL
 import java.io.InputStream
 import java.io.OutputStream
 import java.io.PrintWriter
+import scala.collection.SortedSet
 
 sealed abstract class Sentence
 object Sentence {
@@ -81,11 +81,10 @@ object OpenParseGui extends SimpleSwingApplication {
 
   var nodeClickEvent: String=>Unit = (nodeText: String) => Unit
 
-  case class ExtractionEntry(confidence: Option[Double], `match`: Match[DependencyNode], extractor: PatternExtractor, string: String = "") {
-    def this(confidence: Double, extraction: DetailedExtraction) = this(Some(confidence), extraction.`match`, extraction.extractor, extraction.toString)
+  case class ExtractionEntry(confidence: Option[Double], `match`: Match[DependencyNode], nodes: Set[DependencyNode], extractor: PatternExtractor, string: String = "") {
+    def this(confidence: Double, extraction: DetailedExtraction) = this(Some(confidence), extraction.`match`, extraction.nodes.toSet, extraction.extractor, extraction.toString)
 
     def edges = `match`.edges
-    def nodes = `match`.nodes
 
     private def goldString = {
       gold.get(string) match {
@@ -593,12 +592,16 @@ object OpenParseGui extends SimpleSwingApplication {
   }
 
   def dotgraph(dgraph: DependencyGraph, extraction: ExtractionEntry) = {
+    def originalNodes(nodes: Iterable[DependencyNode]) = nodes.map { node =>
+      dgraph.nodes.find(_.indices == node.indices).get
+    }
+
     val title = "\\n" + dgraph.text + "\\n" + extraction.toString + "\\n" + extraction.`match`.pattern.toStringF((s: String) => if (s.length < 60) s else s.take(20)+"...") +
       (extraction.extractor match { case ex: TemplateExtractor => "\\n" + ex.template case _ => "" })
 
     // nodes
     val darkNodes = extraction.`match`.nodeGroups
-    val lightNodes = extraction.nodes.toSet -- darkNodes.map(_._2.node)
+    val lightNodes = originalNodes(extraction.nodes).toSet -- originalNodes(darkNodes.map(_._2.node))
     val filledNodes = (lightNodes zip Stream.continually("style=filled,fillcolor=lightgray")) ++
       (darkNodes.map { nodeGroup => val style = "style=filled,fillcolor="+(nodeGroup._1 match {
           case "rel" => "salmon1"
@@ -624,7 +627,11 @@ object OpenParseGui extends SimpleSwingApplication {
     sentence match {
       case Sentence.Text(text) =>
         loadParserIfNone()
-        parser.get.dependencyGraph(text).collapse
+        val dgraph = parser.get.dependencyGraph(text).collapse
+        extractor.map(_.simplifyGraph _) match {
+          case Some(f) => f(dgraph)
+          case None => dgraph
+        }
       case Sentence.Graph(dgraph) =>
         dgraph
     }
@@ -645,7 +652,7 @@ object OpenParseGui extends SimpleSwingApplication {
           ex <- extractor.extractors
           m <- ex.pattern(dgraph.graph)
         } yield {
-          ExtractionEntry(None, m, ex, m.nodes.iterator.map(_.string).mkString(" "))
+          ExtractionEntry(None, m, m.nodes.toSet, ex, m.nodes.iterator.map(_.string).mkString(" "))
         }
 
         extractions.sortBy(_.confidence).reverse
