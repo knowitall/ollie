@@ -10,14 +10,14 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import GeneralExtractor.logger
 
 /** An extractor that is purely specified by a pattern.
-  * 
+  *
   * @author Michael Schmitz
   */
 class GeneralExtractor(pattern: Pattern[DependencyNode], val conf: Double) extends PatternExtractor(pattern) {
   import GeneralExtractor._
 
   protected def extractWithMatches(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
+    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Iterable[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     // apply pattern and keep valid matches
@@ -33,7 +33,7 @@ class GeneralExtractor(pattern: Pattern[DependencyNode], val conf: Double) exten
   }
 
   override def extract(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
+    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Iterable[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     logger.debug("pattern: " + pattern)
 

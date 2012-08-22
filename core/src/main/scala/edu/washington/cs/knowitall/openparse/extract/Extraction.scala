@@ -120,7 +120,7 @@ object Extraction {
 
   private val attributionPattern = DependencyPattern.deserialize("{old} <ccomp< {rel} >nsubj> {arg}")
   private val conditionalPattern = DependencyPattern.deserialize("{old} <ccomp< {rel} >nsubj> {arg}")
-  def fromMatch(expand: Boolean)(graph: DependencyGraph, m: Match[DependencyNode], ex: PatternExtractor): Option[DetailedExtraction] = {
+  def fromMatch(expand: Boolean)(graph: DependencyGraph, m: Match[DependencyNode], ex: PatternExtractor): Iterable[DetailedExtraction] = {
     def clausalComponent(node: DependencyNode, until: Set[DependencyNode]) = {
       attributionPattern.apply(graph.graph, node) match {
         case List(m) =>
@@ -130,7 +130,7 @@ object Extraction {
           val rel = m.nodeGroups("rel").node
           val arg = m.nodeGroups("arg").node
 
-          val Part(expandedRelNodes, expandedRelText) = expandRelation(graph, rel, until + arg)
+          val Part(expandedRelNodes, expandedRelText) = expandRelation(graph, rel, until + arg).head
           val expandedArg = expandArgument(graph, arg, until + rel)
 
           Some(ClausalComponent(Part(expandedRelNodes, expandedRelText), Part(expandedArg, DetailedExtraction.nodesToString(expandedArg))))
@@ -158,20 +158,28 @@ object Extraction {
 
     val expandedArg1 = if (expand) expandArgument(graph, arg1, rels.toSet) else SortedSet(arg1)
     val expandedArg2 = if (expand) expandArgument(graph, arg2, rels.toSet) else SortedSet(arg2)
-    val Part(expandedRelNodes, expandedRelText) =
+    val expandRels =
       if (expand) {
-        val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2))
-        Part(expansions.map(_.nodes).reduce(_ ++ _), expansions.map(_.text).mkString(" "))
-      } else Part(SortedSet.empty[DependencyNode] ++ rels, rels.map(_.text).mkString(" "))
+        import scalaz._
+        import Scalaz._
 
-    val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
-    val clausal = rels.flatMap(rel => clausalComponent(rel, nodes)).headOption
-    val modifier = rels.flatMap(rel => adverbialModifier(rel, nodes)).headOption
+        val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2)).sequence
 
-    if (Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))) {
-      // logger.debug("invalid: arguments overlap: " + DetailedExtraction.nodesToString(expandedArg1) + ", " + DetailedExtraction.nodesToString(expandedArg2))
-      None
-    } else Some(new DetailedExtraction(ex, m, new Part(expandedArg1), Part(expandedRelNodes, expandedRelText), new Part(expandedArg2), clausal = clausal, modifier = modifier))
+        expansions.map(expansion => Part(expansion.map(_.nodes).reduce(_ ++ _), expansion.map(_.text).mkString(" ")))
+      } else Set(Part(SortedSet.empty[DependencyNode] ++ rels, rels.map(_.text).mkString(" ")))
+
+    for {
+      Part(expandedRelNodes, expandedRelText) <- expandRels
+      val nodes = expandedArg1 ++ expandedArg2 ++ expandedRelNodes
+      val clausal = rels.flatMap(rel => clausalComponent(rel, nodes)).headOption
+      val modifier = rels.flatMap(rel => adverbialModifier(rel, nodes)).headOption
+
+      // arguments don't overlap
+      if (!(Interval.span(expandedArg1.map(_.indices)(scala.collection.breakOut)) intersects Interval.span(expandedArg2.map(_.indices)(scala.collection.breakOut))))
+    } yield (
+      new DetailedExtraction(ex, m, new Part(expandedArg1), Part(expandedRelNodes, expandedRelText), new Part(expandedArg2), clausal = clausal, modifier = modifier)
+    )
+
   }
 
   private val argumentExpansionLabels = Set("det", "prep_of", "amod", "num", "number", "nn", "poss", "quantmod", "neg")
@@ -179,7 +187,7 @@ object Extraction {
     def expandNode(node: DependencyNode) = {
       val expansion = expand(graph, node, until, argumentExpansionLabels)
       if (expansion.exists(_.isProperNoun)) expansion
-      else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref", "prepc_of"), until, false)
+      else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref", "prepc_of"), until, false).flatten
     }
 
     // expand over any conjunction/disjunction edges
@@ -198,7 +206,13 @@ object Extraction {
     }
   }
 
-  def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): Part = {
+  /** Expand the relation nodes of a match.
+    *
+    * Multiple parts can be returned if there are multiple dobj or iobjs.
+    *
+    * @return  parts  the part (or multiple parts) that describes the relation
+    */
+  def expandRelation(graph: DependencyGraph, node: DependencyNode, until: Set[DependencyNode]): Set[Part] = {
     // count the adjacent dobj edges.  We will only expand across
     // dobj components if there is exactly one adjacent dobj edge.
     // This edge may already be used, but in that case we won't
@@ -229,25 +243,33 @@ object Extraction {
     val cops = graph.graph.predecessors(node, (e: Graph.Edge[DependencyNode])=>e.label == "cop").headOption
     val expandCopLabels = cops.map(cop => augment(graph, cop, until, pred)).getOrElse(List.empty)
 
-    val expansion = expandCopLabels ++ (expandNounLabels ::
-      // make sure that we don't use a label that was
-      // already captured by expandNounlabels.  This
-      // can happen when a verb edges goes between two
-      // noun labels.
-      ((augment(graph, node, until, pred).map(_--expandNounLabels)) :+
-      // add subcomponents
-        SortedSet[DependencyNode]() ++
-        components(graph, node, attachLabels, until, true)).filterNot { c =>
-          // don't add empty components
-          c.isEmpty ||
-          // don't add components with just "who" or "whom"
-          c.size == 1 && c.headOption.map(_.postag=="WP").getOrElse(false)
-        })
+    def f(s: Set[List[DependencyNode]]): Set[List[DependencyNode]] =
+      if (s.isEmpty) Set(List())
+      else s
+    val dobjs = f(components(graph, node, Set("dobj"), until, true))
+    val iobjs = f(components(graph, node, Set("iobj"), until, true))
 
-    val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
+    for (dobj <- dobjs; iobj <- iobjs) yield {
+      val expansion = expandCopLabels ++ (expandNounLabels ::
+        // make sure that we don't use a label that was
+        // already captured by expandNounlabels.  This
+        // can happen when a verb edges goes between two
+        // noun labels.
+        ((augment(graph, node, until, pred).map(_ -- expandNounLabels)) :+
+          // add subcomponents
+          (SortedSet[DependencyNode]() ++ dobj) :+
+          (SortedSet[DependencyNode]() ++ iobj)).filterNot { c =>
+            // don't add empty components
+            c.isEmpty ||
+              // don't add components with just "who" or "whom"
+              c.size == 1 && c.headOption.map(_.postag == "WP").getOrElse(false)
+          })
 
-    // perform a more complicated node->text transformation
-    val texts = sorted.map(DetailedExtraction.nodesToString(_))
-    Part(expansion.reduce(_ ++ _), texts.mkString(" "))
+      val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
+
+      // perform a more complicated node->text transformation
+      val texts = sorted.map(DetailedExtraction.nodesToString(_))
+      Part(expansion.reduce(_ ++ _), texts.mkString(" "))
+    }
   }
 }

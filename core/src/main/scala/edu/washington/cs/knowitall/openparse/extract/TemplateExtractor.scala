@@ -15,13 +15,13 @@ import Template.group
   * the template can add a "to be" and/or preposition word around
   * the relation.  It can also change the preposition word to another
   * preposition (i.e., switch "of" to "in").
-  * 
+  *
   * @author Michael Schmitz
   */
 class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], conf: Double)
 extends GeneralExtractor(pattern, conf) {
   override def extract(dgraph: DependencyGraph)(implicit
-    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Option[DetailedExtraction],
+    buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Iterable[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
 
     val extractions = super.extractWithMatches(dgraph)
@@ -71,7 +71,7 @@ case class Template(template: String, be: Boolean) {
 
     // pull out the modals because they must preceed the prefix
     // also include "to"
-    val modals = extr.rel.nodes.filter(node => (node.postag startsWith "MD") || 
+    val modals = extr.rel.nodes.filter(node => (node.postag startsWith "MD") ||
         (node.postag == "TO"))
 
     // horrible escape is required.  See JavaDoc for Match.replaceAll

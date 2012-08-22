@@ -414,7 +414,7 @@ object OpenParseGui extends SimpleSwingApplication {
           List(expandMenuItem("Expand Argument", (dgraph: DependencyGraph, node: DependencyNode)=>
             Extraction.expandArgument(dgraph, node, Set())),
           expandMenuItem("Expand Relation", (dgraph: DependencyGraph, node: DependencyNode)=>
-            Extraction.expandRelation(dgraph, node, Set()).nodes))
+            Extraction.expandRelation(dgraph, node, Set()).head.nodes))
 
         val parserMutex = new ButtonGroup(parserOptions: _*)
         val expandMutex = new ButtonGroup(expandOptions: _*)
@@ -618,7 +618,7 @@ object OpenParseGui extends SimpleSwingApplication {
 
     val nodeStyle = filledNodes
     val edgeStyle = (solidEdges zip Stream.continually("style=filled")) ++
-    ((dgraph.graph.edges -- solidEdges) zip Stream.continually("style=dotted,color=gray"))
+    ((dgraph.graph.edges.toSet -- solidEdges.toSet) zip Stream.continually("style=dotted,color=gray"))
 
     dgraph.dot(title, nodeStyle.toMap, edgeStyle.toMap)
   }

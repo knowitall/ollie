@@ -8,7 +8,7 @@ import edu.washington.cs.knowitall.collection.immutable.graph.Direction
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 
-/** A collection of helper methods for expanding a node in a graph 
+/** A collection of helper methods for expanding a node in a graph
   * and/or sentence according to some metric. */
 object GraphExpansions {
   def neighborsUntil(graph: DependencyGraph, node: DependencyNode, inferiors: List[DependencyNode], until: Set[DependencyNode]): SortedSet[DependencyNode] = {
@@ -89,12 +89,14 @@ object GraphExpansions {
       case _ => false
     })
 
-    val components = across.flatMap { start =>
+    across.flatMap { start =>
       // get inferiors without passing back to node
       val inferiors = graph.graph.inferiors(start,
         (e: Graph.Edge[DependencyNode]) =>
-          // make sure we don't cycle out of the component
-          e.dest != node &&
+          // don't cross a conjunction that goes back an across node
+          !((e.label startsWith "conj") && (across contains e.dest)) &&
+            // make sure we don't cycle out of the component
+            e.dest != node &&
             // make sure we don't descend into another component
             // i.e. "John M. Synge who came to us with his play direct
             // from the Aran Islands , where the material for most of
@@ -104,11 +106,8 @@ object GraphExpansions {
       // make sure none of the without nodes are in the component
       if (without.forall(!inferiors.contains(_))) {
         val span = Interval.span(inferiors.map(_.indices).toSeq)
-        Some(graph.nodes.filter(node => span.superset(node.indices)))
-      }
-      else None
+        Some(graph.nodes.filter(node => span.superset(node.indices)).toList)
+      } else None
     }
-
-    components.flatten.toList
   }
 }
