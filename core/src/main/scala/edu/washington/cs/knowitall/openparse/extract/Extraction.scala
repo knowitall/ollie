@@ -14,7 +14,7 @@ import edu.washington.cs.knowitall.tool.stem.Stemmer
 import Extraction.{Part, ClausalComponent, AdverbialModifier}
 
 /** A representation of an OpenParse extraction.
-  * 
+  *
   * @author Michael Schmitz
   */
 abstract class Extraction(val relLemmas: Set[String]) {
@@ -56,7 +56,7 @@ class SimpleExtraction(
 }
 
 /** A more informative representation of an OpenParse extraction.
-  * 
+  *
   * @author Michael Schmitz
   */
 class DetailedExtraction(
@@ -92,12 +92,12 @@ object DetailedExtraction {
 
 
 /** Includes logic for expanding relations and arguments.
-  * 
+  *
   * @author Michael Schmitz
   */
 object Extraction {
   /** Representation of a part of an extraction.
-    * 
+    *
     * @author Michael Schmitz
     */
   case class Part(nodes: SortedSet[DependencyNode], text: String) {
@@ -210,12 +210,15 @@ object Extraction {
     if (dobjCount == 1) attachLabels += "dobj"
     if (iobjCount == 1) attachLabels += "iobj"
 
+    /*
+     * acomp: "She looks beautiful on Thursday."
+     */
     def pred(edge: Graph.Edge[DependencyNode]) =
       // make sure we don't re-add the relation node
       edge.dest != node && (
           // attach adverbs
           edge.label == "advmod" && edge.dest.postag == "RB" ||
-          edge.label == "aux" || edge.label == "cop" || edge.label == "auxpass" || edge.label == "prt")
+          edge.label == "aux" || edge.label == "cop" || edge.label == "auxpass" || edge.label == "prt" || edge.label == "acomp")
 
     // expand across noun label for relational nouns
     // i.e. "He is the *best* president of the USA"
@@ -233,7 +236,7 @@ object Extraction {
       // noun labels.
       ((augment(graph, node, until, pred).map(_--expandNounLabels)) :+
       // add subcomponents
-        SortedSet[DependencyNode]() ++ 
+        SortedSet[DependencyNode]() ++
         components(graph, node, attachLabels, until, true)).filterNot { c =>
           // don't add empty components
           c.isEmpty ||
