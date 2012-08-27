@@ -14,6 +14,7 @@ import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
 import java.text.DecimalFormat
 import java.net.URL
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 
 /** An entry point to use Ollie on the command line.
   */
@@ -29,6 +30,7 @@ object OllieCli {
 
     def maltModelFile: Option[File]
 
+    def parseInput: Boolean
     def splitInput: Boolean
     def tabbed: Boolean
     def parallel: Boolean
@@ -48,6 +50,7 @@ object OllieCli {
 
       var maltModelFile: Option[File] = None
 
+      var parseInput: Boolean = true
       var splitInput: Boolean = false
       var tabbed: Boolean = false
       var parallel: Boolean = false
@@ -86,6 +89,7 @@ object OllieCli {
 
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
       opt("s", "split", "split text into sentences", { settings.splitInput = true })
+      opt("dependencies", "input is serialized dependency graphs (don't parse)", { settings.parseInput = false })
       opt("tabbed", "output in TSV format", { settings.tabbed = true })
       opt("ignore-errors", "ignore errors", { settings.invincible = true })
       opt("usage", "this usage message", { settings.showUsage = true })
@@ -106,10 +110,13 @@ object OllieCli {
 
   def run(settings: Settings) = {
     System.err.println("Loading models...")
-    val parser = settings.maltModelFile match {
-      case None => new MaltParser()
-      case Some(file) => new MaltParser(file)
-    }
+    val parser =
+      if (settings.parseInput) {
+        settings.maltModelFile match {
+          case None => Some(new MaltParser())
+          case Some(file) => Some(new MaltParser(file))
+        }
+      } else None
 
     val configuration =
       new OpenParse.Configuration(
@@ -156,7 +163,8 @@ object OllieCli {
                 }
 
                 // parse the sentence
-                val graph = parser.dependencyGraph(sentence)
+                val graph =
+                  parser.map(_.dependencyGraph(sentence)).getOrElse(DependencyGraph.deserialize(sentence))
 
                 // extract sentence and compute confidence
                 val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.getConf(extr), extr))
