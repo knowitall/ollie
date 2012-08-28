@@ -1,7 +1,6 @@
 package edu.washington.cs.knowitall.openparse.extract
 
 import scala.collection.{SortedSet, Set}
-
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 import edu.washington.cs.knowitall.collection.immutable.graph.{Direction, Graph, DirectedEdge}
 import edu.washington.cs.knowitall.collection.immutable.Interval
@@ -10,8 +9,9 @@ import edu.washington.cs.knowitall.openparse.OpenParse
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import edu.washington.cs.knowitall.tool.stem.Stemmer
-
 import Extraction.{Part, ClausalComponent, AdverbialModifier}
+import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
 
 /** A representation of an OpenParse extraction.
   *

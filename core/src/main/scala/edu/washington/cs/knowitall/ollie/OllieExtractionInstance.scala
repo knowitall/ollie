@@ -7,7 +7,7 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
   */
 class OllieExtractionInstance(
     /** The associated extraction. */
-    val extr: OllieExtraction, 
+    val extr: OllieExtraction,
     /** The associated sentence. */
     val sent: DependencyGraph) {
 
@@ -17,6 +17,9 @@ class OllieExtractionInstance(
     Seq(serializedExtr, serializedGraph).mkString("_&&&_")
   }
 }
+
+class DetailedOllieExtractionInstance(override val extr: DetailedOllieExtraction, sent: DependencyGraph)
+extends OllieExtractionInstance(extr, sent)
 
 object OllieExtractionInstance {
   def deserialize(string: String): Option[OllieExtractionInstance] = {

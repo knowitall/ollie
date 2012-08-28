@@ -22,6 +22,8 @@ class OllieIndependentConfFunction(
     this(featureSet, weights, weights("Intercept"))
   }
 
+  def apply(extraction: OllieExtractionInstance): Double = getConf(extraction)
+
   def getConf(extraction: OllieExtractionInstance): Double = {
     var z = this.featureSet.featureNames.map { name =>
       featureWeights.get(name) match {

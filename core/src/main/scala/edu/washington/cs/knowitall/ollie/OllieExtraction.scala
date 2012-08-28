@@ -2,11 +2,12 @@ package edu.washington.cs.knowitall.ollie
 
 import scala.Array.canBuildFrom
 import scala.collection.breakOut
-
 import OllieExtraction.serializePart
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
+import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
 
 /** A base representation for additional context around an extraction. */
 sealed abstract class Context {
@@ -19,13 +20,13 @@ sealed abstract class Context {
   */
 class EnablingCondition(
     /** The enabling condition word, i.e. "if" */
-    val prefix: String, 
+    val prefix: String,
     /** The rest of the enabling condition, i.e. "it's raining" */
-    val phrase: String, 
+    val phrase: String,
     /** The token interval of the enabling condition */
     override val interval: Interval) extends Context {
   override def text = prefix + " " + phrase
-  
+
   def serialize: String = Seq(prefix, phrase, interval.start.toString, interval.last.toString).map(_.replaceAll("_", "_UNSC_")).mkString("_")
 }
 
@@ -44,15 +45,15 @@ object EnablingCondition {
   */
 class Attribution(
     /** The argument of the attribution, i.e. "Obama" */
-    val arg: String, 
+    val arg: String,
     /** The token interval of the argument of the attribution */
-    val argInterval: Interval, 
+    val argInterval: Interval,
     /** The relation of the attribution, i.e. "believes" */
-    val rel: String, 
+    val rel: String,
     /** The token interval of the relation of the attribution */
     override val interval: Interval) extends Context {
   override def text = arg + " " + rel
-  
+
   def serialize: String = {
     val fields = Seq(arg, rel, argInterval.start.toString, argInterval.last.toString, interval.start.toString, interval.last.toString)
     fields.map(_.replaceAll("_", "_UNSC_")).mkString("_")
@@ -67,18 +68,18 @@ object Attribution {
     }
     val argInterval = Interval.closed(argIntervalStart.toInt, argIntervalLast.toInt)
     val relInterval = Interval.closed(relIntervalStart.toInt, relIntervalLast.toInt)
-    
+
     new Attribution(arg, argInterval, rel, relInterval)
   }
 }
 
 /** A representation of an Ollie extraction, i.e. we could get the following
   * extraction from the example sentence.
-  * 
+  *
   * {{{
   * When I'm dreaming David Bowie sings that Ziggy sucked up into his mind.
-  * (Ziggy, sucked up, into his mind)[attribution = "David Bowie") 
-  * }}} 
+  * (Ziggy, sucked up, into his mind)[attribution = "David Bowie")
+  * }}}
   */
 class OllieExtraction(
   /** The first argument (subject) of the extraction, i.e. "Ziggy" */
@@ -95,7 +96,7 @@ class OllieExtraction(
   val attribution: Option[Attribution]) {
 
   import OllieExtraction.{serializePart, deserializePart}
-  
+
   def serialize: String = {
     val enablerString = enabler match {
       case Some(enablingCondition) => enablingCondition.serialize
@@ -105,7 +106,7 @@ class OllieExtraction(
       case Some(attr) => attr.serialize
       case None => "None"
     }
-    
+
     val fieldStrings = Seq(arg1, rel, arg2).map(serializePart(_)) ++ Seq("%.05f".format(openparseConfidence), enablerString, attrString)
     fieldStrings.map(_.replaceAll("\t", "_TAB_")).mkString("\t")
   }
@@ -116,7 +117,7 @@ class OllieExtraction(
 
   override def toString = {
     val extentions = Iterable(
-        enabler.map("enabler="+_.text), 
+        enabler.map("enabler="+_.text),
         attribution.map("attrib="+_.text)).flatten match {
       case Nil => ""
       case list => list.mkString("[", ";", "]")
@@ -124,6 +125,17 @@ class OllieExtraction(
     "(%s; %s; %s)".format(arg1.text, rel.text, arg2.text) + extentions
   }
 }
+
+class DetailedOllieExtraction(
+  arg1: Part,
+  rel: Part,
+  arg2: Part,
+  override val openparseConfidence: Double,
+  enabler: Option[EnablingCondition],
+  attribution: Option[Attribution],
+  val `match`: Match[DependencyNode],
+  val extractor: PatternExtractor)
+extends OllieExtraction(arg1, rel, arg2, openparseConfidence, enabler, attribution)
 
 object OllieExtraction {
   def tabDelimitedColumns = Seq("Arg1Part", "RelPart", "Arg2Part", "Confidence", "Enabler", "Attribution").mkString("\t")
@@ -150,13 +162,13 @@ object OllieExtraction {
     val serializedNodes = part.nodes.iterator.map(_.serialize).map(_.replaceAll("~", "_TILDE_")).mkString("~")
     Seq(part.text, serializedNodes).map(_.replaceAll("___", "_THREE_")).mkString("___")
   }
-  
+
   def deserializePart(string: String): Part = {
     val Array(partText, partNodes) = try (string.split("___").map(_.replaceAll("_THREE_", "___")))
     catch {
       case e => throw new RuntimeException("could not deserialize Extraction.Part: " + string, e);
     }
-    
+
     val nodesSortedSet: scala.collection.SortedSet[DependencyNode] = try (partNodes.split("~").map(_.replaceAll("_TILDE_", "~")).map(DependencyNode.deserialize(_))(breakOut))
     catch {
       case e => throw new RuntimeException("could not deserialize Extraction.Part: " + string, e);
