@@ -16,7 +16,7 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
   * with context.  The constructor takes an OpenParse instance.  Ollie extends
   * OpenParse's extractions with enabling conditions and attributions.  There
   * is also a trained confidence function for [[OllieExtractions]].
-  * 
+  *
   * @author Michael Schmitz
   */
 class Ollie(val openparse: OpenParse) {
@@ -37,6 +37,21 @@ class Ollie(val openparse: OpenParse) {
     } yield new OllieExtraction(extr.arg1, extr.rel, extr.arg2, conf, enabler, attribution)
 
     extrs.map(new OllieExtractionInstance(_, dgraph))
+  }
+
+  /**
+  * primary method for getting extractions
+  */
+  def extractDetailed(dgraph: DependencyGraph): Iterable[DetailedOllieExtractionInstance] = {
+    val openparseExtrs = openparse.extract(dgraph)
+
+    val extrs = for {
+      (conf, extr) <- openparseExtrs
+      val enabler = enablingAdverbialClauseHelper(extr)
+      val attribution = attribClausalComponentHelper(extr)
+    } yield new DetailedOllieExtraction(extr.arg1, extr.rel, extr.arg2, conf, enabler, attribution, extr.`match`, extr.extractor)
+
+    extrs.map(new DetailedOllieExtractionInstance(_, dgraph))
   }
 
   /** Identify enabling condition, i.e. "if it's raining..." */
