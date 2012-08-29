@@ -190,9 +190,9 @@ object Extraction {
       else expansion ++ components(graph, node, Set("rcmod", "infmod", "partmod", "ref", "prepc_of"), until, false).flatten
     }
 
-    // expand over any conjunction/disjunction edges
-    val nodes = graph.graph.connected(node, (dedge: DirectedEdge[_]) =>
-      dedge.edge.label == "conj_and" || dedge.edge.label == "conj_or")
+    // expand over any conjunction/disjunction edges to non-verbs
+    val nodes = graph.graph.connected(node, (dedge: DirectedEdge[DependencyNode]) =>
+      !(dedge.end.postag startsWith "VB") && (dedge.edge.label == "conj_and" || dedge.edge.label == "conj_or"))
 
     if (nodes.size == 1) {
       // there are no conjunctive edges
@@ -236,7 +236,9 @@ object Extraction {
 
     // expand across noun label for relational nouns
     // i.e. "He is the *best* president of the USA"
-    val expandNounLabels = expand(graph, node, until, argumentExpansionLabels)
+    val expandNounLabels =
+      if (node.postag startsWith "NN") expand(graph, node, until, argumentExpansionLabels)
+      else SortedSet[DependencyNode](node)
 
     // modifiers on copulars are stored on a different node
     // i.e. in "he *will* be the president"
