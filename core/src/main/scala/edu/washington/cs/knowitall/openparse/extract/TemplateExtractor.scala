@@ -1,15 +1,13 @@
 package edu.washington.cs.knowitall.openparse.extract
 
 import scala.util.matching.Regex
-
 import org.slf4j.LoggerFactory
-
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
-
 import Template.group
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
 /** An extractor that is specified by a pattern and a template.
   * the template can add a "to be" and/or preposition word around
@@ -64,7 +62,7 @@ case class Template(template: String, be: Boolean) {
       case _ => m.groups(name).text
     }
 
-    val prefix = if (be && ((extr.rel.nodes -- m.bipath.nodes) count (_.postag.startsWith("VB"))) == 0) {
+    val prefix = if (be && !(extr.rel.nodes exists (n => n.postag.startsWith("VB") && n.lemma == "be"))) {
       "be"
     }
     else ""
