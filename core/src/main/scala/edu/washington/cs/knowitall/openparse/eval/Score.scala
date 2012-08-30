@@ -95,10 +95,37 @@ object Score {
   }
 
   def score(lines: Iterator[String], gold: Map[String, Boolean], confidenceThreshold: Double, prompt: Boolean) = {
+    def stringDistance(s1: String, s2: String): Int = {
+      def minimum(i1: Int, i2: Int, i3: Int) = math.min(math.min(i1, i2), i3)
+   
+      val dist = Array.ofDim[Int](s1.length + 1, s2.length + 1)
+   
+      for (idx <- 0 to s1.length) dist(idx)(0) = idx
+      for (jdx <- 0 to s2.length) dist(0)(jdx) = jdx
+   
+      for (idx <- 1 to s1.length; jdx <- 1 to s2.length)
+        dist(idx)(jdx) = minimum (
+          dist(idx-1)(jdx  ) + 1,
+          dist(idx  )(jdx-1) + 1,
+          dist(idx-1)(jdx-1) + (if (s1(idx-1) == s2(jdx-1)) 0 else 1)
+        )
+      dist(s1.length)(s2.length)
+    }
+
+    def suggest(extr: String) = {
+      for {
+        k <- gold.keys;
+        if stringDistance(k, extr) < extr.length / 2
+      } yield ((k, gold(k)))
+    }
+
     def promptScore(index: Int, extr: String, confidence: String, rest: Seq[Any]): Option[Boolean] = {
       println()
       System.out.println("Please score " + index + ": " + confidence + ":" + extr + ". (1/y/0/n/skip) ")
       if (rest.length > 0) println(rest.mkString("\t"))
+      suggest(extr) foreach { case (k, v) =>
+        println("suggest: " + v + "\t" + k)
+      }
       readLine match {
         case "0" | "y" => Some(false)
         case "1" | "n" => Some(true)
