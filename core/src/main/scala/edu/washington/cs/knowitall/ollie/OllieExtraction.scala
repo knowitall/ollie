@@ -8,6 +8,7 @@ import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
 import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
+import edu.washington.cs.knowitall.common.HashCodeHelper
 
 /** A base representation for additional context around an extraction. */
 sealed abstract class Context {
@@ -18,7 +19,7 @@ sealed abstract class Context {
 /** A representation for an enabling condition.
   * An example of an enabling condition is "if it's raining".
   */
-class EnablingCondition(
+case class EnablingCondition(
     /** The enabling condition word, i.e. "if" */
     val prefix: String,
     /** The rest of the enabling condition, i.e. "it's raining" */
@@ -43,7 +44,7 @@ object EnablingCondition {
 /** A representation for an attribution.
   * An example of an is "Obama believes".
   */
-class Attribution(
+case class Attribution(
     /** The argument of the attribution, i.e. "Obama" */
     val arg: String,
     /** The token interval of the argument of the attribution */
@@ -97,7 +98,19 @@ class OllieExtraction(
 
   import OllieExtraction.{serializePart, deserializePart}
 
-  def serialize: String = {
+  override def equals(that: Any) = that match {
+    case that: OllieExtraction =>
+      this.arg1 == that.arg1 &&
+      this.rel == that.rel &&
+      this.arg2 == that.arg2 &&
+      this.enabler == that.enabler &&
+      this.attribution == that.attribution &&
+      this.openparseConfidence == that.openparseConfidence
+    case _ => false
+  }
+  override def hashCode = HashCodeHelper(this.arg1, this.rel, this.arg2, this.enabler, this.attribution, this.openparseConfidence)
+
+  def tabSerialize: String = {
     val enablerString = enabler match {
       case Some(enablingCondition) => enablingCondition.serialize
       case None => "None"
@@ -140,7 +153,7 @@ extends OllieExtraction(arg1, rel, arg2, openparseConfidence, enabler, attributi
 object OllieExtraction {
   def tabDelimitedColumns = Seq("Arg1Part", "RelPart", "Arg2Part", "Confidence", "Enabler", "Attribution").mkString("\t")
 
-  def deserialize(s: String): Option[OllieExtraction] = {
+  def tabDeserialize(s: String): Option[OllieExtraction] = {
     def error = { System.err.println("Couldn't deserialize: %s".format(s)); None }
     s.split("\t") match {
       case Array(arg1Part, relPart, arg2Part, openparseConfString, enablerString, attrString, _*) => {
@@ -159,20 +172,22 @@ object OllieExtraction {
   }
 
   def serializePart(part: Part): String = {
-    val serializedNodes = part.nodes.iterator.map(_.serialize).map(_.replaceAll("~", "_TILDE_")).mkString("~")
-    Seq(part.text, serializedNodes).map(_.replaceAll("___", "_THREE_")).mkString("___")
+    val serializedNodes = part.nodes.iterator.map(_.serialize).mkString("; ")
+    Iterable(part.text, serializedNodes).mkString(" ;;; ")
   }
 
   def deserializePart(string: String): Part = {
-    val Array(partText, partNodes) = try (string.split("___").map(_.replaceAll("_THREE_", "___")))
-    catch {
-      case e => throw new RuntimeException("could not deserialize Extraction.Part: " + string, e);
-    }
+    val Array(partText, partNodes) = try (string.split("\\s*;;;\\s*"))
+      catch {
+        case e => throw new RuntimeException("could not deserialize Extraction.Part: " + string, e);
+      }
 
-    val nodesSortedSet: scala.collection.SortedSet[DependencyNode] = try (partNodes.split("~").map(_.replaceAll("_TILDE_", "~")).map(DependencyNode.deserialize(_))(breakOut))
-    catch {
-      case e => throw new RuntimeException("could not deserialize Extraction.Part: " + string, e);
-    }
+    val nodesSortedSet: scala.collection.SortedSet[DependencyNode] =
+      try (partNodes.split("\\s*;\\s*").map(DependencyNode.deserialize(_))(breakOut))
+      catch {
+        case e => throw new RuntimeException("could not deserialize Extraction.Part: " + string, e);
+      }
+
     new Part(nodesSortedSet, partText)
   }
 }
