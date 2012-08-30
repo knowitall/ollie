@@ -26,10 +26,8 @@ class OllieIndependentConfFunction(
 
   def getConf(extraction: OllieExtractionInstance): Double = {
     var z = this.featureSet.featureNames.map { name =>
-      featureWeights.get(name) match {
-        case Some(weight) => weight * featureSet.featureMap(name).apply(extraction)
-        case None => 0.0
-      }
+      val weight = featureWeights(name)
+      weight * featureSet.featureMap(name).apply(extraction)
     } sum
 
     1.0 / (1.0 + math.exp(-(z + this.intercept)))
@@ -40,7 +38,7 @@ object OllieIndependentConfFunction {
   val logger = LoggerFactory.getLogger(classOf[OllieIndependentConfFunction])
 
   def loadDefaultClassifier(): OllieIndependentConfFunction = {
-    val featureSet = FeatureSet(OllieExtractionFeatures.getFeatures())
+    val featureSet = FeatureSet(OllieFeatureSet.getFeatures())
 
     val resourceUrl = Option(this.getClass.getResource("default-classifier.txt")).getOrElse {
       throw new IllegalArgumentException("Could not load confidence function resource.")

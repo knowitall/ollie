@@ -14,7 +14,7 @@ import edu.washington.cs.knowitall.tool.stem.Stemmer
 import scalaz.Scalaz._
 
 /** Features defined for OllieExtractionInstances */
-object OllieExtractionFeatures {
+object OllieFeatureSet {
   implicit def boolToDouble(bool: Boolean) = if (bool) 1.0 else 0.0
 
   val weirdPunct = Pattern.compile(".*[:!@#$%^&*{};`<>]+.*")

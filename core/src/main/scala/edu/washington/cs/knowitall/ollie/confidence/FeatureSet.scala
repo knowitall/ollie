@@ -13,18 +13,11 @@ class FeatureSet[T](val featureMap: Map[String, T => Double]) {
   def numFeatures(): Int =
     featureNames.size
 
-  def getFeatureVector(example: T): Iterable[Option[Double]] =
+  def vectorize(example: T): Iterable[Double] =
     featureNames.map({ name =>
       val featureFunction = featureMap(name)
-      val featureValue = featureFunction(example)
-      if (featureValue >= 0) Some(featureValue) else None
+      featureFunction(example)
     }).toList
-
-  def getPrintableFeatureVector(example: T): Iterable[String] =
-    getFeatureVector(example).map({ opt =>
-      if (opt.isDefined) opt.get.toString()
-      else "None"
-    })
 }
 
 object FeatureSet {
