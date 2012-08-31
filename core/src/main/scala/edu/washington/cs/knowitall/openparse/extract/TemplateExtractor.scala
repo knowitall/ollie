@@ -24,7 +24,7 @@ extends GeneralExtractor(pattern, conf) {
 
     val extractions = super.extractWithMatches(dgraph)
 
-    extractions.map{ case (extr, m) => template(extr, m) }
+    extractions.map{ case (extr, m) => template(extr, dgraph, m) }
   }
 }
 
@@ -54,7 +54,7 @@ case object TemplateExtractor extends PatternExtractorType {
 
 case class Template(template: String, be: Boolean) {
   import Template._
-  def apply(extr: DetailedExtraction, m: Match[DependencyNode]) = {
+  def apply(extr: DetailedExtraction, dgraph: DependencyGraph, m: Match[DependencyNode]) = {
     def matchGroup(name: String): String = name match {
       case "rel" => extr.relText
       case "arg1" => extr.arg1Text
@@ -62,7 +62,13 @@ case class Template(template: String, be: Boolean) {
       case _ => m.groups(name).text
     }
 
-    val prefix = if (be && !(extr.rel.nodes exists (n => n.postag.startsWith("VB") && n.lemma == "be"))) {
+    // don't add the be if we attach a verb using a cop, aux, or auxpass edge.
+    // there are a lot of examples where adding "be" makes it very messy
+    //     "She has practiced law, with Foo, Bar."
+    //     don't want: (Bar; be has practiced with; Foo)
+    // This is somewhat of a hack that makes bad patterns look less bad.
+    val prefix = if (be &&
+        !(dgraph.graph.neighbors(m.nodeGroups("rel").node, dedge => (dedge.edge.label startsWith "aux") || dedge.edge.label == "cop") filter (_.postag startsWith "VB") exists (neighbor => extr.rel.nodes contains neighbor))) {
       "be"
     }
     else ""

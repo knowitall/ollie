@@ -238,7 +238,7 @@ object Extraction {
     // i.e. "He is the *best* president of the USA"
     val expandNounLabels =
       if (node.postag startsWith "NN") expand(graph, node, until, argumentExpansionLabels)
-      else SortedSet[DependencyNode](node)
+      else expand(graph, node, until, Set("det", "amod", "num", "number", "nn", "poss", "quantmod", "neg"))
 
     // modifiers on copulars are stored on a different node
     // i.e. in "he *will* be the president"
