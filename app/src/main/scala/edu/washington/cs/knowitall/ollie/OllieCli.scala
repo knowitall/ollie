@@ -33,6 +33,7 @@ object OllieCli {
     def splitInput: Boolean
     def tabbed: Boolean
     def serialized: Boolean
+    def singleColumn: Boolean
     def parallel: Boolean
     def invincible: Boolean
   }
@@ -54,6 +55,7 @@ object OllieCli {
       var splitInput: Boolean = false
       var tabbed: Boolean = false
       var serialized: Boolean = false
+      var singleColumn: Boolean = false
       var parallel: Boolean = false
       var invincible: Boolean = false
 
@@ -93,6 +95,7 @@ object OllieCli {
       opt("dependencies", "input is serialized dependency graphs (don't parse)", { settings.parseInput = false })
       opt("tabbed", "output in TSV format", { settings.tabbed = true })
       opt("serialized", "output in serialized format", { settings.serialized = true })
+      opt("single-column", "output extractions in a single column", { settings.singleColumn = true })
       opt("ignore-errors", "ignore errors", { settings.invincible = true })
       opt("usage", "this usage message", { settings.showUsage = true })
     }
@@ -143,7 +146,13 @@ object OllieCli {
         case Some(output) => new PrintWriter(output, "UTF-8")
         case None => new PrintWriter(System.out)
       }) { writer =>
-        if (settings.tabbed) writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
+        if (settings.tabbed) {
+          if (settings.singleColumn)
+            writer.println(Iterable("confidence", "extraction", "enabler", "attribution", "dependencies", "text").mkString("\t"))
+          else
+            writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
+        }
+
         val ns = Timing.time {
           // print prompt if standard input
           if (!settings.outputFile.isDefined) {
@@ -177,7 +186,7 @@ object OllieCli {
                   case Nil =>
                   case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach {
                     case (conf, e) =>
-                      if (settings.tabbed) {
+                      if (settings.tabbed && !settings.singleColumn) {
                         writer.println(Iterable(confFormatter.format(conf),
                           e.extr.arg1.text,
                           e.extr.rel.text,
@@ -188,6 +197,13 @@ object OllieCli {
                           e.sent.serialize).mkString("\t"))
                       } else if (settings.serialized) {
                         writer.println(confFormatter.format(conf) + "\t" + e.extr.toString + "\t" + e.tabSerialize)
+                      } else if (settings.tabbed && settings.singleColumn) {
+                        writer.println(Iterable(confFormatter.format(conf),
+                          e.extr.toString,
+                          e.extr.enabler.map(_.text),
+                          e.extr.attribution.map(_.text),
+                          e.sent.text,
+                          e.sent.serialize).mkString("\t"))
                       } else {
                         writer.println(confFormatter.format(conf) + ": " + e.extr)
                       }

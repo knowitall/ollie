@@ -97,12 +97,26 @@ with:
 By default, this application will look for graphviz's `dot` program at
 `/usr/bin/dot`.  You can specify a location with the `--graphviz` parameter.
 
-You can try out your own models with `Options->Load Model...`.  Your model may
-have one or more patterns in it.  If you want to see pattern matches instead of
-triple extractions, you can choose to show the raw match with `Options->Raw
-Matches`.  This will allow you to use patterns that don't capture an arg1, rel,
-and arg2.  To see an example model, look at `openparse.model` in
-`src/main/resources`.
+You can try out your own models with `Options->Load Model...`.  To see an
+example model, look at `openparse.model` in `src/main/resources`. Your model
+may have one or more patterns in it.  If you want to see pattern matches
+(without node expansion) instead of triple extractions, you can choose to show
+the raw match with `Options->Raw Matches`.  This will allow you to use patterns
+that do not capture an arg1, rel, and arg2.  
+
+## Parsers
+
+Ollie is packaged to use Malt Parser, one of the fastest dependency parsers
+available.  You will need the model file (`engmalt.linear-1.7.mco`) in the
+directory the application is run from or you will need to specify its location
+with the `--malt-model` parameter.  Malt Parser models are available online.
+
+  http://www.maltparser.org/mco/english_parser/engmalt.html
+
+Ollie works with any other parser in the `nlptools` project.  For example, it
+is easy to swap out Malt for Stanford's parser.  Stanford's parser is not an
+option by default because of licensing conflicts, but it was used for some
+of the results in the paper.
 
 ## Using Eclipse
 
@@ -128,6 +142,12 @@ parser supplied by the [nlptools](https://github.com/knowitall/nlptools)
 project.  The source for for `ollie-app` is an excellent example of a project
 using `ollie-core` as a dependency.  `ollie-app` supplies a parser from
 [nlptools](https://github.com/knowitall/nlptools).
+
+## Concurrency
+
+When operating at web scale, parallelism is essential.  While the base Ollie
+extractor is immutable and thread safe, the parser may not be thread safe.  I
+do not know whether Malt parser is thread safe.
 
 ## Contact
 

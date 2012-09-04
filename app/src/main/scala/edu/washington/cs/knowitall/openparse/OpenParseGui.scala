@@ -1,101 +1,86 @@
 package edu.washington.cs.knowitall.openparse
 
-import scopt.OptionParser
+import java.awt.Cursor
+import java.awt.Dimension
+import java.io.File
+import java.net.URL
+
+import scala.collection.SortedSet
 import scala.io.Source
-import scala.util.control.Exception._
+import scala.swing.Action
+import scala.swing.BorderPanel
+import scala.swing.BorderPanel.Position.Center
+import scala.swing.BorderPanel.Position.East
+import scala.swing.BorderPanel.Position.North
+import scala.swing.BoxPanel
+import scala.swing.Button
+import scala.swing.ButtonGroup
+import scala.swing.CheckMenuItem
+import scala.swing.Component
+import scala.swing.Dialog
+import scala.swing.FileChooser
+import scala.swing.FileChooser.Result
+import scala.swing.Label
+import scala.swing.ListView
+import scala.swing.MainFrame
+import scala.swing.Menu
+import scala.swing.MenuBar
+import scala.swing.MenuItem
+import scala.swing.Orientation
+import scala.swing.RadioMenuItem
+import scala.swing.ScrollPane
+import scala.swing.Separator
+import scala.swing.SimpleSwingApplication
+import scala.swing.Slider
+import scala.swing.Swing
+import scala.swing.TextField
+import scala.swing.event.ButtonClicked
+import scala.swing.event.SelectionChanged
+import scala.swing.event.ValueChanged
+import scala.util.control.Exception.catching
+
 import org.apache.batik.swing.JSVGCanvas
 import org.apache.batik.swing.svg.JSVGComponent
-import edu.washington.cs.knowitall.common.Resource._
-import edu.washington.cs.knowitall.common.Timing._
+
+import edu.washington.cs.knowitall.common.Resource.using
+import edu.washington.cs.knowitall.common.Timing.Seconds
+import edu.washington.cs.knowitall.common.Timing.time
 import edu.washington.cs.knowitall.openparse.eval.Score
-import swing._
-import swing.event._
-import java.io.File
-import edu.washington.cs.knowitall.tool.parse._
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.collection.immutable.graph.Graph
-import edu.washington.cs.knowitall.openparse.extract._
-import edu.washington.cs.knowitall.openparse.OpenParse.implicitBuildExtraction
-import edu.washington.cs.knowitall.openparse.OpenParse.implicitValidMatch
-import event.Key._
-import java.awt.{ Dimension, Graphics2D, Graphics, Image, Rectangle }
-import java.awt.{ Color => AWTColor }
-import java.awt.event.{ ActionEvent }
-import java.awt.Cursor
-import javax.swing.{ Timer => SwingTimer, AbstractAction }
+import edu.washington.cs.knowitall.openparse.extract.Extraction
 import edu.washington.cs.knowitall.openparse.extract.PatternExtractorType
-import java.io.IOException
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
-import edu.washington.cs.knowitall.collection.immutable.graph.DirectedEdge
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
-import java.net.URL
-import java.io.InputStream
-import java.io.OutputStream
-import java.io.PrintWriter
-import scala.collection.SortedSet
-
-sealed abstract class Sentence
-object Sentence {
-  case class Text(text: String) extends Sentence {
-    override def toString = text
-  }
-  case class Graph(dgraph: DependencyGraph) extends Sentence {
-    override def toString = dgraph.serialize
-  }
-
-  def apply(string: String): Sentence = {
-    import DependencyGraph._
-
-    catching(classOf[SerializationException]).opt {
-      deserialize(string)
-    } match {
-      case Some(dgraph) => Graph(dgraph)
-      case None => Text(string)
-    }
-  }
-}
-
-object Parser extends Enumeration {
-  type Parser = Value
-
-  val Stanford = Value("Stanford")
-  val MaltL = Value("Malt (Linear)")
-
-  def default = MaltL
-
-  def load(parserType: Parser): DependencyParser = parserType match {
-    case Parser.Stanford => throw new IllegalArgumentException("Stanford parser not supported due to licensing restrictions.")
-    case Parser.MaltL => new MaltParser()
-  }
-}
-import Parser._
+import edu.washington.cs.knowitall.openparse.gui.Dot
+import edu.washington.cs.knowitall.openparse.gui.ExtractionEntry
+import edu.washington.cs.knowitall.openparse.gui.Parser
+import edu.washington.cs.knowitall.openparse.gui.Parser.Parser
+import edu.washington.cs.knowitall.openparse.gui.Sentence
+import edu.washington.cs.knowitall.tool.parse.DependencyParser
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.SerializationException
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.deserialize
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
+import scopt.OptionParser
 
 object OpenParseGui extends SimpleSwingApplication {
+  /** Which parser we are using. */
   var parser: Option[DependencyParser] = None
+
+  /** Which extractor we are using. */
   var extractor: Option[OpenParse] = None
+
+  /** Which graph is presently being used. */
   var current: Option[DependencyGraph] = None
+
+  /** A gold set of annotations. */
   var gold: Map[String, Boolean] = Map.empty
+
+  /** Which sentences are associated with the slider bar. */
   var sentences: Seq[Sentence] = Seq.empty
+
+  /** The present sentence index. */
   var sentenceIndex = 0;
 
+  /** What to perform on a node click in the graph. */
   var nodeClickEvent: String=>Unit = (nodeText: String) => Unit
-
-  case class ExtractionEntry(confidence: Option[Double], `match`: Match[DependencyNode], nodes: Set[DependencyNode], extractor: PatternExtractor, string: String = "") {
-    def this(confidence: Double, extraction: DetailedExtraction) = this(Some(confidence), extraction.`match`, extraction.nodes.toSet, extraction.extractor, extraction.toString)
-
-    def edges = `match`.edges
-
-    private def goldString = {
-      gold.get(string) match {
-        case Some(true) => "+ "
-        case Some(false) => "- "
-        case None => ""
-      }
-    }
-
-    override def toString = goldString + confidence.map("%1.4f:" format _).getOrElse("") + string
-  }
 
   object Settings {
     var rawMatches = false
@@ -108,6 +93,7 @@ object OpenParseGui extends SimpleSwingApplication {
     def configuration = new OpenParse.Configuration(confidenceThreshold = this.confidenceThreshold, collapseGraph = false)
   }
 
+  object Elements {
     val scrollBar = new Slider() {
       orientation = Orientation.Horizontal
       value = 0
@@ -121,8 +107,7 @@ object OpenParseGui extends SimpleSwingApplication {
           min = 0
           max = sentences.size - 1
           this.enabled = true
-        }
-        else {
+        } else {
           value = 0
           min = 0
           max = 0
@@ -130,6 +115,44 @@ object OpenParseGui extends SimpleSwingApplication {
         }
       }
     }
+  }
+
+  override def main(args: Array[String]) = {
+    val parser = new OptionParser("openparse-gui") {
+      opt(Some("i"), "input", "<file>", "input file", { v: String => Settings.sentenceFile = Some(new File(v)) })
+      opt(Some("m"), "model", "<file>", "model file", { v: String => Settings.modelUrl = new File(v).toURI.toURL })
+      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", {
+        t: Double => Settings.confidenceThreshold = t
+      })
+      opt(Some("g"), "gold", "<gold set>", "gold set", { v: String => Settings.goldFile = Some(new File(v)) })
+      opt(None, "graphviz", "<file>", "path to graphviz", { v: String => Settings.graphvizFile = Some(new File(v)) })
+    }
+
+    if (parser.parse(args)) {
+      extractor = Some(OpenParse.fromModelUrl(Settings.modelUrl, Settings.configuration))
+
+      Settings.goldFile.foreach { goldFile =>
+        gold = Score.loadGoldSet(goldFile)
+      }
+
+      Settings.sentenceFile.foreach { sentenceFile => loadSentences(sentenceFile) }
+
+      super.main(args)
+    }
+  }
+
+  /** Helper to pop up a dialog to find a file. */
+  def choose(default: Option[File] = None): Option[File] = {
+    import FileChooser.Result
+
+    val chooser = new FileChooser
+    default.map(chooser.selectedFile = _)
+
+    chooser.showOpenDialog(null) match {
+      case Result.Approve => Option(chooser.selectedFile)
+      case Result.Cancel | Result.Error => None
+    }
+  }
 
   def loadParser(parserType: Parser): Unit =
     parser = Some(Parser.load(parserType))
@@ -182,105 +205,12 @@ object OpenParseGui extends SimpleSwingApplication {
     this.sentences = readSentences(file)
 
     sentenceIndex = 0
-    scrollBar.value = 0
-    scrollBar.adjust()
-  }
-
-  override def main(args: Array[String]) = {
-    val parser = new OptionParser("openparse-gui") {
-      opt(Some("i"), "input", "<file>", "input file", { v: String => Settings.sentenceFile = Some(new File(v)) })
-      opt(Some("m"), "model", "<file>", "model file", { v: String => Settings.modelUrl = new File(v).toURI.toURL })
-      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", {
-        t: Double => Settings.confidenceThreshold = t
-      })
-      opt(Some("g"), "gold", "<gold set>", "gold set", { v: String => Settings.goldFile = Some(new File(v)) })
-      opt(None, "graphviz", "<file>", "path to graphviz", { v: String => Settings.graphvizFile = Some(new File(v)) })
-    }
-
-    if (parser.parse(args)) {
-      extractor = Some(OpenParse.fromModelUrl(Settings.modelUrl, Settings.configuration))
-
-      Settings.goldFile.foreach { goldFile =>
-        gold = Score.loadGoldSet(goldFile)
-      }
-
-      Settings.sentenceFile.foreach { sentenceFile => loadSentences(sentenceFile) }
-
-      super.main(args)
-    }
-  }
-
-  def choose(default: Option[File] = None): Option[File] = {
-    import FileChooser.Result
-
-    val chooser = new FileChooser
-    default.map(chooser.selectedFile = _)
-
-    chooser.showOpenDialog(null) match {
-      case Result.Approve => Option(chooser.selectedFile)
-      case Result.Cancel | Result.Error => None
-    }
+    Elements.scrollBar.value = 0
+    Elements.scrollBar.adjust()
   }
 
   def loadExtractor(extractorType: Option[PatternExtractorType]) = {
     extractor = None
-  }
-
-  def dot2svg(dotgraph: String) = {
-    import sys.process.ProcessIO
-
-    trait InputHandler[A] {
-      def handle(a: A)(input: OutputStream)
-    }
-
-    trait OutputHandler[A] {
-      def handle(output: InputStream)
-      def value: A
-    }
-
-    val errHandler = new OutputHandler[String] {
-      var value: String = null
-
-      def handle(out: InputStream) {
-        value = Source.fromInputStream(out).mkString
-        out.close()
-      }
-    }
-
-    val inputHandler = new InputHandler[String] {
-      def handle(a: String)(os: OutputStream) {
-        val pw = new PrintWriter(os)
-        pw write a
-        pw.close()
-      }
-    }
-
-    val outputHandler = new OutputHandler[String] {
-      var value: String = null
-
-      def handle(out: InputStream) {
-        value = Source.fromInputStream(out).mkString
-        out.close()
-      }
-    }
-    val io = new ProcessIO(inputHandler.handle(dotgraph), outputHandler.handle, errHandler.handle, false)
-
-    val process = Settings.graphvizFile match {
-      case Some(file) => sys.process.Process(file.getAbsolutePath, Seq("-T", "svg"))
-      case None => sys.process.Process("dot", Seq("-T", "svg"))
-    }
-
-    val proc = try (process run io)
-    catch {
-      case e: IOException =>
-        Dialog.showMessage(message = e.getMessage() + ". You may need to install graphviz and add it to the PATH variable, or specify the path to the dot program using the '--graphviz' argument.", messageType = Dialog.Message.Error)
-        throw e
-    }
-
-    proc.exitValue() match {
-      case 0 => outputHandler.value
-      case x => sys.error("Dot exited with error code: " + x + " with output:\n" + errHandler.value)
-    }
   }
 
   def top: MainFrame = new MainFrame {
@@ -329,20 +259,20 @@ object OpenParseGui extends SimpleSwingApplication {
     this.defaultButton = button
 
     def updateDocument(dgraph: DependencyGraph, dot: String) {
-      val svg = dot2svg(dot)
-      val doc = svg2xml(svg)
+      val svg = Dot.dot2svg(Settings.graphvizFile, dot)
+      val doc = Dot.svg2xml(svg, nodeClickEvent)
       canvas.setDocument(doc)
       OpenParseGui.current = Some(dgraph)
     }
 
     def updateDocument(dgraph: DependencyGraph, extr: ExtractionEntry) {
       val entry = extractionList.selection.items(0)
-      val dot = dotgraph(dgraph, entry)
+      val dot = Dot.dotgraph(dgraph, entry)
       updateDocument(dgraph, dot)
     }
 
     def updateDocument(dgraph: DependencyGraph, nodes: Set[DependencyNode]) {
-      val dot = dotgraph(dgraph, nodes)
+      val dot = Dot.dotgraph(dgraph, nodes)
       updateDocument(dgraph, dot)
     }
 
@@ -432,7 +362,7 @@ object OpenParseGui extends SimpleSwingApplication {
 
                   if (index >= 0) {
                     sentenceIndex = index
-                    scrollBar.value = index
+                    Elements.scrollBar.value = index
                     updateDocument(sentences(index))
                   }
                 case None => label.text = "No results found."
@@ -448,8 +378,8 @@ object OpenParseGui extends SimpleSwingApplication {
 
                   if (extractions.size > 0) {
                     sentenceIndex = index
-                    scrollBar.value = index
-                    scrollBar.adjust()
+                    Elements.scrollBar.value = index
+                    Elements.scrollBar.adjust()
                     updateDocument(dgraph)
                   }
               }
@@ -459,14 +389,14 @@ object OpenParseGui extends SimpleSwingApplication {
           contents += new MenuItem(Action("Load Sentences...") {
             withWaitCursor {
               if (loadSentences()) {
-                scrollBar.adjust()
+                Elements.scrollBar.adjust()
                 sentences.headOption.map(updateDocument)
               }
             }
           })
           contents += new MenuItem(Action("Clear Sentences...") {
             sentences = Seq.empty
-            scrollBar.adjust
+            Elements.scrollBar.adjust
           })
           contents += new Separator()
           contents += new MenuItem(Action("Exit") { exit() })
@@ -515,7 +445,7 @@ object OpenParseGui extends SimpleSwingApplication {
         contents += Swing.VStrut(10)
         contents += label
         contents += Swing.VStrut(10)
-        contents += scrollBar
+        contents += Elements.scrollBar
         contents += Swing.VStrut(5)
       }
       layout(panel) = North
@@ -534,7 +464,7 @@ object OpenParseGui extends SimpleSwingApplication {
 
       listenTo(button)
       listenTo(extractionList.selection)
-      listenTo(scrollBar)
+      listenTo(Elements.scrollBar)
 
       reactions += {
         case ButtonClicked(b) =>
@@ -546,9 +476,9 @@ object OpenParseGui extends SimpleSwingApplication {
               if (sentences.isEmpty || sentence != sentences(sentenceIndex)) {
                 sentences = sentences.take(sentenceIndex + 1) :+ sentence
               }
-              scrollBar.adjust
-              sentenceIndex = scrollBar.max
-              scrollBar.value = scrollBar.max
+              Elements.scrollBar.adjust
+              sentenceIndex = Elements.scrollBar.max
+              Elements.scrollBar.value = Elements.scrollBar.max
 
               updateDocument(sentence)
             }
@@ -566,10 +496,10 @@ object OpenParseGui extends SimpleSwingApplication {
           }
         }
 
-        case ValueChanged(`scrollBar`) => if (sentenceIndex != scrollBar.value) {
+        case ValueChanged(Elements.scrollBar) => if (sentenceIndex != Elements.scrollBar.value) {
           withWaitCursor {
-            if (sentences.indices.contains(scrollBar.value)) {
-              sentenceIndex = scrollBar.value
+            if (sentences.indices.contains(Elements.scrollBar.value)) {
+              sentenceIndex = Elements.scrollBar.value
               try {
                 updateDocument(sentences(sentenceIndex))
               }
@@ -584,43 +514,6 @@ object OpenParseGui extends SimpleSwingApplication {
 
     contents = ui
     menuBar = menu
-  }
-
-  def dotgraph(dgraph: DependencyGraph, nodes: Set[DependencyNode]) = {
-    val nodeStyle = nodes.map((_, "style=filled,color=lightblue"))
-    dgraph.dot(dgraph.text, nodeStyle.toMap, Map.empty)
-  }
-
-  def dotgraph(dgraph: DependencyGraph, extraction: ExtractionEntry) = {
-    def originalNodes(nodes: Iterable[DependencyNode]) = nodes.map { node =>
-      dgraph.nodes.find(_.indices == node.indices).get
-    }
-
-    val title = "\\n" + dgraph.text + "\\n" + extraction.toString + "\\n" + extraction.`match`.pattern.toStringF((s: String) => if (s.length < 60) s else s.take(20)+"...") +
-      (extraction.extractor match { case ex: TemplateExtractor => "\\n" + ex.template case _ => "" })
-
-    // nodes
-    val darkNodes = extraction.`match`.nodeGroups
-    val lightNodes = originalNodes(extraction.nodes).toSet -- originalNodes(darkNodes.map(_._2.node))
-    val filledNodes = (lightNodes zip Stream.continually("style=filled,fillcolor=lightgray")) ++
-      (darkNodes.map { nodeGroup => val style = "style=filled,fillcolor="+(nodeGroup._1 match {
-          case "rel" => "salmon1"
-          case "arg1" | "arg2" => "lightblue"
-          case "slot0"|"slot1"|"slot2"|"slot3" => "seashell"
-          case _ => "yellow"
-        })
-
-        (nodeGroup._2.node, style)
-      })
-
-    // edges
-    val solidEdges = extraction.edges.toSet
-
-    val nodeStyle = filledNodes
-    val edgeStyle = (solidEdges zip Stream.continually("style=filled")) ++
-    ((dgraph.graph.edges.toSet -- solidEdges.toSet) zip Stream.continually("style=dotted,color=gray"))
-
-    dgraph.dot(title, nodeStyle.toMap, edgeStyle.toMap)
   }
 
   def parse(sentence: Sentence) = {
@@ -659,46 +552,6 @@ object OpenParseGui extends SimpleSwingApplication {
 
       }
     }.getOrElse(Seq.empty)
-  }
-
-  def svg2xml(svgString: String) = {
-    import org.apache.batik.dom.svg.SVGDOMImplementation;
-    import org.apache.batik.util.XMLResourceDescriptor
-    import org.apache.batik.dom.svg.SAXSVGDocumentFactory
-
-    val uri = SVGDOMImplementation.SVG_NAMESPACE_URI;
-
-    val doc = using(new java.io.StringReader(svgString)) { reader =>
-      val parser = XMLResourceDescriptor.getXMLParserClassName();
-      val f = new SAXSVGDocumentFactory(parser);
-      f.createSVGDocument(uri, reader);
-    }
-
-    val gs = doc.getElementsByTagNameNS(uri, "g")
-    for (i <- 0 until gs.getLength) {
-      val g = gs.item(i)
-      val attributes = g.getAttributes
-      val clazz = attributes.getNamedItem("class").getNodeValue
-
-      if (clazz == "node") {
-        val children = g.getChildNodes
-        for (j <- 0 until children.getLength) {
-          val child = children.item(j)
-          if (child.getNodeName == "title") {
-            val text = child.getFirstChild.getNodeValue
-
-            import org.w3c.dom.events._
-            g.asInstanceOf[EventTarget].addEventListener("click",
-              new EventListener() {
-                def handleEvent(e: Event) { nodeClickEvent(text) }
-              },
-              true);
-          }
-        }
-      }
-    }
-
-    doc
   }
 
   def exit() {
