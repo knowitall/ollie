@@ -3,7 +3,6 @@ package edu.washington.cs.knowitall.ollie;
 import java.io.File
 import java.io.PrintWriter
 import scala.io.Source
-import OllieCli.Settings
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
 import edu.washington.cs.knowitall.openparse.OpenParse
@@ -33,6 +32,7 @@ object OllieCli {
     def parseInput: Boolean
     def splitInput: Boolean
     def tabbed: Boolean
+    def serialized: Boolean
     def parallel: Boolean
     def invincible: Boolean
   }
@@ -53,6 +53,7 @@ object OllieCli {
       var parseInput: Boolean = true
       var splitInput: Boolean = false
       var tabbed: Boolean = false
+      var serialized: Boolean = false
       var parallel: Boolean = false
       var invincible: Boolean = false
 
@@ -91,11 +92,13 @@ object OllieCli {
       opt("s", "split", "split text into sentences", { settings.splitInput = true })
       opt("dependencies", "input is serialized dependency graphs (don't parse)", { settings.parseInput = false })
       opt("tabbed", "output in TSV format", { settings.tabbed = true })
+      opt("serialized", "output in serialized format", { settings.serialized = true })
       opt("ignore-errors", "ignore errors", { settings.invincible = true })
       opt("usage", "this usage message", { settings.showUsage = true })
     }
 
     if (argumentParser.parse(args)) {
+      require(!(settings.tabbed && settings.serialized), "output format cannot be both tabbed and serialized")
       if (settings.showUsage) {
         println()
         println("Ollie takes sentences as input, one per line.")
@@ -157,7 +160,7 @@ object OllieCli {
               // potentially transform to a parallel collection
               val sentences = if (settings.parallel) group.par else group
               for (sentence <- sentences) {
-                if (!settings.tabbed) {
+                if (!settings.tabbed && !settings.serialized) {
                   writer.println(sentence)
                   writer.flush()
                 }
@@ -183,6 +186,8 @@ object OllieCli {
                           e.extr.attribution.map(_.text),
                           e.sent.text,
                           e.sent.serialize).mkString("\t"))
+                      } else if (settings.serialized) {
+                        writer.println(confFormatter.format(conf) + "\t" + e.extr.toString + "\t" + e.tabSerialize)
                       } else {
                         writer.println(confFormatter.format(conf) + ": " + e.extr)
                       }
@@ -191,7 +196,7 @@ object OllieCli {
                   }
                 }
 
-                if (!settings.tabbed) {
+                if (!settings.tabbed && !settings.serialized) {
                   writer.println()
                   writer.flush()
                 }

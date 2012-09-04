@@ -9,6 +9,7 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 import edu.washington.cs.knowitall.ollie.Ollie
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
+import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
 
 @RunWith(classOf[JUnitRunner])
 object OllieSpecTest extends Specification {
@@ -20,5 +21,8 @@ object OllieSpecTest extends Specification {
 
     val extr = extrs.head
     extr must_== OllieExtractionInstance.tabDeserialize(extr.tabSerialize)
+
+    val scored = ScoredOllieExtractionInstance(true, extr)
+    scored must_== OllieExtractionInstance.tabDeserialize(scored.tabSerialize)
   }
 }
