@@ -23,8 +23,8 @@ object ScoredOllieExtractionInstance {
       val (scoreString, rest) = string.span(_ != '\t')
 
       val score =
-        if (scoreString == 1) true
-        else if (scoreString == 0) false
+        if (scoreString == "1") true
+        else if (scoreString == "0") false
         else throw new IllegalArgumentException("bad score: " + scoreString)
       val inst = OllieExtractionInstance.tabDeserialize(rest.drop(1).dropWhile(_ != '\t').drop(1))
       new ScoredOllieExtractionInstance(score, inst)
