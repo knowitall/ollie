@@ -38,7 +38,7 @@ object OllieIndependentConfFunction {
   val logger = LoggerFactory.getLogger(classOf[OllieIndependentConfFunction])
 
   def loadDefaultClassifier(): OllieIndependentConfFunction = {
-    val featureSet = FeatureSet(OllieFeatureSet.getFeatures())
+    val featureSet = OllieFeatureSet
 
     val resourceUrl = Option(this.getClass.getResource("default-classifier.txt")).getOrElse {
       throw new IllegalArgumentException("Could not load confidence function resource.")

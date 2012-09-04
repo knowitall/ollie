@@ -13,8 +13,10 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import edu.washington.cs.knowitall.tool.stem.Stemmer
 import scalaz.Scalaz._
 
+object OllieFeatureSet extends FeatureSet(OllieFeatures.getFeatures)
+
 /** Features defined for OllieExtractionInstances */
-object OllieFeatureSet {
+object OllieFeatures {
   implicit def boolToDouble(bool: Boolean) = if (bool) 1.0 else 0.0
 
   val weirdPunct = Pattern.compile(".*[:!@#$%^&*{};`<>]+.*")
@@ -152,7 +154,7 @@ object OllieFeatureSet {
 
   def arg2ComesBeforeArg1(inst: OllieExtractionInstance): Double =
     inst.extr.arg2.span < inst.extr.arg1.span && !(inst.extr.arg1.span intersects inst.extr.arg2.span)
-    
+
   def arg2ComesBeforeRel(inst: OllieExtractionInstance): Double =
     inst.extr.arg2.span < inst.extr.rel.span && !(inst.extr.rel.span intersects inst.extr.arg2.span)
 
@@ -291,7 +293,7 @@ object OllieFeatureSet {
       }
     }
   }
-  
+
   // Is there a preposition in the span of arg2?
   def prepInArg2(inst: OllieExtractionInstance): Double = {
 
@@ -306,7 +308,7 @@ object OllieFeatureSet {
     val firstNN = tokens.indexWhere(_.isNoun)
     val firstVB = tokens.drop(firstNN).indexWhere(_.isVerb)
     val secondNN = tokens.drop(firstNN + firstVB).indexWhere(_.isNoun)
-    
+
     def tokensExist = !Seq(firstNN, firstVB, secondNN).exists(_ == -1)
     def correctIndices = (firstNN < (firstNN + firstVB) < (firstNN + firstVB + secondNN))
     tokensExist && correctIndices
