@@ -1,24 +1,24 @@
-Arg1 Cleanup feature                   -1.9474
-Arg1 comes after arg2                  -0.1342
-Arg2 comes before Rel                  -0.4772
-Args both start and end with nouns      0.1987
-Extr has attribution?                   0.3096
-Extr has enabledBy?                     0.6941
-Hyp words near rel                     -0.4802
-If before arg1 and no enabledBy?       -2.1688
-Noun-Verb-Noun in arg2                 -0.4579
-OpenParse Confidence                     1.304
-Prep in arg2?                           0.5695
-Prep right after arg2?                 -0.5616
-Prep right before arg1?                -0.2119
-Rel contains VBD                        0.6841
-Rel contains VBG                       -0.4981
-Rel contains VBP                        0.5545
-Rel ends with of                       -0.2275
-Rel head is a communication verb?      -0.8676
-Rel starts with "be"?                  -0.5553
-Sentence starts with extr?              0.3185
-That before rel                        -0.2083
-Vacuous rel+arg2                       -1.8374
-Verb after arg2?                        0.2496
-Intercept                              -0.2829
+Arg1 Cleanup feature	-1.9474
+Arg1 comes after arg2	-0.1342
+Arg2 comes before Rel	-0.4772
+Args both start and end with nouns	0.1987
+Extr has attribution?	0.3096
+Extr has enabledBy?	0.6941
+Hyp words near rel	-0.4802
+If before arg1 and no enabledBy?	-2.1688
+Noun-Verb-Noun in arg2	-0.4579
+OpenParse Confidence	1.304
+Prep in arg2?	0.5695
+Prep right after arg2?	-0.5616
+Prep right before arg1?	-0.2119
+Rel contains VBD	0.6841
+Rel contains VBG	-0.4981
+Rel contains VBP	0.5545
+Rel ends with of	-0.2275
+Rel head is a communication verb?	-0.8676
+Rel starts with "be"?	-0.5553
+Sentence starts with extr?	0.3185
+That before rel	-0.2083
+Vacuous rel+arg2	-1.8374
+Verb after arg2?	0.2496
+Intercept	-0.2829
