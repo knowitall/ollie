@@ -21,7 +21,7 @@ class OllieIndependentConfFunction(
   val intercept: Double) {
 
   def this(featureSet: FeatureSet[OllieExtractionInstance], weights: Map[String, Double]) = {
-    this(featureSet, weights, weights("Intercept"))
+    this(featureSet, weights, weights.getOrElse("Intercept", 0.0))
   }
 
   def apply(extraction: OllieExtractionInstance): Double = getConf(extraction)
