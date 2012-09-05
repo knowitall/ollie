@@ -128,6 +128,9 @@ class OllieExtraction(
 
   def nodes = arg1.nodes ++ rel.nodes ++ arg2.nodes
 
+  /** The spanning interval of the nodes in this extraction. */
+  def span = Interval.span(nodes.map(_.indices))
+
   override def toString = {
     val extentions = Iterable(
         enabler.map("enabler="+_.text),
