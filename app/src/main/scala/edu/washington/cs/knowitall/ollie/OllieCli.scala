@@ -14,6 +14,7 @@ import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
 import java.text.DecimalFormat
 import java.net.URL
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
+import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
 
 /** An entry point to use Ollie on the command line.
   */
@@ -24,6 +25,7 @@ object OllieCli {
     def inputFile: Option[File]
     def outputFile: Option[File]
     def modelUrl: URL
+    def confidenceModelUrl: URL
     def confidenceThreshold: Double
     def openparseConfidenceThreshold: Double
 
@@ -46,6 +48,7 @@ object OllieCli {
       var inputFile: Option[File] = None
       var outputFile: Option[File] = None
       var modelUrl: URL = OpenParse.defaultModelUrl
+      var confidenceModelUrl: URL = OllieIndependentConfFunction.defaultModelUrl
       var confidenceThreshold: Double = 0.0
       var openparseConfidenceThreshold: Double = 0.005
 
@@ -74,6 +77,12 @@ object OllieCli {
 
       opt(Some("m"), "model", "<model-file>", "model file", { path: String =>
         settings.modelUrl = new File(path).toURI.toURL
+      })
+
+      opt(Some("c"), "confidence model", "<model-file>", "model file", { path: String =>
+        val file = new File(path)
+        require(file.exists)
+        settings.confidenceModelUrl = file.toURI.toURL
       })
 
       opt(None, "malt-model", "<file>", "malt model file", { path: String =>
@@ -130,7 +139,7 @@ object OllieCli {
 
     val openparse = OpenParse.fromModelUrl(settings.modelUrl, configuration)
     val ollieExtractor = new Ollie(openparse)
-    val confFunction = OllieIndependentConfFunction.loadDefaultClassifier
+    val confFunction = OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
 
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
 
