@@ -76,12 +76,14 @@ object OllieCli {
       })
 
       opt(Some("m"), "model", "<model-file>", "model file", { path: String =>
-        settings.modelUrl = new File(path).toURI.toURL
+        val file = new File(path)
+        require(file.exists, "file does not exist: " + path)
+        settings.modelUrl = file.toURI.toURL
       })
 
       opt(Some("c"), "confidence model", "<model-file>", "model file", { path: String =>
         val file = new File(path)
-        require(file.exists)
+        require(file.exists, "file does not exist: " + path)
         settings.confidenceModelUrl = file.toURI.toURL
       })
 

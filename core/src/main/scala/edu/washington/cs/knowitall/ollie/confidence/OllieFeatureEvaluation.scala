@@ -20,6 +20,9 @@ object OllieFeatureEvaluation {
     /** url to find the model */
     def modelUrl: URL
 
+    /** url to confidence model */
+    def confidenceModelUrl: URL
+
     /** file with annotations */
     def goldFile: File
 
@@ -40,6 +43,7 @@ object OllieFeatureEvaluation {
   def main(args: Array[String]) = {
     var settings = new Settings {
       var modelUrl: URL = OpenParse.defaultModelUrl
+      var confidenceModelUrl: URL = OllieIndependentConfFunction.defaultModelUrl
       var outputFile: Option[File] = None
       var goldFile: File = _
       var inputFile: File = _
@@ -52,10 +56,15 @@ object OllieFeatureEvaluation {
         require(file.exists, "file does not exist: " + path)
         settings.modelUrl = file.toURI.toURL
       })
-      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
-      opt("o", "output", "output file (otherwise stdout)", { path => 
+      opt(Some("c"), "confidence model", "<file>", "confidence model file", { path: String =>
         val file = new File(path)
-        settings.outputFile = Some(file) 
+        require(file.exists, "file does not exist: " + path)
+        settings.confidenceModelUrl = file.toURI.toURL
+      })
+      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
+      opt("o", "output", "output file (otherwise stdout)", { path =>
+        val file = new File(path)
+        settings.outputFile = Some(file)
       })
 
       arg("input", "input dependencies file", { path: String =>
@@ -79,7 +88,7 @@ object OllieFeatureEvaluation {
   def run(settings: Settings) = {
     val extractor = new Ollie(OpenParse.fromModelUrl(settings.modelUrl, settings.configuration))
     val gold = Score.loadGoldSet(settings.goldFile)
-    val confFunc = OllieIndependentConfFunction.loadDefaultClassifier()
+    val confFunc = OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
 
     case class Scored(conf: Double, inst: DetailedOllieExtractionInstance, score: Boolean)
 
@@ -105,7 +114,7 @@ object OllieFeatureEvaluation {
       }
     } { writer =>
       writer.println((Iterable("score", "conf", "op-conf", "yield", "precision",
-        "extr", "enabler", "attrib", "sentence", "dependencies") ++ 
+        "extr", "enabler", "attrib", "sentence", "dependencies") ++
         featureNames).mkString("\t"))
       writer.println("\t" * 10 + featureNames.map(confFunc.featureWeights(_).toString).mkString("\t"))
     (pyed) foreach { case (scored, y, p) =>
