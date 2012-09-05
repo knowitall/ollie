@@ -7,17 +7,17 @@ import scala.collection.immutable.Map
 class FeatureSet[T](val featureMap: Map[String, T => Double]) {
   def apply(name: String) = featureMap(name)
 
-  def featureNames(): Iterable[String] =
-    featureMap.keys.toList
+  def featureNames(): Seq[String] =
+    featureMap.keys.toSeq
 
   def numFeatures(): Int =
     featureNames.size
 
-  def vectorize(example: T): Iterable[Double] =
+  def vectorize(example: T): Seq[Double] =
     featureNames.map({ name =>
       val featureFunction = featureMap(name)
       featureFunction(example)
-    }).toList
+    })(scala.collection.breakOut)
 }
 
 object FeatureSet {
