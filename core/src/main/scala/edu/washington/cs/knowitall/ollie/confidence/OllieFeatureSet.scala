@@ -1,17 +1,17 @@
 package edu.washington.cs.knowitall.ollie.confidence
 
 import java.util.regex.Pattern
-
 import scala.Array.canBuildFrom
 import scala.collection.JavaConversions.setAsJavaSet
 import scala.collection.immutable.SortedMap
-
 import edu.washington.cs.knowitall.ollie.Ollie
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
 import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import edu.washington.cs.knowitall.tool.stem.Stemmer
 import scalaz.Scalaz._
+import edu.washington.cs.knowitall.tool.postag.Postagger
+import scala.util.matching.Regex
 
 object OllieFeatureSet extends FeatureSet(OllieFeatures.getFeatures)
 
@@ -24,6 +24,22 @@ object OllieFeatures {
   val ingStart = Pattern.compile("^[a-zA-Z]+ing.*")
   val verbStart = Pattern.compile("VB*")
   val relationVerb = Pattern.compile("VB|VBD|VBZ|VBN|VBP|MD")
+
+  object nonContinuousRel extends Feature("non-contiguous rel") {
+    val trainingPrep = new Regex(" (?:" + Postagger.prepositions.mkString("|") + ")$")
+    override def apply(inst: OllieExtractionInstance): Double = {
+      val trimmed = trainingPrep.replaceAllIn(inst.extr.rel.text, "")
+      inst.sent.text.contains(trimmed)
+    }
+  }
+
+  class gapInRel(length: Int) extends Feature("gap of " + length + " in rel") {
+    override def apply(inst: OllieExtractionInstance): Double = {
+      inst.extr.nodes.toSeq.sliding(2).exists { case Seq(x, y) =>
+        x.indices.distance(y.indices) > 10
+      }
+    }
+  }
 
   object sentenceHasQuestionMark extends Feature("sentence has question mark") {
     val hasQuestionMark = Pattern.compile(".*\\?.*")
@@ -354,7 +370,9 @@ object OllieFeatures {
     new NounVerbNounInArg(_.extr.arg1, "arg1"),
     new NounVerbNounInArg(_.extr.arg2, "arg2"),
     new ArgBordersComma(_.extr.arg1, "arg1"),
-    new ArgBordersComma(_.extr.arg2, "arg2"))
+    new ArgBordersComma(_.extr.arg2, "arg2"),
+    new gapInRel(10),
+    nonContinuousRel)
 
   def getFeatures(): SortedMap[String, OllieExtractionInstance => Double] = {
     (for (f <- features) yield (f.name -> (f.apply _)))(scala.collection.breakOut)
