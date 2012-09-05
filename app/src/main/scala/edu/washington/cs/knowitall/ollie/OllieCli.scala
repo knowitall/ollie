@@ -124,22 +124,36 @@ object OllieCli {
   }
 
   def run(settings: Settings) = {
-    System.err.println("Loading models...")
-    val parser =
+    System.err.println("Loading parser models... ")
+    val parser = Timing.timeThen {
       if (settings.parseInput) {
         settings.maltModelFile match {
           case None => Some(new MaltParser())
           case Some(file) => Some(new MaltParser(file))
         }
       } else None
+    }{ ns =>
+      System.err.println(Timing.Seconds.format(ns))
+    }
 
-    val configuration =
-      new OpenParse.Configuration(
-            confidenceThreshold = settings.openparseConfidenceThreshold)
+    System.err.print("Loading ollie models... ")
+    val ollieExtractor = Timing.timeThen {
+      val configuration =
+        new OpenParse.Configuration(
+          confidenceThreshold = settings.openparseConfidenceThreshold)
 
-    val openparse = OpenParse.fromModelUrl(settings.modelUrl, configuration)
-    val ollieExtractor = new Ollie(openparse)
-    val confFunction = OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
+      val openparse = OpenParse.fromModelUrl(settings.modelUrl, configuration)
+      new Ollie(openparse)
+    } { ns =>
+      System.err.println(Timing.Seconds.format(ns))
+    }
+
+    System.err.print("Loading ollie confidence function... ")
+    val confFunction = Timing.timeThen {
+      OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
+    }{ ns =>
+      System.err.println(Timing.Seconds.format(ns))
+    }
 
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
 
