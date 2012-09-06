@@ -20,13 +20,16 @@ case class ScoredOllieExtractionInstance(
 object ScoredOllieExtractionInstance {
   def tabDeserialize(string: String): ScoredOllieExtractionInstance = {
     try {
-      val (scoreString, rest) = string.span(_ != '\t')
+      val Array(scoreString, rest @ _*) = string.split('\t')
 
       val score =
         if (scoreString == "1") true
         else if (scoreString == "0") false
         else throw new IllegalArgumentException("bad score: " + scoreString)
-      val inst = OllieExtractionInstance.tabDeserialize(rest.drop(1).dropWhile(_ != '\t').drop(1))
+      val (inst, r2) = OllieExtractionInstance.tabDeserialize(rest)
+
+      require(r2.isEmpty)
+
       new ScoredOllieExtractionInstance(score, inst)
     } catch {
       case e => throw new IllegalArgumentException("could not tab deserialize: " + string, e)

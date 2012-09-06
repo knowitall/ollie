@@ -30,16 +30,25 @@ class OllieExtractionInstance(
 
 object OllieExtractionInstance {
   def tabDeserialize(string: String): OllieExtractionInstance = {
+    val array = string.split('\t')
+
+    val (extr, rest) = tabDeserialize(array)
+    require(rest.isEmpty)
+
+    extr
+  }
+
+  def tabDeserialize(array: Seq[String]): (OllieExtractionInstance, Seq[String]) = {
     try {
-      val Array(serializedGraph, r0 @ _*) = string.split('\t')
+      val Seq(serializedGraph, r0 @ _*) = array
 
       val graph = DependencyGraph.deserialize(serializedGraph)
       val (pat, r1) = PatternExtractor.tabDeserialize(r0)
       val (extr, r2) = OllieExtraction.tabDeserialize(r1)
 
-      new OllieExtractionInstance(extr, graph, pat)
+      (new OllieExtractionInstance(extr, graph, pat), r2)
     } catch {
-      case e => throw new IllegalArgumentException("Could not tab deserialize: " + string, e)
+      case e => throw new IllegalArgumentException("Could not tab deserialize: " + array.mkString("\t"), e)
     }
   }
 
