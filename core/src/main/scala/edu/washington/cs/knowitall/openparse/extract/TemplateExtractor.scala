@@ -8,6 +8,10 @@ import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, Dependen
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import Template.group
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.tool.postag.Postagger
+import edu.washington.cs.knowitall.tool.parse.graph.RegexEdgeMatcher
+import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
+import edu.washington.cs.knowitall.openparse.ExtractorPattern
 
 /** An extractor that is specified by a pattern and a template.
   * the template can add a "to be" and/or preposition word around
@@ -16,8 +20,12 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
   *
   * @author Michael Schmitz
   */
-class TemplateExtractor(val template: Template, pattern: Pattern[DependencyNode], conf: Double)
+class TemplateExtractor(val template: Template, pattern: ExtractorPattern, conf: Double)
 extends GeneralExtractor(pattern, conf) {
+
+  def this(template: Template, pattern: Pattern[DependencyNode], conf: Double) =
+    this(template, new ExtractorPattern(pattern), conf)
+
   override def extract(dgraph: DependencyGraph)(implicit
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Iterable[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
@@ -28,10 +36,23 @@ extends GeneralExtractor(pattern, conf) {
   }
 
   override def tabSerialize = Iterable("Template", template.serialize, pattern.serialize, conf.toString).mkString("\t")
+
+  override def prepMismatch: Boolean = {
+    val trailingPrep = TemplateExtractor.trailingPreposition.findFirstIn(template.serialize)
+    val lastPatternPrep = pattern.baseEdgeMatchers.flatMap {
+      case m: RegexEdgeMatcher if m.labelRegex == new Regex("""prep_(.*)""") => Some("{prep}")
+      case m: LabelEdgeMatcher if m.label startsWith "prep_" => Some(m.label.drop(5))
+      case _ => None
+    }.lastOption
+
+    trailingPrep == lastPatternPrep
+  }
 }
 
 case object TemplateExtractor extends PatternExtractorType {
   val logger = LoggerFactory.getLogger(this.getClass)
+
+  private val trailingPreposition = new Regex("\\s(?:" + Postagger.prepositions.mkString("|") + "|\\{prep\\})$")
 
   override def fromLines(lines: Iterator[String]): List[PatternExtractor] = {
     val patterns: List[(Template, Pattern[DependencyNode], Double)] = lines.map { line =>
@@ -49,7 +70,7 @@ case object TemplateExtractor extends PatternExtractorType {
 
     val maxCount = patterns.maxBy(_._3)._3
     (for ((template, pattern, conf) <- patterns) yield {
-      new TemplateExtractor(template, pattern, conf)
+      new TemplateExtractor(template, new ExtractorPattern(pattern), conf)
     }).toList
   }
 
@@ -61,7 +82,7 @@ case object TemplateExtractor extends PatternExtractorType {
     val Seq(templateString, patternString, confString, rest @ _*) = parts
 
     val template = Template.deserialize(templateString)
-    val pattern = DependencyPattern.deserialize(patternString)
+    val pattern = new ExtractorPattern(DependencyPattern.deserialize(patternString))
     val conf = confString.toDouble
 
     (new TemplateExtractor(template, pattern, conf), rest)

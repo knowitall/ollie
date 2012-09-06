@@ -1,20 +1,22 @@
 package edu.washington.cs.knowitall.openparse.extract
 
 import org.slf4j.LoggerFactory
-
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
-
 import GeneralExtractor.logger
+import edu.washington.cs.knowitall.openparse.ExtractorPattern
 
 /** An extractor that is purely specified by a pattern.
   *
   * @author Michael Schmitz
   */
-class GeneralExtractor(pattern: Pattern[DependencyNode], val conf: Double) extends PatternExtractor(pattern) {
+class GeneralExtractor(pattern: ExtractorPattern, val conf: Double) extends PatternExtractor(pattern) {
   import GeneralExtractor._
+
+  def this(pattern: Pattern[DependencyNode], conf: Double) =
+    this(new ExtractorPattern(pattern), conf)
 
   protected def extractWithMatches(dgraph: DependencyGraph)(implicit
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Iterable[DetailedExtraction],
@@ -66,7 +68,7 @@ case object GeneralExtractor extends PatternExtractorType {
       }.toList
 
     (for ((p, conf) <- patterns) yield {
-      new GeneralExtractor(p, conf.toDouble)
+      new GeneralExtractor(new ExtractorPattern(p), conf.toDouble)
     }).toList
   }
 }

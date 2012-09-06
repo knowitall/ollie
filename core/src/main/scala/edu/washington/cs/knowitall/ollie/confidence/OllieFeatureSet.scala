@@ -12,6 +12,7 @@ import edu.washington.cs.knowitall.tool.stem.Stemmer
 import scalaz.Scalaz._
 import edu.washington.cs.knowitall.tool.postag.Postagger
 import scala.util.matching.Regex
+import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
 
 object OllieFeatureSet extends FeatureSet(OllieFeatures.getFeatures)
 
@@ -332,6 +333,27 @@ object OllieFeatures {
     override def apply(inst: OllieExtractionInstance): Double = {
       val neighbors = inst.sent.nodes.filter(_.indices borders getPart(inst).span)
       neighbors exists (_.text == ",")
+    }
+  }
+
+  object nnPatternEdge extends Feature("nn edges in pattern") {
+    override def apply(inst: OllieExtractionInstance): Double = {
+      inst.pat.pattern.baseEdgeMatchers exists {
+        case m: LabelEdgeMatcher => m.label == "nn"
+        case _ => false
+      }
+    }
+  }
+
+  object semanticPatternConstraint extends Feature("semantic constraints in pattern") {
+    override def apply(inst: OllieExtractionInstance): Double = {
+      inst.pat.pattern.semantic
+    }
+  }
+
+  object patternPrepMismatch extends Feature("prep mismatch in pattern") {
+    override def apply(inst: OllieExtractionInstance): Double = {
+      inst.pat.prepMismatch
     }
   }
 

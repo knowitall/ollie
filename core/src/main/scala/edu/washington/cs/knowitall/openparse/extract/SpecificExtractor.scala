@@ -1,11 +1,11 @@
 package edu.washington.cs.knowitall.openparse.extract
 
 import scala.Array.canBuildFrom
-
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.openparse.ExtractorPattern
 
 /** An extractor that is specified only with a pattern
   * but only works for specific relation lemmas.
@@ -14,8 +14,11 @@ import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
   */
 class SpecificExtractor(val relation: String,
   val relationLemmas: List[String],
-  pattern: Pattern[DependencyNode], conf: Double)
+  pattern: ExtractorPattern, conf: Double)
 extends GeneralExtractor(pattern, conf) {
+
+  def this(relation: String, relationLemmas: List[String], pattern: Pattern[DependencyNode], conf: Double) =
+    this(relation, relationLemmas, new ExtractorPattern(pattern), conf)
 
   override def extract(dgraph: DependencyGraph)(implicit
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Iterable[DetailedExtraction],

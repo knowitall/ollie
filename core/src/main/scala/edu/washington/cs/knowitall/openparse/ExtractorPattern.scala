@@ -1,20 +1,18 @@
 package edu.washington.cs.knowitall.openparse
 
 import scala.io.Source
-
 import org.slf4j.LoggerFactory
-
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, NodeMatcher, EdgeMatcher, CaptureNodeMatcher}
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{TrivialNodeMatcher, Matcher}
 import edu.washington.cs.knowitall.tool.parse.graph.{LabelEdgeMatcher, DependencyPattern, DependencyNode}
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
-
 import scalaz.Scalaz._
 import scalaz._
+import edu.washington.cs.knowitall.tool.parse.graph.RegexNodeMatcher
 
 /** A wrapper for a dependency pattern that adds some convenience methods
   * for working with patterns intended for extraction of binary relations.
-  * 
+  *
   * @author Michael Schmitz
   */
 class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends DependencyPattern(matchers) {
@@ -36,6 +34,11 @@ class ExtractorPattern(matchers: List[Matcher[DependencyNode]]) extends Dependen
   override def canEqual(that: Any) = that.isInstanceOf[ExtractorPattern]
   override def equals(that: Any) = that match {
     case that: ExtractorPattern => (that canEqual this) && this.matchers == that.matchers
+    case _ => false
+  }
+
+  def semantic: Boolean = matchers.exists {
+    case m: RelationMatcher => m.baseNodeMatchers exists { case m: RegexNodeMatcher => true case _ => false }
     case _ => false
   }
 
@@ -167,7 +170,7 @@ object ExtractorPattern {
 }
 
 /** A dependency node used to match an extraction part in a pattern extractor.
-  * 
+  *
   * @author Michael Schmitz
   */
 sealed abstract class ExtractionPartMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
@@ -178,7 +181,7 @@ extends CaptureNodeMatcher[DependencyNode](alias, matcher) {
 }
 
 /** A dependency node used to match an argument in a pattern extractor.
-  * 
+  *
   * @author Michael Schmitz
   */
 class ArgumentMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) extends ExtractionPartMatcher(alias, matcher) {
@@ -193,7 +196,7 @@ class ArgumentMatcher(alias: String, matcher: NodeMatcher[DependencyNode]) exten
 }
 
 /** A dependency node used to match a relation in a pattern extractor.
-  * 
+  *
   * @author Michael Schmitz
   */
 class RelationMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
@@ -208,7 +211,7 @@ extends ExtractionPartMatcher(alias, matcher) {
 }
 
 /** A dependency node used to match a slot in a pattern extractor.
-  * 
+  *
   * @author Michael Schmitz
   */
 class SlotMatcher(alias: String, matcher: NodeMatcher[DependencyNode])
