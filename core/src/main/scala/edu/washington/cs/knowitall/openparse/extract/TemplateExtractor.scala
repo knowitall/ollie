@@ -105,7 +105,7 @@ case class Template(template: String, be: Boolean) {
     //     don't want: (Bar; be has practiced with; Foo)
     // This is somewhat of a hack that makes bad patterns look less bad.
     val prefix = if (be &&
-        !(dgraph.graph.neighbors(m.nodeGroups("rel").node, dedge => (dedge.edge.label startsWith "aux") || dedge.edge.label == "cop") filter (_.postag startsWith "VB") exists (neighbor => extr.rel.nodes contains neighbor))) {
+        !(dgraph.graph.neighbors(m.nodeGroups.getOrElse("rel", m.nodeGroups("rel1")).node, dedge => (dedge.edge.label startsWith "aux") || dedge.edge.label == "cop") filter (_.postag startsWith "VB") exists (neighbor => extr.rel.nodes contains neighbor))) {
       "be"
     }
     else ""
