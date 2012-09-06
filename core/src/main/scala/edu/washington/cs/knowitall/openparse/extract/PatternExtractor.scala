@@ -1,13 +1,12 @@
 package edu.washington.cs.knowitall.openparse.extract
 
 import java.io.File
-
 import scala.io.Source
-
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyNode, DependencyGraph}
+import javax.naming.OperationNotSupportedException
 
 /** An superclass for extractors based on patterns.
   *
@@ -21,6 +20,16 @@ abstract class PatternExtractor(val pattern: Pattern[DependencyNode]) {
   def confidence: Option[Double] // independent confidence
 
   override def toString = pattern.toString
+
+  def tabSerialize: String = throw new OperationNotSupportedException()
+}
+
+object PatternExtractor {
+  def tabDeserialize(seq: Seq[String]): (PatternExtractor, Seq[String]) = {
+    seq(0).toLowerCase match {
+      case "template" => TemplateExtractor.tabDeserialize(seq.drop(1))
+    }
+  }
 }
 
 abstract class PatternExtractorType {

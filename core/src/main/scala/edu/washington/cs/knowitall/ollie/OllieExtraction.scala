@@ -142,36 +142,25 @@ class OllieExtraction(
   }
 }
 
-class DetailedOllieExtraction(
-  arg1: Part,
-  rel: Part,
-  arg2: Part,
-  override val openparseConfidence: Double,
-  enabler: Option[EnablingCondition],
-  attribution: Option[Attribution],
-  val `match`: Match[DependencyNode],
-  val extractor: PatternExtractor)
-extends OllieExtraction(arg1, rel, arg2, openparseConfidence, enabler, attribution)
-
 object OllieExtraction {
   def tabDelimitedColumns = Seq("Arg1Part", "RelPart", "Arg2Part", "Confidence", "Enabler", "Attribution").mkString("\t")
 
-  def tabDeserialize(s: String): Option[OllieExtraction] = {
-    def error = { System.err.println("Couldn't deserialize: %s".format(s)); None }
-    s.split("\t") match {
-      case Array(arg1Part, relPart, arg2Part, openparseConfString, enablerString, attrString, _*) => {
-        try {
-          val parts = Seq(arg1Part, relPart, arg2Part) map deserializePart
-          val enabler = if (enablerString.equals("None")) None else Some(EnablingCondition.deserialize(enablerString))
-          val attribution = if (attrString.equals("None")) None else Some(Attribution.deserialize(attrString))
-          val extr = new OllieExtraction(parts(0), parts(1), parts(2), openparseConfString.toDouble, enabler, attribution)
-          Some(extr)
-        } catch {
-          case e => { e.printStackTrace; error }
-        }
+  def tabDeserialize(array: Seq[String]): (OllieExtraction, Seq[String]) = {
+    array match {
+      case Seq(arg1Part, relPart, arg2Part, openparseConfString, enablerString, attrString, rest @ _*) => {
+        val parts = Seq(arg1Part, relPart, arg2Part) map deserializePart
+        val enabler = if (enablerString.equals("None")) None else Some(EnablingCondition.deserialize(enablerString))
+        val attribution = if (attrString.equals("None")) None else Some(Attribution.deserialize(attrString))
+        val extr = new OllieExtraction(parts(0), parts(1), parts(2), openparseConfString.toDouble, enabler, attribution)
+        (extr, rest)
       }
-      case _ => error
     }
+  }
+
+  def tabDeserialize(s: String): OllieExtraction = {
+    val (extr, rest) = tabDeserialize(s.split("\t"))
+    require(rest.isEmpty)
+    extr
   }
 
   def serializePart(part: Part): String = {

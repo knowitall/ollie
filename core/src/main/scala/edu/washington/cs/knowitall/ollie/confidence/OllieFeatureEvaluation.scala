@@ -12,7 +12,7 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.ollie.Ollie
 import edu.washington.cs.knowitall.openparse.eval.Score
 import edu.washington.cs.knowitall.common.Analysis
-import edu.washington.cs.knowitall.ollie.DetailedOllieExtractionInstance
+import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
 
 object OllieFeatureEvaluation {
     /** Settings for OpenParse. */
@@ -90,13 +90,13 @@ object OllieFeatureEvaluation {
     val gold = Score.loadGoldSet(settings.goldFile)
     val confFunc = OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
 
-    case class Scored(conf: Double, inst: DetailedOllieExtractionInstance, score: Boolean)
+    case class Scored(conf: Double, inst: OllieExtractionInstance, score: Boolean)
 
     val extrs = using (Source.fromFile(settings.inputFile)) { source =>
       for (
         line <- source.getLines.toList;
         val graph = DependencyGraph.deserialize(line);
-        inst <- extractor.extractDetailed(graph);
+        inst <- extractor.extract(graph);
         score <- gold.get(inst.extr.toString);
         val conf = confFunc(inst)
       ) yield Scored(conf, inst, score)

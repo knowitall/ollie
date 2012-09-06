@@ -1,6 +1,7 @@
 package edu.washington.cs.knowitall.ollie
 
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
+import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
 import edu.washington.cs.knowitall.common.HashCodeHelper
 
 /** OllieExtractionInstance represents an extraction coupled with
@@ -10,7 +11,9 @@ class OllieExtractionInstance(
     /** The associated extraction. */
     val extr: OllieExtraction,
     /** The associated sentence. */
-    val sent: DependencyGraph) {
+    val sent: DependencyGraph,
+    /** The extractor used. */
+    val pat: PatternExtractor) {
 
   override def equals(that: Any) = that match {
     case that: OllieExtractionInstance => this.extr == that.extr && this.sent == that.sent
@@ -21,21 +24,20 @@ class OllieExtractionInstance(
   def tabSerialize: String = {
     val serializedGraph = sent.serialize
     val serializedExtr = extr.tabSerialize
-    Seq(serializedGraph, serializedExtr).mkString("\t")
+    Seq(serializedGraph, pat.tabSerialize, serializedExtr).mkString("\t")
   }
 }
-
-class DetailedOllieExtractionInstance(override val extr: DetailedOllieExtraction, sent: DependencyGraph)
-extends OllieExtractionInstance(extr, sent)
 
 object OllieExtractionInstance {
   def tabDeserialize(string: String): OllieExtractionInstance = {
     try {
-      val (serializedGraph, rest) = string.span(_ != '\t')
-      val serializedExtr = rest.drop(1)
-      val extr = OllieExtraction.tabDeserialize(serializedExtr).get
+      val Array(serializedGraph, r0 @ _*) = string.split('\t')
+
       val graph = DependencyGraph.deserialize(serializedGraph)
-      new OllieExtractionInstance(extr, graph)
+      val (pat, r1) = PatternExtractor.tabDeserialize(r0)
+      val (extr, r2) = OllieExtraction.tabDeserialize(r1)
+
+      new OllieExtractionInstance(extr, graph, pat)
     } catch {
       case e => throw new IllegalArgumentException("Could not tab deserialize: " + string, e)
     }

@@ -26,6 +26,8 @@ extends GeneralExtractor(pattern, conf) {
 
     extractions.map{ case (extr, m) => template(extr, dgraph, m) }
   }
+
+  override def tabSerialize = Iterable("Template", template.serialize, pattern.serialize, conf.toString).mkString("\t")
 }
 
 case object TemplateExtractor extends PatternExtractorType {
@@ -49,6 +51,20 @@ case object TemplateExtractor extends PatternExtractorType {
     (for ((template, pattern, conf) <- patterns) yield {
       new TemplateExtractor(template, pattern, conf)
     }).toList
+  }
+
+  def tabDeserialize(string: String) = {
+    val parts = string.split("\t")
+  }
+
+  def tabDeserialize(parts: Seq[String]): (TemplateExtractor, Seq[String]) = {
+    val Seq(templateString, patternString, confString, rest @ _*) = parts
+
+    val template = Template.deserialize(templateString)
+    val pattern = DependencyPattern.deserialize(patternString)
+    val conf = confString.toDouble
+
+    (new TemplateExtractor(template, pattern, conf), rest)
   }
 }
 
@@ -98,6 +114,8 @@ case class Template(template: String, be: Boolean) {
   }
 
   override def toString = (if (be) "be " else "") + template
+
+  def serialize = this.toString
 }
 
 object Template {
