@@ -207,7 +207,7 @@ object OllieCli {
                 val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.getConf(extr), extr))
 
                 extrs match {
-                  case Nil if !settings.tabbed => writer.println("No extractions found.")
+                  case Nil if !(settings.tabbed || settings.serialized) => writer.println("No extractions found.")
                   case Nil =>
                   case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach {
                     case (conf, e) =>
