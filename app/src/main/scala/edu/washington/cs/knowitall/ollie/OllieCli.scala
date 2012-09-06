@@ -25,7 +25,7 @@ object OllieCli {
     def inputFile: Option[File]
     def outputFile: Option[File]
     def modelUrl: URL
-    def confidenceModelUrl: URL
+    def confidenceModelUrl: Option[URL]
     def confidenceThreshold: Double
     def openparseConfidenceThreshold: Double
 
@@ -48,7 +48,7 @@ object OllieCli {
       var inputFile: Option[File] = None
       var outputFile: Option[File] = None
       var modelUrl: URL = OpenParse.defaultModelUrl
-      var confidenceModelUrl: URL = OllieIndependentConfFunction.defaultModelUrl
+      var confidenceModelUrl: Option[URL] = Some(OllieIndependentConfFunction.defaultModelUrl)
       var confidenceThreshold: Double = 0.0
       var openparseConfidenceThreshold: Double = 0.005
 
@@ -82,9 +82,14 @@ object OllieCli {
       })
 
       opt(Some("c"), "confidence model", "<model-file>", "model file", { path: String =>
-        val file = new File(path)
-        require(file.exists, "file does not exist: " + path)
-        settings.confidenceModelUrl = file.toURI.toURL
+        if (path equalsIgnoreCase "None") {
+          settings.confidenceModelUrl = None
+        }
+        else {
+          val file = new File(path)
+          require(file.exists, "file does not exist: " + path)
+          settings.confidenceModelUrl = Some(file.toURI.toURL)
+        }
       })
 
       opt(None, "malt-model", "<file>", "malt model file", { path: String =>
@@ -152,7 +157,7 @@ object OllieCli {
 
     System.err.print("Loading ollie confidence function... ")
     val confFunction = Timing.timeThen {
-      OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
+      settings.confidenceModelUrl.map(url => OllieIndependentConfFunction.fromUrl(OllieFeatureSet, url))
     }{ ns =>
       System.err.println(Timing.Seconds.format(ns))
     }
@@ -204,7 +209,7 @@ object OllieCli {
                   parser.map(_.dependencyGraph(sentence)).getOrElse(DependencyGraph.deserialize(sentence))
 
                 // extract sentence and compute confidence
-                val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.getConf(extr), extr))
+                val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.map(_.getConf(extr)).getOrElse(0.0), extr))
 
                 extrs match {
                   case Nil if !(settings.tabbed || settings.serialized) => writer.println("No extractions found.")
