@@ -29,7 +29,8 @@ class OllieIndependentConfFunction(
   def getConf(extraction: OllieExtractionInstance): Double = {
     var z = this.featureSet.featureNames.map { name =>
       val weight = featureWeights(name)
-      weight * featureSet.featureMap(name).apply(extraction)
+      if (weight == 0.0 || weight == -0.0) 0
+      else weight * featureSet.featureMap(name).apply(extraction)
     } sum
 
     1.0 / (1.0 + math.exp(-(z + this.intercept)))
