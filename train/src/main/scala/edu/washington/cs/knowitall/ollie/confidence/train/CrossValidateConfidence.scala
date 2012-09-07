@@ -1,4 +1,3 @@
-
 package edu.washington.cs.knowitall.ollie.confidence.train
 
 import java.io.File
@@ -14,9 +13,9 @@ import edu.washington.cs.knowitall.ollie.confidence.FeatureSet
 import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
 import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
 import scopt.mutable.OptionParser
-import breeze.optimize.FirstOrderMinimizer.OptParams
+import edu.washington.cs.knowitall.common.Analysis
 
-object TrainOllieConfidence {
+object CrossValidateConfidence {
   def main(args: Array[String]) {
     object settings extends Settings {
       var inputFile: File = _
@@ -36,6 +35,8 @@ object TrainOllieConfidence {
    abstract class Settings {
      def inputFile: File
      def outputFile: Option[File]
+
+     val splits = 10
    }
 
 
@@ -47,32 +48,45 @@ object TrainOllieConfidence {
         (source.getLines map (ScoredOllieExtractionInstance.tabDeserialize)).toList
       }
 
-    val classifier = trainer.train(data)
-    settings.outputFile match {
-      case Some(file) => classifier.saveFile(file)
-      case None =>
-        using (new PrintWriter(System.out)) { writer =>
-          classifier.save(writer)
-        }
+    val splits = data.iterator.sliding(data.size / settings.splits, data.size / settings.splits).withPartial(false)
+    val results = for {
+      split <- splits.toList
+
+      val test = split
+      val training = data filterNot (test contains _)
+
+      val classifier = trainer.train(training)
+    } yield {
+      for (example <- test) yield {
+        val conf = classifier.apply(example.inst)
+        val correct =
+          if (conf >= 0.5 && example.score) true
+          else if (conf < 0.5 && !example.score) true
+          else false
+        (conf, correct)
+      }
     }
-  }
-}
 
-class TrainOllieConfidence(val features: FeatureSet[OllieExtractionInstance]) {
-  def trainBreezeClassifier(instances: Iterable[ScoredOllieExtractionInstance]) = {
-    val examples = instances.zipWithIndex map { case (scored, i) =>
-      val vector = DenseVector((1.0 +: features.vectorize(scored.inst)).toArray)
-      Example[Boolean, DenseVector[Double]](scored.score, vector, id=i.toString)
+    val pys = results.map { list =>
+      val py = Analysis.precisionYield(list.sortBy(-_._1).map(_._2))
+
+      py
     }
 
-    new LogisticClassifier.Trainer[Boolean,DenseVector[Double]](
-        OptParams(useL1 = true)).train(examples)
-  }
+    val aucs = pys.zipWithIndex map { case (py, i) =>
+      println("Split " + i)
+      py foreach { case (y, p) =>
+        println(Iterable(y.toString, "%1.4f" format p).mkString("\t"))
+      }
 
-  def train(instances: Iterable[ScoredOllieExtractionInstance]) = {
-    val classifier = trainBreezeClassifier(instances)
+      val auc = Analysis.areaUnderCurve(py)
+      println("auc: " + auc)
 
-    val weights = (("Intercept" +: features.featureNames).iterator zip classifier.featureWeights.indexed(true).iterator.map(_._2)).toMap
-    new OllieIndependentConfFunction(OllieFeatureSet, weights, 0.0)
+      println()
+      auc
+    }
+
+    var auc = breeze.linalg.mean(aucs)
+    println("avg auc: " + auc)
   }
 }
