@@ -23,14 +23,14 @@ object OllieFeatures {
   val weirdPunct = Pattern.compile(".*[:!@#$%^&*{};`<>]+.*")
   val prepTag = Pattern.compile("IN|TO|WP")
   val ingStart = Pattern.compile("^[a-zA-Z]+ing.*")
-  val verbStart = Pattern.compile("VB*")
   val relationVerb = Pattern.compile("VB|VBD|VBZ|VBN|VBP|MD")
 
   object nonContinuousRel extends Feature("non-contiguous rel") {
-    val trainingPrep = new Regex(" (?:" + Postagger.prepositions.mkString("|") + ")$")
+    val trailingPrep = new Regex(" (?:" + Postagger.prepositions.mkString("|") + ")$")
+    val leadingBe = new Regex("^be ")
     override def apply(inst: OllieExtractionInstance): Double = {
-      val trimmed = trainingPrep.replaceAllIn(inst.extr.rel.text, "")
-      inst.sent.text.contains(trimmed)
+      val trimmed = leadingBe.replaceAllIn(trailingPrep.replaceAllIn(inst.extr.rel.text, ""), "")
+      !inst.sent.text.contains(trimmed)
     }
   }
 
@@ -51,6 +51,7 @@ object OllieFeatures {
 
   // is there a verb at the start of the sentence, or immediately after a comma?
   object imperative extends Feature("sentence is imperative") {
+    private val verbStart = Pattern.compile("VB.*")
     override def apply(inst: OllieExtractionInstance): Double = {
       import scalaz._
       import Scalaz._
@@ -114,7 +115,7 @@ object OllieFeatures {
   object relStartsWithBe extends Feature("rel starts with be") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.rel.nodes.headOption match {
-        case Some(node) => node.text startsWith "be"
+        case Some(node) => node.text startsWith "be "
         case None => false
       }
     }
@@ -212,7 +213,7 @@ object OllieFeatures {
 
   object ifRightBeforeArg1 extends Feature("if right before arg1") {
     override def apply(inst: OllieExtractionInstance): Double = {
-      val nodesSeq = inst.sent.nodes.take(inst.extr.arg1.span.start - 1)
+      val nodesSeq = inst.sent.nodes.take(inst.extr.arg1.span.start)
       nodesSeq.lastOption.exists(_.text equalsIgnoreCase "if")
     }
   }
