@@ -13,55 +13,35 @@ import edu.washington.cs.knowitall.ollie.Ollie
 import edu.washington.cs.knowitall.openparse.eval.Score
 import edu.washington.cs.knowitall.common.Analysis
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
+import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
 
 object OllieFeatureEvaluation {
     /** Settings for OpenParse. */
   abstract class Settings {
-    /** url to find the model */
-    def modelUrl: URL
-
-    /** url to confidence model */
-    def confidenceModelUrl: URL
-
-    /** file with annotations */
-    def goldFile: File
+    /** source file of scored extractions */
+    def inputFile: File
 
     /** file to output; None means stdout */
     def outputFile: Option[File]
 
-    /** source file of dependencies */
-    def inputFile: File
-
-    /** threshold for reported extractions and attempted patterns */
-    def confidenceThreshold: Double
-
-    /** Create an OpenParse configuration from the settings. */
-    def configuration: Configuration = new Configuration(
-      confidenceThreshold = this.confidenceThreshold)
+    /** confidence model url */
+    def confidenceModelUrl: URL
   }
 
   def main(args: Array[String]) = {
     var settings = new Settings {
-      var modelUrl: URL = OpenParse.defaultModelUrl
-      var confidenceModelUrl: URL = OllieIndependentConfFunction.defaultModelUrl
-      var outputFile: Option[File] = None
-      var goldFile: File = _
       var inputFile: File = _
-      var confidenceThreshold: Double = 0.0
+      var outputFile: Option[File] = None
+      var confidenceModelUrl: URL = OllieIndependentConfFunction.defaultModelUrl
     }
 
     val parser = new OptionParser("feature-eval") {
-      opt(Some("m"), "model", "<file>", "model file", { path: String =>
-        val file = new File(path)
-        require(file.exists, "file does not exist: " + path)
-        settings.modelUrl = file.toURI.toURL
-      })
       opt(Some("c"), "confidence model", "<file>", "confidence model file", { path: String =>
         val file = new File(path)
         require(file.exists, "file does not exist: " + path)
         settings.confidenceModelUrl = file.toURI.toURL
       })
-      doubleOpt(Some("t"), "threshold", "<threshold>", "confident threshold for shown extractions", { t: Double => settings.confidenceThreshold = t })
+
       opt("o", "output", "output file (otherwise stdout)", { path =>
         val file = new File(path)
         settings.outputFile = Some(file)
@@ -72,12 +52,6 @@ object OllieFeatureEvaluation {
         require(file.exists, "input file does not exist: " + path)
         settings.inputFile = file
       })
-
-      arg("gold", "gold file", { path: String =>
-        val file = new File(path)
-        require(file.exists, "gold file does not exist: " + path)
-        settings.goldFile = file
-      })
     }
 
     if (parser.parse(args)) {
@@ -86,25 +60,19 @@ object OllieFeatureEvaluation {
   }
 
   def run(settings: Settings) = {
-    val extractor = new Ollie(OpenParse.fromModelUrl(settings.modelUrl, settings.configuration))
-    val gold = Score.loadGoldSet(settings.goldFile)
     val confFunc = OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
-
-    case class Scored(conf: Double, inst: OllieExtractionInstance, score: Boolean)
 
     val extrs = using (Source.fromFile(settings.inputFile)) { source =>
       for (
         line <- source.getLines.toList;
-        val graph = DependencyGraph.deserialize(line);
-        inst <- extractor.extract(graph);
-        score <- gold.get(inst.extr.toString);
-        val conf = confFunc(inst)
-      ) yield Scored(conf, inst, score)
+        val scored = ScoredOllieExtractionInstance.tabDeserialize(line);
+        val conf = confFunc(scored.inst)
+      ) yield (conf, scored)
     }
 
-    val sorted = extrs.sortBy(-_.conf).toList
+    val sorted = extrs.sortBy(-_._1).toList
 
-    val pyed = (sorted.head, 0, 1.0) +: Analysis.precisionYieldMeta(sorted zip sorted.map(_.score))
+    val pyed = (sorted.head, 0, 1.0) +: Analysis.precisionYieldMeta(sorted zip sorted.map(_._2.score))
 
     val featureNames = confFunc.featureSet.featureNames.filter(confFunc.featureWeights.get(_).isDefined).toList.sorted
     using {
@@ -117,7 +85,7 @@ object OllieFeatureEvaluation {
         "extr", "enabler", "attrib", "sentence", "dependencies") ++
         featureNames).mkString("\t"))
       writer.println("\t" * 10 + featureNames.map(confFunc.featureWeights(_).toString).mkString("\t"))
-    (pyed) foreach { case (scored, y, p) =>
+    (pyed) foreach { case ((conf, scored), y, p) =>
       val features =
         for (
           featureName <- featureNames;
@@ -125,7 +93,7 @@ object OllieFeatureEvaluation {
         ) yield featureValue
 
       writer.println((Iterable(if (scored.score) 1 else 0,
-          scored.conf,
+          conf,
           scored.inst.extr.openparseConfidence,
           y,
           p,
