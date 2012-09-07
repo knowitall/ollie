@@ -168,7 +168,10 @@ object OllieFeatures {
 
   object sentEndsWithArg2 extends Feature("sentence ends with arg2") {
     override def apply(inst: OllieExtractionInstance): Double = {
-      inst.extr.arg2.span.end == inst.sent.length
+      val rightNodes = inst.sent.nodes.drop(inst.extr.arg2.span.end)
+
+      // all trailing characters are terminating punctuation
+      rightNodes.forall(node => node.postag == "." || node.postag == "?")
     }
   }
 
@@ -329,10 +332,11 @@ object OllieFeatures {
     }
   }
 
-  class ArgBordersComma(getPart: OllieExtractionInstance=>Part, partName: String) extends Feature(partName + " borders comma") {
+  class ArgBordersAppos(getPart: OllieExtractionInstance=>Part, partName: String) extends Feature(partName + " borders appositive") {
     override def apply(inst: OllieExtractionInstance): Double = {
-      val neighbors = inst.sent.nodes.filter(_.indices borders getPart(inst).span)
-      neighbors exists (_.text == ",")
+      val nodes = getPart(inst).nodes
+      val neighbors = List(nodes.head, nodes.last).flatMap(inst.sent.graph.edges(_))
+      neighbors exists (_.label == "amod")
     }
   }
 
@@ -391,10 +395,13 @@ object OllieFeatures {
     prepInArg2,
     new NounVerbNounInArg(_.extr.arg1, "arg1"),
     new NounVerbNounInArg(_.extr.arg2, "arg2"),
-    new ArgBordersComma(_.extr.arg1, "arg1"),
-    new ArgBordersComma(_.extr.arg2, "arg2"),
+    new ArgBordersAppos(_.extr.arg1, "arg1"),
+    new ArgBordersAppos(_.extr.arg2, "arg2"),
     new gapInRel(10),
-    nonContinuousRel)
+    nonContinuousRel,
+    nnPatternEdge,
+    semanticPatternConstraint,
+    patternPrepMismatch)
 
   def getFeatures(): SortedMap[String, OllieExtractionInstance => Double] = {
     (for (f <- features) yield (f.name -> (f.apply _)))(scala.collection.breakOut)
