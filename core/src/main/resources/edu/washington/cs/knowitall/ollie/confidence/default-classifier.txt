@@ -1,24 +1,39 @@
-Arg1 Cleanup feature	-1.9474
-Arg1 comes after arg2	-0.1342
-Arg2 comes before Rel	-0.4772
-Args both start and end with nouns	0.1987
-Extr has attribution?	0.3096
-Extr has enabledBy?	0.6941
-Hyp words near rel	-0.4802
-If before arg1 and no enabledBy?	-2.1688
-Noun-Verb-Noun in arg2	-0.4579
-OpenParse Confidence	1.304
-Prep in arg2?	0.5695
-Prep right after arg2?	-0.5616
-Prep right before arg1?	-0.2119
-Rel contains VBD	0.6841
-Rel contains VBG	-0.4981
-Rel contains VBP	0.5545
-Rel ends with of	-0.2275
-Rel head is a communication verb?	-0.8676
-Rel starts with "be"?	-0.5553
-Sentence starts with extr?	0.3185
-That before rel	-0.2083
-Vacuous rel+arg2	-1.8374
-Verb after arg2?	0.2496
-Intercept	-0.2829
+args start and end with noun	0.030924657084179144
+rel ends with of	0.1013506657501542
+arg1 contains pronoun	0.19630801348782667
+arg2 contains pronoun	-0.13341646099789348
+long relation	-0.3547145229191737
+gap of 10 in rel	-0.34306426484946456
+vacuous extraction	-0.6389807893982924
+nn edges in pattern	0.9130032848389
+arg1 is proper	0.07933280909554899
+Intercept	0.0
+sentence begins with arg1	-0.1588407285556643
+if right before arg1	-1.2206208992816086
+arg2 is proper	-0.04306420146120506
+arg2 borders appositive	-0.0017006187220647805
+rel contains gerund	-0.26200297625650837
+arg1 borders appositive	-0.13448972417475485
+noun-verb-noun in arg1	0.0
+prep right after arg2	0.19212879336967245
+prep in arg2	0.16539493294341892
+arg2 contains infinitive	-0.0
+prep mismatch in pattern	-0.20092201136389673
+sentence is imperative	0.11745202578145564
+hyp words in rel	-0.1449927441123399
+sentence ends with arg2	0.11610654106632967
+noun-verb-noun in arg2	0.07217080739835992
+rel is contiguous	0.12562188545360878
+non-contiguous rel	-0.1849662870655201
+semantic constraints in pattern	-0.4343558913425681
+openparse confidence	0.43411514029724824
+arg1 bad characters	-0.40339032821185783
+sentence starts with extraction	0.18854224217974247
+arg2 bad characters	-0.009939551407472108
+rel contains verb	0.4757113580400253
+rel starts with be	0.0
+prep right before arg2	-0.2350155331052106
+sentence has question mark	0.0
+arg2 before arg1	-0.35791735399208685
+arg2 before rel	-0.023882392179128745
+rel bad characters	-0.11794120943690224
