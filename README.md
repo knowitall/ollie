@@ -18,10 +18,18 @@ then).
 
 ### Enabling Condition
 
+An enabling condition is a condition that needs to be met for the extraction to
+be true.  Certain words demark an enabling condition, such as "if" and "when".
+Ollie captures enabling conditions if they are present.
+
     sentence: If I slept past noon, I'd be late for work.
     extraction: (I; 'd be late for; work)[enabler=If I slept past noon]
 
 ### Attribution
+
+An attribution clause specifies an entity that asserted an extraction and a
+verb that specifies the expression.  Ollie captures attributions if they are
+present.
 
     sentence: Some people say Barack Obama was not born in the United States.
     extraction: (Barack Obama; was not born in; the United States)[attrib=Some people say]
@@ -29,12 +37,18 @@ then).
     sentence: Early astronomers believe that the earth is the center of the universe.
     extraction: (the earth; is the center of; the universe)[attrib=Early astronomers believe]
 
-### Long-range
+### Long-range extractions
+
+Unlike ReVerb, Ollie can capture long-range relations that are expressed far
+apart in the sentence but near in the dependency graph.
 
     sentence: After winning the Superbowl, the Saints are now the top dogs of the NFL.
     extraction: (the Saints; are now the top dogs of; the NFL)
 
 ### Relational noun
+
+Some relations are expressed without verbs.  Ollie can capture these as well as
+verb-mediated relations.
 
     sentence: Microsoft co-founder Bill Gates spoke at a conference on Monday.
     extraction: (Bill Gates; be co-founder of; Microsoft)
@@ -42,9 +56,15 @@ then).
 
 ### N-ary extractions
 
+Often times similar relations will specify different aspects of the same event.
+Since Ollie captures long-range relations it can capture N-ary extractions by
+collapsing extractions where the relation phrase only differs by the
+preposition.
+
     sentence: I learned that the 2012 Sasquatch music festival is scheduled for May 25th until May 28th.
-    extraction: (the 2012 Sasquatch music festival; is scheduled until; May 28th)
     extraction: (the 2012 Sasquatch music festival; is scheduled for; May 25th)
+    extraction: (the 2012 Sasquatch music festival; is scheduled until; May 28th)
+    nary: (the 2012 Sasquatch music festival; is scheduled; [for May 25th; to May 28th])
 
 ## Quick Start
 
