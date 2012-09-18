@@ -8,13 +8,14 @@
   </parent>
   <groupId>edu.washington.cs.knowitall.ollie</groupId>
   <artifactId>ollie-core_2.9.2</artifactId>
-  <version>1.0.0.RC1-SNAPSHOT</version>
+  <version>1.0.0.RC1</version>
   <name>ollie-core</name>
   <description>Ollie is an open information extractor for binary relations.</description>
   <scm>
     <url>https://github.com/knowitall/ollie</url>
     <connection>scm:git://github.com/knowitall/ollie.git</connection>
     <developerConnection>scm:git:git@github.com:knowitall/ollie.git</developerConnection>
+    <tag>ollie-core-1.0.0.RC1</tag>
   </scm>
   <licenses>
     <license>
@@ -87,13 +88,15 @@
     <testSourceDirectory>src/test/scala</testSourceDirectory>
     <plugins>
       <plugin>
-        <groupId>org.scala-tools</groupId>
-        <artifactId>maven-scala-plugin</artifactId>
+        <groupId>net.alchim31.maven</groupId>
+        <artifactId>scala-maven-plugin</artifactId>
+        <version>3.0.1</version>
         <executions>
           <execution>
             <goals>
               <goal>compile</goal>
               <goal>testCompile</goal>
+              <goal>doc-jar</goal>
             </goals>
           </execution>
         </executions>
