@@ -5,6 +5,9 @@ import edu.washington.cs.knowitall.common.HashCodeHelper
 
 /** OllieExtractionInstance represents a boolean score coupled with
   * an extraciton instance.
+  *
+  * @param  score  the label for this extraction
+  * @param  inst  the extraction instance labelled
   */
 case class ScoredOllieExtractionInstance(
     val score: Boolean,

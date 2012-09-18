@@ -12,6 +12,8 @@ import edu.washington.cs.knowitall.openparse.ExtractorPattern
 
 /** An superclass for extractors based on patterns.
   *
+  * @param  pattern  the pattern to extract
+  *
   * @author Michael Schmitz
   */
 abstract class PatternExtractor(val pattern: ExtractorPattern) {

@@ -18,8 +18,11 @@ import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEd
   * @author Michael Schmitz
   */
 abstract class Extraction(val relLemmas: Set[String]) {
+  /** the text of the first argument */
   def arg1Text: String
+  /** the text of the relation */
   def relText: String
+  /** the text of the second argument */
   def arg2Text: String
 
   def this(relText: String) = this(relText.split(" ").map(implicitly[Stemmer].lemmatize(_)).toSet -- OpenParse.LEMMA_BLACKLIST)
@@ -39,6 +42,10 @@ abstract class Extraction(val relLemmas: Set[String]) {
       (that.arg2Text.contains(this.arg2Text) || this.arg2Text.contains(that.arg2Text))
 }
 
+/** A simple representation of an OpenParse extraction.
+  *
+  * @author Michael Schmitz
+  */
 class SimpleExtraction(
   override val arg1Text: String,
   override val relText: String,
@@ -79,7 +86,10 @@ class DetailedExtraction(
     arg2Nodes: SortedSet[DependencyNode]) =
     this(extractor, mch, new Part(arg1Nodes), new Part(relNodes), new Part(arg2Nodes))
 
+  /** all the nodes in this extraction */
   def nodes = arg1.nodes ++ rel.nodes ++ arg2.nodes
+
+  /** all the edges in this extraction */
   def edges = `match`.bipath.path
 
   def replaceRelation(relation: String) =

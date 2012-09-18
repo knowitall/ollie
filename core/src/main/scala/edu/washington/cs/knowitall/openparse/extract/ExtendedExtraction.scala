@@ -6,6 +6,11 @@ import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.openparse.extract.Extraction.{ClausalComponent, AdverbialModifier}
 import edu.washington.cs.knowitall.tool.postag.Postagger
 
+/** Represents a part {arg1, rel, arg2} of an extraction.
+  *
+  * @param  string  the representation of the part
+  * @param  interval  the interval of the part in the source sentence
+  */
 class ExtractionPart(val string: String, val interval: Interval) extends Ordered[ExtractionPart] {
   override def compare(that: ExtractionPart) =
     this.interval.compare(that.interval)
@@ -13,6 +18,14 @@ class ExtractionPart(val string: String, val interval: Interval) extends Ordered
   override def toString = string.replaceAll("/", "")
 }
 
+/** Represents a possible suffix for an extended extraction.
+  * For example, in the sentence "He ate from 7 until 10."
+  * there are two suffixes: "from 7" and "until 10".
+  *
+  * @param  string  the text of the suffix
+  * @param  interval  the interval of the suffix in the source sentence
+  * @param  confidence  the confidence of the suffix
+ */
 class Suffix(
     string: String,
     interval: Interval,
@@ -20,10 +33,22 @@ class Suffix(
 extends ExtractionPart(string, interval) {
   override def toString = ("%1.4f" format confidence) + "/\"" + super.toString + "\""
 
+  /** Annote the suffix with a type. */
   def annotate(string: String) =
     new AnnotatedSuffix(this, string)
 }
 
+/** Represents a possible suffix for an extended extraction
+  * along with an annotation.
+  *
+  * For example, in the sentence "He ate from 7 until 10."
+  * there are two suffixes: "from 7" and "until 10".
+  *
+  * @param  string  the text of the suffix
+  * @param  interval  the interval of the suffix in the source sentence
+  * @param  confidence  the confidence of the suffix
+  * @param  annotation  an annotation for the suffix
+ */
 class AnnotatedSuffix(
     string: String,
     interval: Interval,
@@ -36,12 +61,18 @@ extends Suffix(string, interval, confidence) {
 }
 
 /** A representaiton of an n-ary extraction, i.e.
-  * 
+  *
   *   (Michael, ran, to the store, on Monday, at 2 PM)
-  * 
+  *
   * N-ary extractions have multiple secondary arguments (objects)
   * and these arguments include the preposition.
-  * 
+  *
+  * @param  arg1  the first argument
+  * @param  rel  the relation
+  * @param  suffixes  the suffixes
+  * @param  clausals  a clause restricting this extraction to a context
+  * @param  modifier  a modifier for this extraction (i.e. attribution)
+  *
   * @author Michael Schmitz
   */
 class ExtendedExtraction(val arg1: ExtractionPart, val rel: ExtractionPart, val suffixes: Seq[Suffix], val clausals: Seq[ClausalComponent] = Seq.empty, val modifiers: Seq[AdverbialModifier] = Seq.empty) {

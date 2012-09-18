@@ -10,6 +10,11 @@ import edu.washington.cs.knowitall.openparse.ExtractorPattern
 /** An extractor that is specified only with a pattern
   * but only works for specific relation lemmas.
   *
+  * @param  relation  the resulting relation string
+  * @param  relationLemmas  the acceptible matched lemmas
+  * @param  pattern  the pattern to extract
+  * @param  conf  the confidence of this extractor
+  *
   * @author Michael Schmitz
   */
 class SpecificExtractor(val relation: String,

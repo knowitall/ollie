@@ -18,6 +18,10 @@ import edu.washington.cs.knowitall.openparse.ExtractorPattern
   * the relation.  It can also change the preposition word to another
   * preposition (i.e., switch "of" to "in").
   *
+  * @param  template  a template in which to put the relation words
+  * @param  pattern  the pattern to extract
+  * @param  conf  the confidence of this extractor
+  *
   * @author Michael Schmitz
   */
 class TemplateExtractor(val template: Template, pattern: ExtractorPattern, conf: Double)

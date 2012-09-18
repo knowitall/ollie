@@ -15,13 +15,14 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 /** Ollie is an Open Information Extractor that produces binary extractions
   * with context.  The constructor takes an OpenParse instance.  Ollie extends
   * OpenParse's extractions with enabling conditions and attributions.  There
-  * is also a trained confidence function for [[OllieExtractions]].
+  * is also a trained confidence function for [[OllieExtraction]]s.
   *
   * @author Michael Schmitz
   */
 class Ollie(val openparse: OpenParse) {
   val stemmer = new MorphaStemmer
 
+  /** Construct with the default model. */
   def this() = this(OpenParse.withDefaultModel())
 
   /**

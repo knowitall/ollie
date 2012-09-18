@@ -3,7 +3,9 @@ package edu.washington.cs.knowitall.ollie.confidence
 import scala.collection.immutable.Map
 
 /** FeatureSet represents a set of features on T that can be
-  * represented as a double */
+  * represented as a double.
+  *
+  *  @param  featureMap  a lookup for the features */
 class FeatureSet[T](val featureMap: Map[String, T => Double]) {
   def apply(name: String) = featureMap(name)
 

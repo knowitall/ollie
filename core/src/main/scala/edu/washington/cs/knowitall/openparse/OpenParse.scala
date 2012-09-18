@@ -283,6 +283,15 @@ object OpenParse {
     }
   }
 
+  /** Configuration options.
+    *
+    * @param  simplifyVBPostags  replace all VB. postags to VB
+    * @param  simplifyPostags  replace plurals with the singular postag
+    * @param  confidenceThreshold  threshold under which not to present extractions
+    * @param  expandExtraction  true if arguments should be expanded from the matched node
+    * @param  keepDuplicates  true if duplicate extractions should be presented
+    * @param  collapseGraph  true if the graph should be compressed
+    */
   case class Configuration(
     val simplifyVBPostags: Boolean = false,
     val simplifyPostags: Boolean = true,

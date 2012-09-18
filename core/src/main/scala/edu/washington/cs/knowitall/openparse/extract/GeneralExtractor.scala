@@ -10,6 +10,9 @@ import edu.washington.cs.knowitall.openparse.ExtractorPattern
 
 /** An extractor that is purely specified by a pattern.
   *
+  * @param  pattern  the pattern to extract
+  * @param  conf  the confidence of this extractor
+  *
   * @author Michael Schmitz
   */
 class GeneralExtractor(pattern: ExtractorPattern, val conf: Double) extends PatternExtractor(pattern) {

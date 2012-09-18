@@ -108,7 +108,14 @@ class OllieExtraction(
       this.openparseConfidence == that.openparseConfidence
     case _ => false
   }
-  override def hashCode = HashCodeHelper(this.arg1, this.rel, this.arg2, this.enabler, this.attribution, this.openparseConfidence)
+
+  override def hashCode = HashCodeHelper(
+      this.arg1,
+      this.rel,
+      this.arg2,
+      this.enabler,
+      this.attribution,
+      this.openparseConfidence)
 
   def tabSerialize: String = {
     val enablerString = enabler match {
@@ -124,8 +131,10 @@ class OllieExtraction(
     fieldStrings.map(_.replaceAll("\t", "_TAB_")).mkString("\t")
   }
 
+  /** The full text of this extraction. */
   def text = Iterable(arg1.text, rel.text, arg2.text).mkString(" ")
 
+  /** All the nodes in this extraction. */
   def nodes = arg1.nodes ++ rel.nodes ++ arg2.nodes
 
   /** The spanning interval of the nodes in this extraction. */
