@@ -81,8 +81,9 @@ Follow these steps to get started:
 ## Building
 
 Building Ollie from source requires Apache Maven (<http://maven.apache.org>).
-Run this command to download the required dependencies, compile, and create a
-single jar file.
+First, clone or download the Ollie source from GitHub.  Run this command in the
+top-level source folder to download the required dependencies, compile, and
+create a single jar file.
 
     mvn clean package
 
