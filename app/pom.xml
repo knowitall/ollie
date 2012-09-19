@@ -31,8 +31,8 @@
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.ollie</groupId>
-      <artifactId>ollie-core</artifactId>
-      <version>1.0.0-SNAPSHOT</version>
+      <artifactId>ollie-core_2.9.2</artifactId>
+      <version>1.0.0.RC1</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
