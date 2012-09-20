@@ -14,7 +14,7 @@ import scopt.OptionParser
 
 /** Detemine valid extractions for the boostrap process. 
   * 
-  * Extractions need frequent arguments from [[FindTargetArguments]]
+  * Extractions need frequent arguments from FindTargetArguments
   * and cannot contain a negation word.
   * 
   * @author Michael Schmitz

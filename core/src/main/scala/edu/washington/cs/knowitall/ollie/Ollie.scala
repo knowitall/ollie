@@ -15,7 +15,7 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 /** Ollie is an Open Information Extractor that produces binary extractions
   * with context.  The constructor takes an OpenParse instance.  Ollie extends
   * OpenParse's extractions with enabling conditions and attributions.  There
-  * is also a trained confidence function for [[OllieExtraction]]s.
+  * is also a trained confidence function for OllieExtractions.
   *
   * @author Michael Schmitz
   */
