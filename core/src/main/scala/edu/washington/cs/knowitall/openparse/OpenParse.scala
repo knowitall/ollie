@@ -75,7 +75,7 @@ class OpenParse(
     def possibleExtraction(extractor: PatternExtractor, dgraph: DependencyGraph) = {
       extractor.pattern.edgeMatchers.forall { matcher =>
         val can = dgraph.graph.edges.exists(matcher.canMatch(_))
-        if (!can) logger.trace("No possible match: " + matcher)
+        if (!can && logger.isTraceEnabled) logger.trace("No possible match: " + matcher)
 
         can
       }
@@ -85,13 +85,13 @@ class OpenParse(
       extractor <- extractors;
       // todo: organize patterns by a reverse-lookup on edges
 
-      val _ = logger.trace("attempting extractor: " + extractor)
+      // val _ = logger.trace("attempting extractor: " + extractor)
 
       // optimizations
       if (confidenceOverThreshold(extractor, configuration.confidenceThreshold));
       if (possibleExtraction(extractor, dgraph));
 
-      val _ = logger.trace("applying extractor: " + extractor)
+      // val _ = logger.trace("applying extractor: " + extractor)
 
       // extraction
       extr <- extractor.extract(dgraph)(this.buildExtraction, this.validateMatch)

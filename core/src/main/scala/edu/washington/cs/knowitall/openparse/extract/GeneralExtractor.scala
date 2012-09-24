@@ -27,10 +27,10 @@ class GeneralExtractor(pattern: ExtractorPattern, val conf: Double) extends Patt
 
     // apply pattern and keep valid matches
     val matches = pattern(dgraph.graph)
-    if (!matches.isEmpty) logger.debug("matches: " + matches.mkString(", "))
+    if (!matches.isEmpty && logger.isDebugEnabled) logger.debug("matches: " + matches.mkString(", "))
 
     val filtered = matches.filter(validMatch(dgraph.graph))
-    if (!filtered.isEmpty) logger.debug("filtered: " + filtered.mkString(", "))
+    if (!filtered.isEmpty && logger.isDebugEnabled) logger.debug("filtered: " + filtered.mkString(", "))
 
     for (m <- filtered; extr <- buildExtraction(dgraph, m, this)) yield {
       (extr, m)

@@ -209,12 +209,12 @@ object OllieCli {
                   parser.map(_.dependencyGraph(sentence)).getOrElse(DependencyGraph.deserialize(sentence))
 
                 // extract sentence and compute confidence
-                val extrs = ollieExtractor.extract(graph).map(extr => (confFunction.map(_.getConf(extr)).getOrElse(0.0), extr))
+                val extrs = ollieExtractor.extract(graph).iterator.map(extr => (confFunction.map(_.getConf(extr)).getOrElse(0.0), extr))
 
                 extrs match {
-                  case Nil if !(settings.tabbed || settings.serialized) => writer.println("No extractions found.")
-                  case Nil =>
-                  case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toSeq.sortBy(-_._1).foreach {
+                  case it if it.isEmpty && !(settings.tabbed || settings.serialized) => writer.println("No extractions found.")
+                  case it if it.isEmpty =>
+                  case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toList.sortBy(-_._1).foreach {
                     case (conf, e) =>
                       if (settings.tabbed && !settings.singleColumn) {
                         writer.println(Iterable(confFormatter.format(conf),

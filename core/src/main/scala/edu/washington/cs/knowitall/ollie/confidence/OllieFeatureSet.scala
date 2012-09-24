@@ -1,18 +1,16 @@
 package edu.washington.cs.knowitall.ollie.confidence
 
 import java.util.regex.Pattern
+
 import scala.Array.canBuildFrom
-import scala.collection.JavaConversions.setAsJavaSet
 import scala.collection.immutable.SortedMap
-import edu.washington.cs.knowitall.ollie.Ollie
+import scala.util.matching.Regex
+
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
 import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
-import edu.washington.cs.knowitall.tool.stem.Stemmer
-import scalaz.Scalaz._
-import edu.washington.cs.knowitall.tool.postag.Postagger
-import scala.util.matching.Regex
 import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
+import edu.washington.cs.knowitall.tool.postag.Postagger
+import scalaz.Scalaz._
 
 object OllieFeatureSet extends FeatureSet(OllieFeatures.getFeatures)
 
