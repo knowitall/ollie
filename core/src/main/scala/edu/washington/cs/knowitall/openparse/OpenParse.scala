@@ -64,13 +64,7 @@ class OpenParse(
      * If so, make sure it is above the threshold.
      */
     def confidenceOverThreshold(extractor: PatternExtractor, threshold: Double) = {
-      extractor.confidence match {
-        // there is an independent confidence so do the check
-        case Some(conf) => conf >= configuration.confidenceThreshold
-        // there is no independent confidence, so we need to continue
-        // and compare the dependent confidence
-        case None => true
-      }
+      extractor.maximumConfidence >= configuration.confidenceThreshold
     }
 
     /**

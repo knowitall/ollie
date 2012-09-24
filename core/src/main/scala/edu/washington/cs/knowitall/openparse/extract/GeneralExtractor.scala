@@ -52,8 +52,10 @@ class GeneralExtractor(pattern: ExtractorPattern, val conf: Double) extends Patt
     this.conf
   }
 
-  override def confidence: Option[Double] =
-    Some(this.conf)
+  /** A maximum confidence for any extraction from this extractor.
+    * This is used for optimization.  If the minimum confidence is
+    * larger than the threshold, we don't need to run this extractor. */
+  override def maximumConfidence: Double = this.conf
 }
 
 case object GeneralExtractor extends PatternExtractorType {

@@ -21,7 +21,12 @@ abstract class PatternExtractor(val pattern: ExtractorPattern) {
     buildExtraction: (DependencyGraph, Match[DependencyNode], PatternExtractor)=>Iterable[DetailedExtraction],
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean): Iterable[DetailedExtraction]
   def confidence(extr: Extraction): Double
-  def confidence: Option[Double] // independent confidence
+
+  /** A maximum confidence for any extraction from this extractor.
+    * This is used for optimization.  If the minimum confidence is
+    * larger than the threshold, we don't need to run this extractor.
+    */
+  def maximumConfidence: Double
 
   override def toString = pattern.toString
 
