@@ -92,6 +92,13 @@
         <artifactId>scala-maven-plugin</artifactId>
         <version>3.0.1</version>
         <executions>
+          <execution>
+            <goals>
+              <goal>compile</goal>
+              <goal>testCompile</goal>
+              <goal>doc-jar</goal>
+            </goals>
+          </execution>
         </executions>
         <configuration>
           <args>
