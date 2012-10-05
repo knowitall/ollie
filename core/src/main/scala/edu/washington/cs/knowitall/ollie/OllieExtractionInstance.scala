@@ -21,6 +21,10 @@ class OllieExtractionInstance(
   }
   override def hashCode = HashCodeHelper(extr, sent)
 
+  def extraction = extr
+  def sentence = sent
+  def pattern = pat
+
   def tabSerialize: String = {
     val serializedGraph = sent.serialize
     val serializedExtr = extr.tabSerialize
