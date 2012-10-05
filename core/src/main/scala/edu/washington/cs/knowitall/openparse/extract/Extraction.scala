@@ -169,14 +169,20 @@ object Extraction {
     val expandedArg1 = if (expand) expandArgument(graph, arg1, rels.toSet) else SortedSet(arg1)
     val expandedArg2 = if (expand) expandArgument(graph, arg2, rels.toSet) else SortedSet(arg2)
     val expandRels =
-      if (expand) {
+      // hack to exclude rel rel extractions with a second nsubj
+      if (rels.size > 0 && rels.tail.exists(rel => graph.graph.dedges(rel).exists(dedge => dedge.dir == Direction.Down && dedge.edge.label == "nsubj"))) {
+        Set.empty
+      }
+      else if (expand) {
         import scalaz._
         import Scalaz._
 
         val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2)).sequence
 
         expansions.map(expansion => Part(expansion.map(_.nodes).reduce(_ ++ _), expansion.map(_.text).mkString(" ")))
-      } else Set(Part(SortedSet.empty[DependencyNode] ++ rels, rels.map(_.text).mkString(" ")))
+      } else {
+        Set(Part(SortedSet.empty[DependencyNode] ++ rels, rels.map(_.text).mkString(" ")))
+      }
 
     for {
       Part(expandedRelNodes, expandedRelText) <- expandRels
