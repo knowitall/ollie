@@ -8,14 +8,14 @@
   </parent>
   <groupId>edu.washington.cs.knowitall.ollie</groupId>
   <artifactId>ollie-core_2.9.2</artifactId>
-  <version>1.0.0.RC3</version>
+  <version>1.0.0-SNAPSHOT</version>
   <name>ollie-core</name>
   <description>Ollie is an open information extractor for binary relations.</description>
   <scm>
     <url>https://github.com/knowitall/ollie</url>
     <connection>scm:git://github.com/knowitall/ollie.git</connection>
     <developerConnection>scm:git:git@github.com:knowitall/ollie.git</developerConnection>
-    <tag>ollie-core-1.0.0.RC3</tag>
+    <tag>HEAD</tag>
   </scm>
   <licenses>
     <license>
