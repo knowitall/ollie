@@ -51,6 +51,12 @@
       <artifactId>nlptools-stem-morpha_2.9.2</artifactId>
       <version>2.2.3</version>
     </dependency>
+    <!-- Confidence Function -->
+    <dependency>
+      <groupId>org.scalanlp</groupId>
+      <artifactId>breeze_2.9.2</artifactId>
+      <version>0.1</version>
+    </dependency>
     <!-- Logging -->
     <dependency>
       <groupId>org.slf4j</groupId>
