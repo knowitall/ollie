@@ -193,10 +193,6 @@ do not know whether Malt parser is thread safe.
 
 To contact the UW about Ollie, email knowit-ollie@cs.washington.edu.
 
-## Contributors
-* Michael Schmitz (http://www.schmitztech.com)
-* Robert Bart (rbart at cs.washington.edu)
-
 ## Citing Ollie
 If you use Ollie in your academic work, please cite Ollie with the following 
 BibTeX citation:
