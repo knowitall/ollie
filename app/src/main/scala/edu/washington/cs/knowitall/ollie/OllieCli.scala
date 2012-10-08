@@ -178,9 +178,9 @@ object OllieCli {
       }) { writer =>
         if (settings.tabbed) {
           if (settings.singleColumn)
-            writer.println(Iterable("confidence", "extraction", "enabler", "attribution", "dependencies", "text").mkString("\t"))
+            writer.println(Iterable("confidence", "extraction", "enabler", "attribution", "text", "pattern",  "dependencies").mkString("\t"))
           else
-            writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "dependencies", "text").mkString("\t"))
+            writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "text", "pattern", "dependencies").mkString("\t"))
         }
 
         val ns = Timing.time {
@@ -224,6 +224,7 @@ object OllieCli {
                           e.extr.enabler.map(_.text),
                           e.extr.attribution.map(_.text),
                           e.sent.text,
+                          e.pat,
                           e.sent.serialize).mkString("\t"))
                       } else if (settings.serialized) {
                         writer.println(confFormatter.format(conf) + "\t" + e.extr.toString + "\t" + e.tabSerialize)
@@ -233,6 +234,7 @@ object OllieCli {
                           e.extr.enabler.map(_.text),
                           e.extr.attribution.map(_.text),
                           e.sent.text,
+                          e.pat,
                           e.sent.serialize).mkString("\t"))
                       } else {
                         writer.println(confFormatter.format(conf) + ": " + e.extr)
