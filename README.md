@@ -168,6 +168,21 @@ project.  The source for for `ollie-app` is an excellent example of a project
 using `ollie-core` as a dependency.  `ollie-app` supplies a parser from
 [nlptools](https://github.com/knowitall/nlptools).
 
+## Training the Confidence Function
+
+While Ollie comes with a trained confidence function, it is possible to retrain
+the confidence function.  First, you need to run Ollie over a set of sentences
+and store the output in the *serialized* format.
+
+    echo "Michael rolled down the hill." | java -jar ollie-app-1.0.0-SNAPSHOT.jar --serialized --output toannotate.tsv
+
+Next you need to annotate the extractions.  Modify the output file and
+**change** the first column to a binary annotation--`1` for correct and `0` for
+wrong.  Your final file will look similar to `ollie/data/training.tsv`.  Now
+run the logistic regression trainer.
+
+    java -cp ollie-app-1.0.0-SNAPSHOT.jar edu.washington.cs.knowitall.ollie.confidence.train.TrainOllieConfidence toannotate.tsv
+
 ## Concurrency
 
 When operating at web scale, parallelism is essential.  While the base Ollie
