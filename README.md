@@ -37,14 +37,6 @@ present.
     sentence: Early astronomers believe that the earth is the center of the universe.
     extraction: (the earth; is the center of; the universe)[attrib=Early astronomers believe]
 
-### Long-range extractions
-
-Unlike ReVerb, Ollie can capture long-range relations that are expressed far
-apart in the sentence but near in the dependency graph.
-
-    sentence: After winning the Superbowl, the Saints are now the top dogs of the NFL.
-    extraction: (the Saints; are now the top dogs of; the NFL)
-
 ### Relational noun
 
 Some relations are expressed without verbs.  Ollie can capture these as well as
