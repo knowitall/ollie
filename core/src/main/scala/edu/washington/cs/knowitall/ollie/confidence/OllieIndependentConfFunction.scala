@@ -29,30 +29,7 @@ object OllieIndependentConfFunction {
     fromUrl(OllieFeatureSet, defaultModelUrl)
   }
 
-  def fromUrl(featureSet: FeatureSet[OllieExtractionInstance, Double], url: URL) = {
-    using(url.openStream) { input =>
-      new LogisticRegression[OllieExtractionInstance](featureSet, buildFeatureWeightMap(input))
-    }
-  }
-
-  private val tab = """\t""".r
-  def buildFeatureWeightMap(input: InputStream): Map[String, Double] = {
-    val featureWeights = new mutable.HashMap[String, Double]()
-    val scan = new Scanner(input, "UTF8")
-
-    var numFeatures = 0
-
-    while (scan.hasNextLine()) {
-      numFeatures += 1
-      val line = scan.nextLine()
-      val parts = tab.split(line)
-      val featureName = parts(0).trim
-      val weight = parts(1).toDouble
-      featureWeights.put(featureName, weight)
-    }
-
-    logger.debug("Confidence features loaded: " + numFeatures)
-
-    featureWeights.toMap
+  def fromUrl(featureSet: FeatureSet[OllieExtractionInstance, Double], url: URL): OllieIndependentConfFunction = {
+    LogisticRegression.fromUrl(featureSet, url)
   }
 }
