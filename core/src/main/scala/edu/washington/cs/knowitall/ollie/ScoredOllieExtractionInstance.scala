@@ -23,7 +23,7 @@ case class ScoredOllieExtractionInstance(
 object ScoredOllieExtractionInstance {
   def tabDeserialize(string: String): ScoredOllieExtractionInstance = {
     try {
-      val Array(scoreString, _, rest @ _*) = string.split('\t')
+      val Array(scoreString, rest @ _*) = string.split('\t')
 
       val score =
         if (scoreString == "1") true
