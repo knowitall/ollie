@@ -1,14 +1,12 @@
 package edu.washington.cs.knowitall.ollie
 
-import scala.Array.canBuildFrom
+import scala.Option.option2Iterable
 import scala.collection.breakOut
-import OllieExtraction.serializePart
+
 import edu.washington.cs.knowitall.collection.immutable.Interval
+import edu.washington.cs.knowitall.common.HashCodeHelper
 import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
-import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
-import edu.washington.cs.knowitall.common.HashCodeHelper
 
 /** A base representation for additional context around an extraction. */
 sealed abstract class Context {

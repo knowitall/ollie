@@ -1,8 +1,8 @@
 package edu.washington.cs.knowitall.ollie
 
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
 import edu.washington.cs.knowitall.common.HashCodeHelper
+import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 
 /** OllieExtractionInstance represents an extraction coupled with
   * its source sentence.
