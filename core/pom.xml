@@ -19,8 +19,8 @@
   </scm>
   <licenses>
     <license>
-      <name>ReVerb Software License Agreement</name>
-      <url>http://reverb.cs.washington.edu/LICENSE.txt</url>
+      <name>Ollie Software License Agreement</name>
+      <url>https://raw.github.com/knowitall/ollie/master/LICENSE</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
