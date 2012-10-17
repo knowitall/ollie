@@ -1,16 +1,13 @@
 package edu.washington.cs.knowitall.ollie
 
-import java.io.File
-import java.io.PrintWriter
 import scala.io.Source
+
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
-import edu.washington.cs.knowitall.openparse.extract.DetailedExtraction
 import edu.washington.cs.knowitall.openparse.OpenParse
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
-import scopt.OptionParser
+import edu.washington.cs.knowitall.openparse.extract.DetailedExtraction
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
+import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 
 /** Ollie is an Open Information Extractor that produces binary extractions
   * with context.  The constructor takes an OpenParse instance.  Ollie extends

@@ -1,19 +1,15 @@
 package edu.washington.cs.knowitall.ollie.confidence
 
-import edu.washington.cs.knowitall.openparse.OpenParse.Configuration
-import java.io.PrintWriter
 import java.io.File
+import java.io.PrintWriter
 import java.net.URL
-import edu.washington.cs.knowitall.openparse.OpenParse
-import edu.washington.cs.knowitall.common.Resource.using
-import scopt.OptionParser
+
 import scala.io.Source
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.ollie.Ollie
-import edu.washington.cs.knowitall.openparse.eval.Score
+
 import edu.washington.cs.knowitall.common.Analysis
-import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
+import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
+import scopt.OptionParser
 
 object OllieFeatureEvaluation {
     /** Settings for OpenParse. */
