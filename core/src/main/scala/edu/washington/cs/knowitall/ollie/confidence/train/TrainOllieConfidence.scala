@@ -2,19 +2,14 @@
 package edu.washington.cs.knowitall.ollie.confidence.train
 
 import java.io.File
-import java.io.PrintWriter
+
 import scala.io.Source
-import breeze.classify.LogisticClassifier
-import breeze.data.Example
-import breeze.linalg.DenseVector
+
 import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
 import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
-import edu.washington.cs.knowitall.ollie.confidence.FeatureSet
 import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
-import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
+import edu.washington.cs.knowitall.tool.conf.BreezeLogisticRegressionTrainer
 import scopt.mutable.OptionParser
-import breeze.optimize.FirstOrderMinimizer.OptParams
 
 object TrainOllieConfidence {
   def main(args: Array[String]) {
@@ -38,9 +33,8 @@ object TrainOllieConfidence {
      def outputFile: Option[File]
    }
 
-
   def run(settings: Settings) = {
-    val trainer = new TrainOllieConfidence(OllieFeatureSet)
+    val trainer = new BreezeLogisticRegressionTrainer(OllieFeatureSet)
 
     val data =
       using (Source.fromFile(settings.inputFile)) { source =>
@@ -51,28 +45,7 @@ object TrainOllieConfidence {
     settings.outputFile match {
       case Some(file) => classifier.saveFile(file)
       case None =>
-        using (new PrintWriter(System.out)) { writer =>
-          classifier.save(writer)
-        }
+        classifier.save(System.out)
     }
-  }
-}
-
-class TrainOllieConfidence(val features: FeatureSet[OllieExtractionInstance]) {
-  def trainBreezeClassifier(instances: Iterable[ScoredOllieExtractionInstance]) = {
-    val examples = instances.zipWithIndex map { case (scored, i) =>
-      val vector = DenseVector((1.0 +: features.vectorize(scored.inst)).toArray)
-      Example[Boolean, DenseVector[Double]](scored.score, vector, id=i.toString)
-    }
-
-    new LogisticClassifier.Trainer[Boolean,DenseVector[Double]](
-        OptParams(useL1 = true)).train(examples)
-  }
-
-  def train(instances: Iterable[ScoredOllieExtractionInstance]) = {
-    val classifier = trainBreezeClassifier(instances)
-
-    val weights = (("Intercept" +: features.featureNames).iterator zip classifier.featureWeights.indexed(true).iterator.map(_._2)).toMap
-    new OllieIndependentConfFunction(OllieFeatureSet, weights, 0.0)
   }
 }

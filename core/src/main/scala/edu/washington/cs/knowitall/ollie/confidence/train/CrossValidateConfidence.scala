@@ -1,19 +1,15 @@
 package edu.washington.cs.knowitall.ollie.confidence.train
 
 import java.io.File
-import java.io.PrintWriter
+
 import scala.io.Source
-import breeze.classify.LogisticClassifier
-import breeze.data.Example
-import breeze.linalg.DenseVector
-import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
-import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
-import edu.washington.cs.knowitall.ollie.confidence.FeatureSet
-import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
-import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
-import scopt.mutable.OptionParser
+
 import edu.washington.cs.knowitall.common.Analysis
+import edu.washington.cs.knowitall.common.Resource.using
+import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
+import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
+import edu.washington.cs.knowitall.tool.conf.BreezeLogisticRegressionTrainer
+import scopt.mutable.OptionParser
 
 object CrossValidateConfidence {
   def main(args: Array[String]) {
@@ -41,7 +37,7 @@ object CrossValidateConfidence {
 
 
   def run(settings: Settings) = {
-    val trainer = new TrainOllieConfidence(OllieFeatureSet)
+    val trainer = new BreezeLogisticRegressionTrainer(OllieFeatureSet)
 
     val data =
       using (Source.fromFile(settings.inputFile)) { source =>

@@ -3,19 +3,24 @@ package edu.washington.cs.knowitall.ollie.confidence
 import java.util.regex.Pattern
 
 import scala.Array.canBuildFrom
+import scala.annotation.implicitNotFound
 import scala.collection.immutable.SortedMap
 import scala.util.matching.Regex
 
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
 import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
+import edu.washington.cs.knowitall.tool.conf.Feature
+import edu.washington.cs.knowitall.tool.conf.FeatureSet
 import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
 import edu.washington.cs.knowitall.tool.postag.Postagger
 import scalaz.Scalaz._
 
-object OllieFeatureSet extends FeatureSet(OllieFeatures.getFeatures)
+object OllieFeatureSet extends FeatureSet[OllieExtractionInstance, Double](OllieFeatures.getFeatures)
 
 /** Features defined for OllieExtractionInstances */
 object OllieFeatures {
+  type OllieFeature = Feature[OllieExtractionInstance, Double]
+  
   implicit def boolToDouble(bool: Boolean) = if (bool) 1.0 else 0.0
 
   val weirdPunct = Pattern.compile(".*[:!@#$%^&*{};`<>]+.*")
@@ -23,7 +28,7 @@ object OllieFeatures {
   val ingStart = Pattern.compile("^[a-zA-Z]+ing.*")
   val relationVerb = Pattern.compile("VB|VBD|VBZ|VBN|VBP|MD")
 
-  object nonContinuousRel extends Feature("non-contiguous rel") {
+  object nonContinuousRel extends OllieFeature("non-contiguous rel") {
     val trailingPrep = new Regex(" (?:" + Postagger.prepositions.mkString("|") + ")$")
     val leadingBe = new Regex("^be ")
     override def apply(inst: OllieExtractionInstance): Double = {
@@ -32,7 +37,7 @@ object OllieFeatures {
     }
   }
 
-  class gapInRel(length: Int) extends Feature("gap of " + length + " in rel") {
+  class gapInRel(length: Int) extends OllieFeature("gap of " + length + " in rel") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.nodes.toSeq.sliding(2).exists { case Seq(x, y) =>
         x.indices.distance(y.indices) > 10
@@ -40,7 +45,7 @@ object OllieFeatures {
     }
   }
 
-  object sentenceHasQuestionMark extends Feature("sentence has question mark") {
+  object sentenceHasQuestionMark extends OllieFeature("sentence has question mark") {
     val hasQuestionMark = Pattern.compile(".*\\?.*")
     override def apply(inst: OllieExtractionInstance): Double = {
       if (hasQuestionMark.matcher(inst.extr.text).matches()) 1.0 else 0.0
@@ -48,7 +53,7 @@ object OllieFeatures {
   }
 
   // is there a verb at the start of the sentence, or immediately after a comma?
-  object imperative extends Feature("sentence is imperative") {
+  object imperative extends OllieFeature("sentence is imperative") {
     private val verbStart = Pattern.compile("VB.*")
     override def apply(inst: OllieExtractionInstance): Double = {
       import scalaz._
@@ -71,7 +76,7 @@ object OllieFeatures {
   }
 
   // does arg2 contain an infinitive?
-  object arg2ContainsInfinitive extends Feature("arg2 contains infinitive") {
+  object arg2ContainsInfinitive extends OllieFeature("arg2 contains infinitive") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val postags = inst.extr.arg2.nodes.iterator.map(_.postag).toStream
 
@@ -90,14 +95,14 @@ object OllieFeatures {
   }
 
   // is rel a contiguous set of tokens from the sentence?
-  object relIsContiguous extends Feature("rel is contiguous") {
+  object relIsContiguous extends OllieFeature("rel is contiguous") {
     override def apply(inst: OllieExtractionInstance): Double = {
       (inst.sent.nodes.iterator.map(_.text).mkString(" ")) contains inst.extr.rel.text
     }
   }
 
   // is there a prep right before arg1?
-  object prepRightBeforeArg2 extends Feature("prep right before arg2") {
+  object prepRightBeforeArg2 extends OllieFeature("prep right before arg2") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val arg1Span = inst.extr.arg1.span
       val rightBeforeArg1 = inst.sent.nodes.find(node => node.indices < arg1Span && node.indices.borders(arg1Span))
@@ -110,7 +115,7 @@ object OllieFeatures {
   }
 
   // does rel start with "be"?
-  object relStartsWithBe extends Feature("rel starts with be") {
+  object relStartsWithBe extends OllieFeature("rel starts with be") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.rel.nodes.headOption match {
         case Some(node) => node.text startsWith "be "
@@ -120,7 +125,7 @@ object OllieFeatures {
   }
 
   // is there a prep right after arg2? (IN or TO pos tag)
-  object prepRightAfterArg2 extends Feature("prep right after arg2") {
+  object prepRightAfterArg2 extends OllieFeature("prep right after arg2") {
     def apply(inst: OllieExtractionInstance): Double = {
       val arg2Span = inst.extr.arg2.span
 
@@ -135,37 +140,37 @@ object OllieFeatures {
     }
   }
 
-  class ArgIsProper(getPart: OllieExtractionInstance=>Part, partName: String) extends Feature(partName + " is proper") {
+  class ArgIsProper(getPart: OllieExtractionInstance=>Part, partName: String) extends OllieFeature(partName + " is proper") {
     override def apply(inst: OllieExtractionInstance): Double = {
       getPart(inst).nodes.forall(_.isProperNoun)
     }
   }
 
-  object sentStartsWithExtr extends Feature("sentence starts with extraction") {
+  object sentStartsWithExtr extends OllieFeature("sentence starts with extraction") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.span.start == 0
     }
   }
 
-  object extrSpansSent extends Feature("extraction spans sentence") {
+  object extrSpansSent extends OllieFeature("extraction spans sentence") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.span == inst.sent.interval
     }
   }
 
-  object sentEndsWithExtr extends Feature("sentence ends with extraction") {
+  object sentEndsWithExtr extends OllieFeature("sentence ends with extraction") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.span.end == inst.sent.interval.end
     }
   }
 
-  object sentBeginsWithArg1 extends Feature("sentence begins with arg1") {
+  object sentBeginsWithArg1 extends OllieFeature("sentence begins with arg1") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.arg1.span.start == 0
     }
   }
 
-  object sentEndsWithArg2 extends Feature("sentence ends with arg2") {
+  object sentEndsWithArg2 extends OllieFeature("sentence ends with arg2") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val rightNodes = inst.sent.nodes.drop(inst.extr.arg2.span.end)
 
@@ -174,23 +179,23 @@ object OllieFeatures {
     }
   }
 
-  object openParseConfidence extends Feature("openparse confidence") {
+  object openParseConfidence extends OllieFeature("openparse confidence") {
     override def apply(inst: OllieExtractionInstance): Double = {
       scala.math.min(1.0, inst.extr.openparseConfidence)
     }
   }
 
-  object arg2BeforeArg1 extends Feature("arg2 before arg1") {
+  object arg2BeforeArg1 extends OllieFeature("arg2 before arg1") {
     override def apply(inst: OllieExtractionInstance): Double =
       inst.extr.arg2.span < inst.extr.arg1.span && !(inst.extr.arg1.span intersects inst.extr.arg2.span)
   }
 
-  object arg2BeforeRel extends Feature("arg2 before rel") {
+  object arg2BeforeRel extends OllieFeature("arg2 before rel") {
     override def apply(inst: OllieExtractionInstance): Double =
       inst.extr.arg2.span < inst.extr.rel.span && !(inst.extr.rel.span intersects inst.extr.arg2.span)
   }
 
-  object argsStartEndWithNoun extends Feature("args start and end with noun") {
+  object argsStartEndWithNoun extends OllieFeature("args start and end with noun") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val okStarts = Set("PR", "NN", "DT", "CD", "JJ")
       val okEnds = Set("NN", "CD", "JJ")
@@ -209,26 +214,26 @@ object OllieFeatures {
     }
   }
 
-  object ifRightBeforeArg1 extends Feature("if right before arg1") {
+  object ifRightBeforeArg1 extends OllieFeature("if right before arg1") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val nodesSeq = inst.sent.nodes.take(inst.extr.arg1.span.start)
       nodesSeq.lastOption.exists(_.text equalsIgnoreCase "if")
     }
   }
 
-  object arg1ContainsPronoun extends Feature("arg1 contains pronoun") {
+  object arg1ContainsPronoun extends OllieFeature("arg1 contains pronoun") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.arg1.nodes.exists(_.isPronoun)
     }
   }
 
-  object arg2ContainsPronoun extends Feature("arg2 contains pronoun") {
+  object arg2ContainsPronoun extends OllieFeature("arg2 contains pronoun") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.arg2.nodes.exists(_.isPronoun)
     }
   }
 
-  object relEndsWithOf extends Feature("rel ends with of") {
+  object relEndsWithOf extends OllieFeature("rel ends with of") {
     override def apply(inst: OllieExtractionInstance): Double = {
       // of will be an edge in the collapsed graph so it's not represented by a node
       val boolean = inst.extr.rel.text.drop(inst.extr.rel.text.lastIndexOf(" ") + 1) == "of"
@@ -237,21 +242,21 @@ object OllieFeatures {
     }
   }
 
-  object relContainsVerb extends Feature("rel contains verb") {
+  object relContainsVerb extends OllieFeature("rel contains verb") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val boolean = inst.extr.rel.nodes exists (_.isVerb)
       boolean
     }
   }
 
-  object relContainsVBG extends Feature("rel contains gerund") {
+  object relContainsVBG extends OllieFeature("rel contains gerund") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val boolean = inst.extr.rel.nodes exists (_.isVerbGerund)
       boolean
     }
   }
 
-  class BadCharacters(getPart: OllieExtractionInstance=>Part, partName: String) extends Feature(partName + " bad characters") {
+  class BadCharacters(getPart: OllieExtractionInstance=>Part, partName: String) extends OllieFeature(partName + " bad characters") {
     val notCapsPattern = Pattern.compile("[^A-Z]")
     val weirdChars = Pattern.compile("[^AEIOUYaeiouy0-9]")
     override def apply(inst: OllieExtractionInstance): Double = {
@@ -266,7 +271,7 @@ object OllieFeatures {
     }
   }
 
-  object longRelation extends Feature("long relation") {
+  object longRelation extends OllieFeature("long relation") {
     override def apply(inst: OllieExtractionInstance) = {
       val boolean = inst.extr.rel.text.split(" ").length > 10
 
@@ -274,7 +279,7 @@ object OllieFeatures {
     }
   }
 
-  object hypWordsInRel extends Feature("hyp words in rel") {
+  object hypWordsInRel extends OllieFeature("hyp words in rel") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val hypWords = Set("can", "would", "could", "might")
       val relTextWords = inst.extr.rel.text.split(" ").toSet
@@ -293,7 +298,7 @@ object OllieFeatures {
    * Bob; was for; example
    * by specifying pairs like ("for","example") to look for adjacent to each other between rel-arg2
    */
-  object vacuousExtraction extends Feature("vacuous extraction") {
+  object vacuousExtraction extends OllieFeature("vacuous extraction") {
     val vacuoi = Set(("this", "way"), ("went", "public"), ("for", "example"), ("with", "eye"), ("in", "fact"), ("for", "use"), ("for", "us"), ("were", "able"), ("in", "part"), ("be", "part"), ("is", "part"))
     def apply(inst: OllieExtractionInstance): Double = {
       val relEnd = inst.extr.rel.text.drop(inst.extr.rel.text.lastIndexOf(" ") + 1)
@@ -310,14 +315,14 @@ object OllieFeatures {
   }
 
   // Is there a preposition in the span of arg2?
-  object prepInArg2 extends Feature("prep in arg2") {
+  object prepInArg2 extends OllieFeature("prep in arg2") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.arg2.nodes.exists(node => prepTag.matcher(node.postag).matches)
     }
   }
 
   // does the pattern "... NN* ... VB* ... NN* ... " exist in arg1 or arg2?
-  class NounVerbNounInArg(getPart: OllieExtractionInstance=>Part, partName: String) extends Feature("noun-verb-noun in " + partName) {
+  class NounVerbNounInArg(getPart: OllieExtractionInstance=>Part, partName: String) extends OllieFeature("noun-verb-noun in " + partName) {
     override def apply(inst: OllieExtractionInstance): Double = {
       val tokenSet = getPart(inst).nodes
       val tokens = tokenSet.iterator.toSeq
@@ -331,7 +336,7 @@ object OllieFeatures {
     }
   }
 
-  class ArgBordersAppos(getPart: OllieExtractionInstance=>Part, partName: String) extends Feature(partName + " borders appositive") {
+  class ArgBordersAppos(getPart: OllieExtractionInstance=>Part, partName: String) extends OllieFeature(partName + " borders appositive") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val nodes = getPart(inst).nodes
       val neighbors = List(nodes.head, nodes.last).flatMap(inst.sent.graph.edges(_))
@@ -339,7 +344,7 @@ object OllieFeatures {
     }
   }
 
-  object nnPatternEdge extends Feature("nn edges in pattern") {
+  object nnPatternEdge extends OllieFeature("nn edges in pattern") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.pat.pattern.baseEdgeMatchers exists {
         case m: LabelEdgeMatcher => m.label == "nn"
@@ -348,20 +353,20 @@ object OllieFeatures {
     }
   }
 
-  object semanticPatternConstraint extends Feature("semantic constraints in pattern") {
+  object semanticPatternConstraint extends OllieFeature("semantic constraints in pattern") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.pat.pattern.semantic
     }
   }
 
-  object patternPrepMismatch extends Feature("prep mismatch in pattern") {
+  object patternPrepMismatch extends OllieFeature("prep mismatch in pattern") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.pat.prepMismatch
     }
   }
 
   // features being used
-  val features: List[Feature] = List(
+  val features: List[OllieFeature] = List(
     sentenceHasQuestionMark,
     imperative,
     arg2ContainsInfinitive,
@@ -402,7 +407,7 @@ object OllieFeatures {
     semanticPatternConstraint,
     patternPrepMismatch)
 
-  def getFeatures(): SortedMap[String, OllieExtractionInstance => Double] = {
-    (for (f <- features) yield (f.name -> (f.apply _)))(scala.collection.breakOut)
+  def getFeatures(): SortedMap[String, OllieFeature] = {
+    (for (f <- features) yield (f.name -> Feature.from(f.name, f.apply _)))(scala.collection.breakOut)
   }
 }
