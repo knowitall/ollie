@@ -22,7 +22,7 @@ object OllieSpecTest extends Specification {
     val extr = extrs.head
     extr must_== OllieExtractionInstance.tabDeserialize(extr.tabSerialize)
 
-    val scored = ScoredOllieExtractionInstance(true, extr)
+    val scored = new ScoredOllieExtractionInstance(true, extr)
     scored must_== ScoredOllieExtractionInstance.tabDeserialize(scored.tabSerialize)
   }
 }

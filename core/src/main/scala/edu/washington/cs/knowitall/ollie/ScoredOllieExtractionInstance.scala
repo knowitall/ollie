@@ -8,7 +8,7 @@ import edu.washington.cs.knowitall.tool.conf.Labelled
   * @param  score  the label for this extraction
   * @param  inst  the extraction instance labelled
   */
-case class ScoredOllieExtractionInstance(
+class ScoredOllieExtractionInstance(
     val score: Boolean,
     val inst: OllieExtractionInstance) extends Labelled[OllieExtractionInstance](score, inst) {
 
