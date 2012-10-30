@@ -67,21 +67,21 @@ object OllieCli {
 
     // define the argument parser
     val argumentParser = new OptionParser("ollie") {
-      argOpt("<input-file>", "input text file", { path: String =>
+      argOpt("<file>", "input text file (one sentence per line unless --split is specified)", { path: String =>
         settings.inputFile = Some(new File(path))
       })
 
-      opt(Some("o"), "output", "<output-file>", "output file (otherwise stdout)", { path: String =>
+      opt(Some("o"), "output", "<file>", "output file (otherwise stdout)", { path: String =>
         settings.outputFile = Some(new File(path))
       })
 
-      opt(Some("m"), "model", "<model-file>", "model file", { path: String =>
+      opt(Some("m"), "model", "<file>", "model file", { path: String =>
         val file = new File(path)
         require(file.exists, "file does not exist: " + path)
         settings.modelUrl = file.toURI.toURL
       })
 
-      opt(Some("c"), "confidence model", "<model-file>", "model file", { path: String =>
+      opt(Some("c"), "confidence model", "<file>", "model file", { path: String =>
         if (path equalsIgnoreCase "None") {
           settings.confidenceModelUrl = None
         }
@@ -98,11 +98,11 @@ object OllieCli {
 
       opt("h", "help", "usage information", { settings.showUsage = true })
 
-      doubleOpt(Some("t"), "threshold", "<threshold>", "confidence threshold for Ollie extractor", { t: Double =>
+      doubleOpt(Some("t"), "threshold", "<double>", "confidence threshold for Ollie extractor", { t: Double =>
         settings.confidenceThreshold = t
       })
 
-      doubleOpt(None, "openparse-threshold", "<threshold>", "confidence threshold for OpenParse component", { t: Double =>
+      doubleOpt(None, "openparse-threshold", "<double>", "confidence threshold for OpenParse component", { t: Double =>
         settings.openparseConfidenceThreshold = t
       })
 
