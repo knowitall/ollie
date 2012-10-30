@@ -3,6 +3,7 @@ package edu.washington.cs.knowitall.ollie
 import edu.washington.cs.knowitall.common.HashCodeHelper
 import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
+import scala.util.matching.Regex
 
 /** OllieExtractionInstance represents an extraction coupled with
   * its source sentence.
@@ -24,6 +25,28 @@ class OllieExtractionInstance(
   def extraction = extr
   def sentence = sent
   def pattern = pat
+
+  private val passivePatternRegex = new Regex("""^\{arg1:?\w*\} <nsubjpass<.*""")
+  /** Report if this extraction is an passive construction.
+    * This is a crude measure so false should not be taken to mean
+    * that it is not active.
+    *
+    * An extraction is passive if it has a valid active formulation.
+    */
+  def passive: Boolean =
+    passivePatternRegex.pattern.matcher(pat.pattern.serialize).matches() && (extr.rel.text.endsWith(" by"))
+
+  private val activePatternRegex = new Regex("""^\{arg1:?\w*\} <nsubj<.*>dobj> \{arg2:?\w*\}""")
+  /** Report if this extraction is an active construction.
+    * This is a crude measure so false should not be taken to mean
+    * that it is not active.
+    *
+    * An extraction is active if it has a valid passive formulation
+    * by swapping the arguments and modifying the relation (adding "be"
+    * and "by").
+    */
+  def active: Boolean =
+    activePatternRegex.pattern.matcher(pat.pattern.serialize).matches()
 
   def tabSerialize: String = {
     val serializedGraph = sent.serialize
