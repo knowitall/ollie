@@ -71,8 +71,9 @@ Follow these steps to get started:
     http://www.maltparser.org/mco/english_parser/engmalt.html
     and place it in the same directory as Ollie.
 
-3.  Run `java -Xmx512m -jar ollie-app-latest.jar yourfile.txt`.  Omit the
-    input file for an interactive console.
+3.  Run `java -Xmx512m -jar ollie-app-latest.jar yourfile.txt`.  The input file
+    should contain one sentence per line unless `--split` is specified.  Omit
+    the input file for an interactive console.
 
 ## Building
 
