@@ -16,12 +16,13 @@ import java.net.URL
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
 
-/** An entry point to use Ollie on the command line.
+/**
+  * An entry point to use Ollie on the command line.
   */
 object OllieCli {
   /** A definition of command line arguments. */
   abstract class Settings {
-    def inputFile: Option[File]
+    def inputFiles: Option[Seq[File]]
     def outputFile: Option[File]
     def modelUrl: URL
     def confidenceModelUrl: Option[URL]
@@ -89,13 +90,12 @@ object OllieCli {
       OutputFormat.confFormatter.format(conf) + "\t" + inst.extr.toString + "\t" + inst.tabSerialize
   }
 
-
   /** Size to group for parallelism. */
   private val CHUNK_SIZE = 10000
 
   def main(args: Array[String]): Unit = {
     object settings extends Settings {
-      var inputFile: Option[File] = None
+      var inputFiles: Option[Seq[File]] = None
       var outputFile: Option[File] = None
       var modelUrl: URL = OpenParse.defaultModelUrl
       var confidenceModelUrl: Option[URL] = Some(OllieIndependentConfFunction.defaultModelUrl)
@@ -115,8 +115,10 @@ object OllieCli {
 
     // define the argument parser
     val argumentParser = new OptionParser("ollie") {
-      argOpt("<file>", "input text file (one sentence per line unless --split is specified)", { path: String =>
-        settings.inputFile = Some(new File(path))
+      arglistOpt("<file>", "input text file (one sentence per line unless --split is specified)", { path: String =>
+        val file = new File(path)
+        require(file.exists, "file does not exist: " + file)
+        settings.inputFiles = Some(settings.inputFiles.getOrElse(Vector.empty) :+ file)
       })
 
       opt(Some("o"), "output", "<file>", "output file (otherwise stdout)", { path: String =>
@@ -132,8 +134,7 @@ object OllieCli {
       opt(Some("c"), "confidence model", "<file>", "model file", { path: String =>
         if (path equalsIgnoreCase "None") {
           settings.confidenceModelUrl = None
-        }
-        else {
+        } else {
           val file = new File(path)
           require(file.exists, "file does not exist: " + path)
           settings.confidenceModelUrl = Some(file.toURI.toURL)
@@ -157,7 +158,7 @@ object OllieCli {
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
       opt("s", "split", "split text into sentences", { settings.splitInput = true })
       opt("dependencies", "input is serialized dependency graphs (don't parse)", { settings.parseInput = false })
-      opt("output-format", "specify output format from {interactive, tabbed, tabbedsingle, serialized}", { s: String => settings.outputFormat = OutputFormat.parse(s)})
+      opt("output-format", "specify output format from {interactive, tabbed, tabbedsingle, serialized}", { s: String => settings.outputFormat = OutputFormat.parse(s) })
       opt("ignore-errors", "ignore errors", { settings.invincible = true })
       opt("usage", "this usage message", { settings.showUsage = true })
     }
@@ -169,8 +170,7 @@ object OllieCli {
         println("Ollie takes sentences as input, one per line.")
         println("The response is \"confidence: extraction\", one extraction per line.")
         println(argumentParser.usage)
-      }
-      else {
+      } else {
         run(settings)
       }
     }
@@ -185,7 +185,7 @@ object OllieCli {
           case Some(file) => Some(new MaltParser(file))
         }
       } else None
-    }{ ns =>
+    } { ns =>
       System.err.println(Timing.Seconds.format(ns))
     }
 
@@ -204,31 +204,28 @@ object OllieCli {
     System.err.print("Loading ollie confidence function... ")
     val confFunction = Timing.timeThen {
       settings.confidenceModelUrl.map(url => OllieIndependentConfFunction.fromUrl(OllieFeatureSet, url))
-    }{ ns =>
+    } { ns =>
       System.err.println(Timing.Seconds.format(ns))
     }
 
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
 
-    System.err.println("\nRunning extractor on " + (settings.inputFile match { case None => "standard input" case Some(f) => f.getName }) + "...")
-    using(settings.inputFile match {
-      case Some(input) => Source.fromFile(input, "UTF-8")
-      case None => Source.stdin
-    }) { source =>
+    using(settings.outputFile match {
+      case Some(output) => new PrintWriter(output, "UTF-8")
+      case None => new PrintWriter(System.out)
+    }) { writer =>
 
-      using(settings.outputFile match {
-        case Some(output) => new PrintWriter(output, "UTF-8")
-        case None => new PrintWriter(System.out)
-      }) { writer =>
-        // print headers for output
-        settings.outputFormat.header match {
-          case Some(header) => writer.println(header)
-          case None =>
-        }
+      // print headers for output
+      settings.outputFormat.header match {
+        case Some(header) => writer.println(header)
+        case None =>
+      }
 
+      // process a source and output extractions
+      def processSource(source: Source) {
         val ns = Timing.time {
           // print prompt if standard input
-          if (!settings.outputFile.isDefined) {
+          if (!settings.inputFiles.isDefined) {
             System.out.print("> ")
             System.out.flush()
           }
@@ -271,7 +268,7 @@ object OllieCli {
               }
 
               // print prompt if standard input
-              if (!settings.outputFile.isDefined) {
+              if (!settings.inputFiles.isDefined) {
                 System.out.print("> ")
                 System.out.flush()
               }
@@ -281,7 +278,36 @@ object OllieCli {
           }
         }
 
-        System.err.println("completed in " + Timing.Seconds.format(ns) + " seconds")
+        System.err.println()
+        System.err.println("Completed in " + Timing.Seconds.format(ns) + " seconds")
+      }
+
+      settings.inputFiles match {
+        // single file
+        case Some(Seq(file)) =>
+          System.err.println("\nRunning extractor on " + file + "...")
+          using (Source.fromFile(file)) { source =>
+            processSource(source)
+          }
+
+        // multiple files
+        case Some(files) =>
+          System.err.println("\nRunning extractor on multiple files...")
+          val ns = Timing.time {
+            for ((file, i) <- files.iterator.zipWithIndex) {
+              System.err.println("Processing file " + file + " (" + (i+1) + "/" + files.size + ")...")
+              System.err.println()
+              using(Source.fromFile(file)) { source =>
+                processSource(source)
+              }
+            }
+          }
+          System.err.println("All files completed in " + Timing.Seconds.format(ns) + " seconds")
+
+        // standard input
+        case None =>
+          System.err.println("\nRunning extractor on standard input...")
+          processSource(Source.stdin)
       }
     }
   }
