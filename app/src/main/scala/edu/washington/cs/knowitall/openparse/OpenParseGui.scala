@@ -4,7 +4,6 @@ import java.awt.Cursor
 import java.awt.Dimension
 import java.io.File
 import java.net.URL
-
 import scala.collection.SortedSet
 import scala.io.Source
 import scala.swing.Action
@@ -38,10 +37,8 @@ import scala.swing.event.ButtonClicked
 import scala.swing.event.SelectionChanged
 import scala.swing.event.ValueChanged
 import scala.util.control.Exception.catching
-
 import org.apache.batik.swing.JSVGCanvas
 import org.apache.batik.swing.svg.JSVGComponent
-
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.common.Timing.Seconds
 import edu.washington.cs.knowitall.common.Timing.time
@@ -59,6 +56,7 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.Serializatio
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.deserialize
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 import scopt.OptionParser
+import edu.washington.cs.knowitall.ollie.DependencyGraphExtras
 
 object OpenParseGui extends SimpleSwingApplication {
   /** Which parser we are using. */
@@ -412,6 +410,11 @@ object OpenParseGui extends SimpleSwingApplication {
               }
             }
           }
+          contents += new MenuItem(Action("Switch Voice") {
+            current.flatMap(dgraph => new DependencyGraphExtras(dgraph).switchVoice.headOption).foreach { dgraph =>
+              updateDocument(dgraph)
+            }
+          })
           contents += new Menu("Parser") {
             contents ++= parserOptions
           }
