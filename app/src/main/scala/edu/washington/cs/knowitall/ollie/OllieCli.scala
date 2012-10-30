@@ -19,8 +19,7 @@ import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
 /** An entry point to use Ollie on the command line.
   */
 object OllieCli {
-  /** A definition of command line arguments.
-    */
+  /** A definition of command line arguments. */
   abstract class Settings {
     def inputFile: Option[File]
     def outputFile: Option[File]
@@ -33,12 +32,63 @@ object OllieCli {
 
     def parseInput: Boolean
     def splitInput: Boolean
-    def tabbed: Boolean
-    def serialized: Boolean
-    def singleColumn: Boolean
+    def outputFormat: OutputFormat
     def parallel: Boolean
     def invincible: Boolean
   }
+
+  sealed abstract class OutputFormat {
+    def header: Option[String]
+    def format(conf: Double, extr: OllieExtractionInstance): String
+  }
+  object OutputFormat {
+    val confFormatter = new DecimalFormat("#.###")
+    def parse(format: String): OutputFormat = {
+      format.toLowerCase match {
+        case "interactive" => InteractiveFormat
+        case "tabbed" => TabbedFormat
+        case "tabbedsingle" => TabbedSingleColumnFormat
+        case "serialized" => SerializedFormat
+      }
+    }
+  }
+  case object InteractiveFormat extends OutputFormat {
+    def header = None
+    def format(conf: Double, inst: OllieExtractionInstance): String =
+      OutputFormat.confFormatter.format(conf) + ": " + inst.extr
+  }
+  case object TabbedFormat extends OutputFormat {
+    def headers = Seq("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "text", "pattern", "dependencies")
+    def header = Some(headers.mkString("\t"))
+    def format(conf: Double, inst: OllieExtractionInstance): String =
+      Iterable(OutputFormat.confFormatter.format(conf),
+        inst.extr.arg1.text,
+        inst.extr.rel.text,
+        inst.extr.arg2.text,
+        inst.extr.enabler.map(_.text),
+        inst.extr.attribution.map(_.text),
+        inst.sent.text,
+        inst.pat,
+        inst.sent.serialize).mkString("\t")
+  }
+  case object TabbedSingleColumnFormat extends OutputFormat {
+    def headers = Seq("confidence", "extraction", "enabler", "attribution", "text", "pattern", "dependencies")
+    def header = Some(headers.mkString("\t"))
+    def format(conf: Double, inst: OllieExtractionInstance): String =
+      Iterable(OutputFormat.confFormatter.format(conf),
+        inst.extr.toString,
+        inst.extr.enabler.map(_.text),
+        inst.extr.attribution.map(_.text),
+        inst.sent.text,
+        inst.pat,
+        inst.sent.serialize).mkString("\t")
+  }
+  case object SerializedFormat extends OutputFormat {
+    def header = None
+    def format(conf: Double, inst: OllieExtractionInstance): String =
+      OutputFormat.confFormatter.format(conf) + "\t" + inst.extr.toString + "\t" + inst.tabSerialize
+  }
+
 
   /** Size to group for parallelism. */
   private val CHUNK_SIZE = 10000
@@ -56,9 +106,7 @@ object OllieCli {
 
       var parseInput: Boolean = true
       var splitInput: Boolean = false
-      var tabbed: Boolean = false
-      var serialized: Boolean = false
-      var singleColumn: Boolean = false
+      var outputFormat: OutputFormat = InteractiveFormat
       var parallel: Boolean = false
       var invincible: Boolean = false
 
@@ -109,15 +157,13 @@ object OllieCli {
       opt("p", "parallel", "execute in parallel", { settings.parallel = true })
       opt("s", "split", "split text into sentences", { settings.splitInput = true })
       opt("dependencies", "input is serialized dependency graphs (don't parse)", { settings.parseInput = false })
-      opt("tabbed", "output in TSV format", { settings.tabbed = true })
-      opt("serialized", "output in serialized format", { settings.serialized = true })
-      opt("single-column", "output extractions in a single column", { settings.singleColumn = true })
+      opt("output-format", "specify output format from {interactive, tabbed, tabbedsingle, serialized}", { s: String => settings.outputFormat = OutputFormat.parse(s)})
       opt("ignore-errors", "ignore errors", { settings.invincible = true })
       opt("usage", "this usage message", { settings.showUsage = true })
     }
 
     if (argumentParser.parse(args)) {
-      require(!(settings.tabbed && settings.serialized), "output format cannot be both tabbed and serialized")
+      require(!(settings.splitInput && !settings.parseInput), "options 'split' and 'dependencies' are not compatible.")
       if (settings.showUsage) {
         println()
         println("Ollie takes sentences as input, one per line.")
@@ -164,8 +210,6 @@ object OllieCli {
 
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
 
-    val confFormatter = new DecimalFormat("#.###")
-
     System.err.println("\nRunning extractor on " + (settings.inputFile match { case None => "standard input" case Some(f) => f.getName }) + "...")
     using(settings.inputFile match {
       case Some(input) => Source.fromFile(input, "UTF-8")
@@ -176,11 +220,10 @@ object OllieCli {
         case Some(output) => new PrintWriter(output, "UTF-8")
         case None => new PrintWriter(System.out)
       }) { writer =>
-        if (settings.tabbed) {
-          if (settings.singleColumn)
-            writer.println(Iterable("confidence", "extraction", "enabler", "attribution", "text", "pattern",  "dependencies").mkString("\t"))
-          else
-            writer.println(Iterable("confidence", "arg1", "rel", "arg2", "enabler", "attribution", "text", "pattern", "dependencies").mkString("\t"))
+        // print headers for output
+        settings.outputFormat.header match {
+          case Some(header) => writer.println(header)
+          case None =>
         }
 
         val ns = Timing.time {
@@ -199,7 +242,7 @@ object OllieCli {
               // potentially transform to a parallel collection
               val sentences = if (settings.parallel) group.par else group
               for (sentence <- sentences) {
-                if (!settings.tabbed && !settings.serialized) {
+                if (settings.outputFormat == InteractiveFormat) {
                   writer.println(sentence)
                   writer.flush()
                 }
@@ -212,39 +255,16 @@ object OllieCli {
                 val extrs = ollieExtractor.extract(graph).iterator.map(extr => (confFunction.map(_.getConf(extr)).getOrElse(0.0), extr))
 
                 extrs match {
-                  case it if it.isEmpty && !(settings.tabbed || settings.serialized) => writer.println("No extractions found.")
+                  case it if it.isEmpty && settings.outputFormat == InteractiveFormat => writer.println("No extractions found.")
                   case it if it.isEmpty =>
                   case extrs => (extrs filter (_._1 >= settings.confidenceThreshold)).toList.sortBy(-_._1).foreach {
                     case (conf, e) =>
-                      if (settings.tabbed && !settings.singleColumn) {
-                        writer.println(Iterable(confFormatter.format(conf),
-                          e.extr.arg1.text,
-                          e.extr.rel.text,
-                          e.extr.arg2.text,
-                          e.extr.enabler.map(_.text),
-                          e.extr.attribution.map(_.text),
-                          e.sent.text,
-                          e.pat,
-                          e.sent.serialize).mkString("\t"))
-                      } else if (settings.serialized) {
-                        writer.println(confFormatter.format(conf) + "\t" + e.extr.toString + "\t" + e.tabSerialize)
-                      } else if (settings.tabbed && settings.singleColumn) {
-                        writer.println(Iterable(confFormatter.format(conf),
-                          e.extr.toString,
-                          e.extr.enabler.map(_.text),
-                          e.extr.attribution.map(_.text),
-                          e.sent.text,
-                          e.pat,
-                          e.sent.serialize).mkString("\t"))
-                      } else {
-                        writer.println(confFormatter.format(conf) + ": " + e.extr)
-                      }
-
+                      writer.println(settings.outputFormat.format(conf, e))
                       writer.flush()
                   }
                 }
 
-                if (!settings.tabbed && !settings.serialized) {
+                if (settings.outputFormat == InteractiveFormat) {
                   writer.println()
                   writer.flush()
                 }
