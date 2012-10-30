@@ -12,6 +12,7 @@
   </parent>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <nlptools.version>2.2.6-SNAPSHOT</nlptools.version>
   </properties>
   <repositories>
     <repository>
@@ -37,17 +38,17 @@
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
       <artifactId>nlptools-parse-malt_2.9.2</artifactId>
-      <version>2.2.4</version>
+      <version>${nlptools.version}</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
       <artifactId>nlptools-parse-stanford_2.9.2</artifactId>
-      <version>2.2.4</version>
+      <version>${nlptools.version}</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
       <artifactId>nlptools-sentence-opennlp_2.9.2</artifactId>
-      <version>2.2.4</version>
+      <version>${nlptools.version}</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall</groupId>

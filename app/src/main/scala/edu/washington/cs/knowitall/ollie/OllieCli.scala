@@ -67,7 +67,7 @@ object OllieCli {
 
     // define the argument parser
     val argumentParser = new OptionParser("ollie") {
-      argOpt("<input-file>", "pattern file", { path: String =>
+      argOpt("<input-file>", "input text file", { path: String =>
         settings.inputFile = Some(new File(path))
       })
 
