@@ -101,6 +101,17 @@ Ollie takes sentences, one-per-line as input or splits text into sentences if
 many useful options; for example you can run Ollie in parallel using
 `--parallel`.
 
+The Ollie command line tool has a few output formats.  The output format is
+specified by `--output-format` and a valid format:
+
+1. The `interactive` format that is meant to be easily human readable.
+2. The `tabbed` format is mean to be easily parsable.  A header will be output
+   as the first row to label the columns.
+3. `tabbedsingle` is similar to `tabbed` but the extraction is output as (arg1; relation;
+   arg2) in a single column.
+4. The `serialized` is meant to be fully deserialized into an
+   `OllieExtractionInstance` class.
+
 ## Graphical Interface
 
 Ollie works ontop of a subcomponent called OpenParse.  The distinction is
