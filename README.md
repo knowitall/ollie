@@ -172,6 +172,9 @@ project.  The source for for `ollie-app` is an excellent example of a project
 using `ollie-core` as a dependency.  `ollie-app` supplies a parser from
 [nlptools](https://github.com/knowitall/nlptools).
 
+There is an example project that uses Ollie in the `example` folder of the
+source distribution.
+
 ## Training the Confidence Function
 
 While Ollie comes with a trained confidence function, it is possible to retrain
