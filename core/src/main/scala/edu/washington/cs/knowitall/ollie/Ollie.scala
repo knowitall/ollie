@@ -22,6 +22,9 @@ class Ollie(val openparse: OpenParse) {
   /** Construct with the default model. */
   def this() = this(OpenParse.withDefaultModel(OpenParse.Configuration(confidenceThreshold = 0.005)))
 
+  def apply(dgraph: DependencyGraph): Iterable[OllieExtractionInstance] =
+    extract(dgraph)
+
   /**
     * primary method for getting extractions
     */

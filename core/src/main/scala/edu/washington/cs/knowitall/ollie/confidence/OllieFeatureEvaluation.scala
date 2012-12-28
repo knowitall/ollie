@@ -28,7 +28,7 @@ object OllieFeatureEvaluation {
     var settings = new Settings {
       var inputFile: File = _
       var outputFile: Option[File] = None
-      var confidenceModelUrl: URL = OllieIndependentConfFunction.defaultModelUrl
+      var confidenceModelUrl: URL = OllieConfidenceFunction.defaultModelUrl
     }
 
     val parser = new OptionParser("feature-eval") {
@@ -56,7 +56,7 @@ object OllieFeatureEvaluation {
   }
 
   def run(settings: Settings) = {
-    val confFunc = OllieIndependentConfFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
+    val confFunc = OllieConfidenceFunction.fromUrl(OllieFeatureSet, settings.confidenceModelUrl)
 
     val extrs = using (Source.fromFile(settings.inputFile)) { source =>
       for (

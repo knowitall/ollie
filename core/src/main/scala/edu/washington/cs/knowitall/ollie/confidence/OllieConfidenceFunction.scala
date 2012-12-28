@@ -16,7 +16,7 @@ import edu.washington.cs.knowitall.tool.conf.impl.LogisticRegression
 /** An implementation of logistic regression of features that can be
   * represented as a double. */
 
-object OllieIndependentConfFunction {
+object OllieConfidenceFunction {
   val logger = LoggerFactory.getLogger(classOf[OllieIndependentConfFunction])
   
   type OllieIndependentConfFunction = LogisticRegression[OllieExtractionInstance]
