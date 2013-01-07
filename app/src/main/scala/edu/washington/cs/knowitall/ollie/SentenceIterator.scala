@@ -1,8 +1,8 @@
 package edu.washington.cs.knowitall.ollie
 
-import edu.washington.cs.knowitall.tool.sentence.Sentencer
+import edu.washington.cs.knowitall.tool.segment.Segmenter
 
-class SentenceIterator(sentencer: Sentencer, private var lines: BufferedIterator[String]) extends Iterator[String] {
+class SentenceIterator(sentencer: Segmenter, private var lines: BufferedIterator[String]) extends Iterator[String] {
   var sentences: Iterator[String] = Iterator.empty
       
   lines.dropWhile(_.trim.isEmpty)
@@ -10,7 +10,7 @@ class SentenceIterator(sentencer: Sentencer, private var lines: BufferedIterator
   def nextSentences = {
     val (paragraph, rest) = lines.span(!_.trim.isEmpty)
     lines = rest.dropWhile(_.trim.isEmpty).buffered
-    sentencer.sentences(paragraph.mkString(" ")).iterator.buffered
+    sentencer.segmentTexts(paragraph.mkString(" ")).iterator.buffered
   }
   
   def hasNext: Boolean = {

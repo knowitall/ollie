@@ -4,11 +4,11 @@ import java.io.File
 import java.io.PrintWriter
 import scala.io.Source
 import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
+import edu.washington.cs.knowitall.ollie.confidence.OllieConfidenceFunction
 import edu.washington.cs.knowitall.openparse.OpenParse
 import edu.washington.cs.knowitall.tool.parse.MaltParser
 import scopt.OptionParser
-import edu.washington.cs.knowitall.tool.sentence.Sentencer
+import edu.washington.cs.knowitall.tool.segment.Segmenter
 import edu.washington.cs.knowitall.common.Timing
 import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
 import java.text.DecimalFormat
@@ -98,7 +98,7 @@ object OllieCli {
       var inputFiles: Option[Seq[File]] = None
       var outputFile: Option[File] = None
       var modelUrl: URL = OpenParse.defaultModelUrl
-      var confidenceModelUrl: Option[URL] = Some(OllieIndependentConfFunction.defaultModelUrl)
+      var confidenceModelUrl: Option[URL] = Some(OllieConfidenceFunction.defaultModelUrl)
       var confidenceThreshold: Double = 0.0
       var openparseConfidenceThreshold: Double = 0.005
 
@@ -203,7 +203,7 @@ object OllieCli {
 
     System.err.print("Loading ollie confidence function... ")
     val confFunction = Timing.timeThen {
-      settings.confidenceModelUrl.map(url => OllieIndependentConfFunction.fromUrl(OllieFeatureSet, url))
+      settings.confidenceModelUrl.map(url => OllieConfidenceFunction.fromUrl(OllieFeatureSet, url))
     } { ns =>
       System.err.println(Timing.Seconds.format(ns))
     }
@@ -312,7 +312,7 @@ object OllieCli {
     }
   }
 
-  def parseLines(lines: Iterator[String], sentencer: Option[Sentencer]) = {
+  def parseLines(lines: Iterator[String], sentencer: Option[Segmenter]) = {
     sentencer match {
       case None => lines
       case Some(sentencer) => new SentenceIterator(sentencer, lines.buffered)
