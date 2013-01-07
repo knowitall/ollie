@@ -17,7 +17,7 @@ import edu.washington.cs.knowitall.common.enrich.Traversables.traversableOncePai
 import edu.washington.cs.knowitall.openparse.{SlotMatcher, RelationMatcher, ExtractorPattern, ArgumentMatcher}
 import edu.washington.cs.knowitall.tool.parse.graph.{RegexNodeMatcher, RegexEdgeMatcher, PostagNodeMatcher, LabelEdgeMatcher, DependencyPattern, DependencyNode}
 import edu.washington.cs.knowitall.tool.postag.Postagger
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
 
 import scalaz.Scalaz._
 import scalaz._

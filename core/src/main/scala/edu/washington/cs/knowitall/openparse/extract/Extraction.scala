@@ -7,7 +7,7 @@ import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.openparse.GraphExpansions.{expand, components, augment}
 import edu.washington.cs.knowitall.openparse.OpenParse
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
 import edu.washington.cs.knowitall.tool.stem.Stemmer
 import Extraction.{Part, ClausalComponent, AdverbialModifier}
 import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher

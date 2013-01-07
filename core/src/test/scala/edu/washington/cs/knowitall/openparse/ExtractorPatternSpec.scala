@@ -7,7 +7,7 @@ import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyPattern
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
 
 @RunWith(classOf[JUnitRunner])
 object ExtractorPatternSpecTest extends Specification {

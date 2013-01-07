@@ -1,14 +1,22 @@
 package edu.washington.cs.knowitall.openparse
 
 import scala.io.Source
+
 import org.slf4j.LoggerFactory
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, NodeMatcher, EdgeMatcher, CaptureNodeMatcher}
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{TrivialNodeMatcher, Matcher}
-import edu.washington.cs.knowitall.tool.parse.graph.{LabelEdgeMatcher, DependencyPattern, DependencyNode}
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
-import scalaz.Scalaz._
-import scalaz._
+
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.CaptureNodeMatcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.EdgeMatcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Matcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.NodeMatcher
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Pattern
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.TrivialNodeMatcher
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyPattern
+import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher
 import edu.washington.cs.knowitall.tool.parse.graph.RegexNodeMatcher
+import scalaz._
+import scalaz.Scalaz._
 
 /** A wrapper for a dependency pattern that adds some convenience methods
   * for working with patterns intended for extraction of binary relations.

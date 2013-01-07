@@ -14,7 +14,7 @@ object BuildPatternsSpecTest extends Specification {
   def findPatterns(row: (String, String, String, String, String), maxLength: Option[Int] = None) = {
     val (rel, arg1, arg2, lemmasString, pickled) = row
     val lemmas = lemmasString.split("\\s+").toSet
-    val graph = DependencyGraph.deserialize(pickled).map(_.lemmatize(MorphaStemmer.instance)).normalize
+    val graph = DependencyGraph.deserialize(pickled).map(_.lemmatize(MorphaStemmer)).normalize
     BuildPatterns.findRelationPatterns(graph, rel, arg1, arg2, lemmas, maxLength)
   }
 

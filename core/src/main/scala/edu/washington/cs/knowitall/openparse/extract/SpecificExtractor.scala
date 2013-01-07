@@ -30,7 +30,7 @@ extends GeneralExtractor(pattern, conf) {
     validMatch: Graph[DependencyNode]=>Match[DependencyNode]=>Boolean) = {
     val extractions = super.extract(dgraph)
     extractions.withFilter{ extr =>
-      val extrRelationLemmas = extr.rel.text.split(" ").map(MorphaStemmer.instance.lemmatize(_))
+      val extrRelationLemmas = extr.rel.text.split(" ").map(MorphaStemmer.lemmatize(_))
       relationLemmas.forall(extrRelationLemmas.contains(_))
     }.map(_.replaceRelation(relation))
   }

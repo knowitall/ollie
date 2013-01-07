@@ -44,7 +44,7 @@ object FindTargetArguments {
         val Array(string, lem, postag, count) = line.split("\t")
         // do our own normalization
         val lemma = string.split(" ").map(
-          MorphaStemmer.instance.lemmatize(_)).mkString(" ")
+          MorphaStemmer.lemmatize(_)).mkString(" ")
         
         if (!string.contains("_")) {
           // remove DT

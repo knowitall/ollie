@@ -1,13 +1,13 @@
 package edu.washington.cs.knowitall.ollie
 
 import scala.io.Source
-
 import edu.washington.cs.knowitall.collection.immutable.Interval
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.openparse.OpenParse
 import edu.washington.cs.knowitall.openparse.extract.DetailedExtraction
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.tool.stem.Stemmer
 
 /** Ollie is an Open Information Extractor that produces binary extractions
   * with context.  The constructor takes an OpenParse instance.  Ollie extends
@@ -70,6 +70,8 @@ class Ollie(val openparse: OpenParse) {
 }
 
 object Ollie {
+  implicit def stemmer: Stemmer = MorphaStemmer
+ 
   /** A collection of verbs used for communication, i.e. "said" */
   val communicationWords = using(Source.fromInputStream(classOf[Ollie].getResource("communicationWords.txt").openStream())) { source =>
     source.getLines.toSet

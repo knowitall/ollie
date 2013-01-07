@@ -4,7 +4,7 @@ import org.slf4j.LoggerFactory
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
 import GeneralExtractor.logger
 import edu.washington.cs.knowitall.openparse.ExtractorPattern
 

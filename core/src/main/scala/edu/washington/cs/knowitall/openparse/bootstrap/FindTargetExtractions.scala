@@ -68,8 +68,8 @@ object FindTargetExtractions {
       for (line <- extractions.getLines) {
         try {
           val Array(id, arg1String, relationString, arg2String, _, relationLemma, _, arg1Postag, relationPostag, arg2Postag, _, _, _, count, confidence, url, sentence) = line.split("\t", -1)
-          val arg1Lemma = arg1String.split(" ").map(MorphaStemmer.instance.lemmatize(_)).mkString(" ")
-          val arg2Lemma = arg2String.split(" ").map(MorphaStemmer.instance.lemmatize(_)).mkString(" ")
+          val arg1Lemma = arg1String.split(" ").map(MorphaStemmer.lemmatize(_)).mkString(" ")
+          val arg2Lemma = arg2String.split(" ").map(MorphaStemmer.lemmatize(_)).mkString(" ")
           // val rs = new RelationString(relationString, relationLemma, relationPostag)
           // rs.correctNormalization()
 

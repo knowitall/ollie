@@ -77,7 +77,7 @@ object BuildPatterns {
         // todo: push stemming forward in the process
         try {
           val graph = DependencyGraph.deserialize(deps).map { node =>
-            node.lemmatize(MorphaStemmer.instance)
+            node.lemmatize(MorphaStemmer)
           }.collapseNounGroups().collapseNNPOf.simplifyPostags
 
           if (!validGraph(graph)) {

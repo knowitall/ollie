@@ -5,9 +5,8 @@ import org.slf4j.LoggerFactory
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{Pattern, Match}
 import edu.washington.cs.knowitall.collection.immutable.graph.Graph
 import edu.washington.cs.knowitall.tool.parse.graph.{DependencyPattern, DependencyNode, DependencyGraph}
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
 import Template.group
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
 import edu.washington.cs.knowitall.tool.postag.Postagger
 import edu.washington.cs.knowitall.tool.parse.graph.RegexEdgeMatcher
 import edu.washington.cs.knowitall.tool.parse.graph.LabelEdgeMatcher

@@ -9,7 +9,7 @@ import scala.io.Source
 import edu.washington.cs.knowitall.collection.immutable.graph.pattern.DirectedEdgeMatcher
 import edu.washington.cs.knowitall.common.Resource
 import edu.washington.cs.knowitall.tool.parse.graph.{PostagNodeMatcher, LabelEdgeMatcher, DependencyPattern, DependencyGraph}
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
 
 object AnalyzePatterns {
   def main(args: Array[String]) {

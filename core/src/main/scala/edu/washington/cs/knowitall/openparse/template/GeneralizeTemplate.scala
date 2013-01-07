@@ -9,7 +9,7 @@ import edu.washington.cs.knowitall.collection.immutable.graph.pattern.{NodeMatch
 import edu.washington.cs.knowitall.common.Resource.using
 import edu.washington.cs.knowitall.openparse.{SlotMatcher, RelationMatcher, ExtractorPattern, ExtractionPartMatcher}
 import edu.washington.cs.knowitall.tool.parse.graph.{RegexNodeMatcher, PostagNodeMatcher, DependencyPattern, DependencyNode}
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer.instance
+import edu.washington.cs.knowitall.ollie.Ollie.stemmer
 
 import scopt.OptionParser
 
