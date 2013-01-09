@@ -53,7 +53,7 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.10</version>
+      <version>4.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -64,19 +64,19 @@
     <dependency>
       <groupId>org.specs2</groupId>
       <artifactId>specs2_2.9.2</artifactId>
-      <version>1.11</version>
+      <version>1.12.3</version>
       <scope>test</scope>
     </dependency>
     <!-- Logging -->
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>1.0.3</version>
+      <version>1.0.9</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-core</artifactId>
-      <version>1.0.3</version>
+      <version>1.0.9</version>
     </dependency>
   </dependencies>
   <build>
@@ -87,7 +87,7 @@
       <plugin>
         <groupId>net.alchim31.maven</groupId>
         <artifactId>scala-maven-plugin</artifactId>
-        <version>3.1.0</version>
+        <version>3.1.1</version>
         <configuration>
           <args>
             <arg>-deprecation</arg>
