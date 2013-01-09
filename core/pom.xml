@@ -39,7 +39,7 @@
   <inceptionYear>2012</inceptionYear>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <nlptools.version>2.2.6-SNAPSHOT</nlptools.version>
+    <nlptools.version>2.3.0</nlptools.version>
   </properties>
   <dependencies>
     <dependency>
@@ -61,31 +61,31 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-api</artifactId>
-      <version>1.7.1</version>
+      <version>1.7.2</version>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-classic</artifactId>
-      <version>1.0.7</version>
+      <version>1.0.9</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>ch.qos.logback</groupId>
       <artifactId>logback-core</artifactId>
-      <version>1.0.7</version>
+      <version>1.0.9</version>
       <scope>test</scope>
     </dependency>
     <!-- Test -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.10</version>
+      <version>4.11</version>
       <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.specs2</groupId>
       <artifactId>specs2_2.9.2</artifactId>
-      <version>1.12.1</version>
+      <version>1.12.3</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -102,6 +102,7 @@
             <goals>
               <goal>compile</goal>
               <goal>testCompile</goal>
+              <goal>doc-jar</goal>
             </goals>
           </execution>
         </executions>
