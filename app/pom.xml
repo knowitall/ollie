@@ -12,7 +12,7 @@
   </parent>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <nlptools.version>2.2.6-SNAPSHOT</nlptools.version>
+    <nlptools.version>2.3.0</nlptools.version>
   </properties>
   <repositories>
     <repository>
@@ -33,7 +33,7 @@
     <dependency>
       <groupId>edu.washington.cs.knowitall.ollie</groupId>
       <artifactId>ollie-core_2.9.2</artifactId>
-      <version>1.0.1-SNAPSHOT</version>
+      <version>1.0.1</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
@@ -49,12 +49,6 @@
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
       <artifactId>nlptools-sentence-opennlp_2.9.2</artifactId>
       <version>${nlptools.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>edu.washington.cs.knowitall</groupId>
-      <artifactId>opennlp-sent-models</artifactId>
-      <version>1.5</version>
-      <scope>runtime</scope>
     </dependency>
     <dependency>
       <groupId>junit</groupId>
@@ -131,39 +125,5 @@
         </executions>
       </plugin>
     </plugins>
-    <pluginManagement>
-      <plugins>
-        <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
-        <plugin>
-          <groupId>org.eclipse.m2e</groupId>
-          <artifactId>lifecycle-mapping</artifactId>
-          <version>1.0.0</version>
-          <configuration>
-            <lifecycleMappingMetadata>
-              <pluginExecutions>
-                <pluginExecution>
-                  <pluginExecutionFilter>
-                    <groupId>org.scala-tools</groupId>
-                    <artifactId>
-    									maven-scala-plugin
-    								</artifactId>
-                    <versionRange>
-    									[2.15.2,)
-    								</versionRange>
-                    <goals>
-                      <goal>testCompile</goal>
-                      <goal>compile</goal>
-                    </goals>
-                  </pluginExecutionFilter>
-                  <action>
-                    <ignore/>
-                  </action>
-                </pluginExecution>
-              </pluginExecutions>
-            </lifecycleMappingMetadata>
-          </configuration>
-        </plugin>
-      </plugins>
-    </pluginManagement>
   </build>
 </project>
