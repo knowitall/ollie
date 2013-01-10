@@ -33,7 +33,7 @@
     <dependency>
       <groupId>edu.washington.cs.knowitall.ollie</groupId>
       <artifactId>ollie-core_2.9.2</artifactId>
-      <version>1.0.1</version>
+      <version>1.0.2-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
