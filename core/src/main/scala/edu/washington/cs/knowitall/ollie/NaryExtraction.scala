@@ -99,20 +99,20 @@ object NaryExtraction {
    * Create extended extractions from a collection of extractions
    * from the same sentence.
    */
-  def from(extrs: Iterable[(Double, OllieExtraction)]): Iterable[NaryExtraction] = {
+  def from(extrs: Iterable[(Double, OllieExtractionInstance)]): Iterable[NaryExtraction] = {
     // keep extractions that end with a one-word preposition
     val prepositionEnding = extrs.filter {
-      case (conf, extr) =>
-        Postagger.simplePrepositions(extr.rel.text drop (1 + extr.rel.text lastIndexOf ' '))
+      case (conf, inst) =>
+        Postagger.simplePrepositions(inst.extr.rel.text drop (1 + inst.extr.rel.text lastIndexOf ' '))
     }
 
     // break off the preposition
     case class BrokenExtraction(rel: String, preposition: String, extr: (Double, OllieExtraction))
     val split: Iterable[BrokenExtraction] = prepositionEnding.map {
-      case (conf, extr) =>
-        val preps = Postagger.prepositions.filter(extr.rel.text endsWith _)
+      case (conf, inst) =>
+        val preps = Postagger.prepositions.filter(inst.extr.rel.text endsWith _)
         val longest = preps.maxBy(_.length)
-        BrokenExtraction(extr.rel.text.dropRight(longest.length + 1), longest, (conf, extr))
+        BrokenExtraction(inst.extr.rel.text.dropRight(longest.length + 1), longest, (conf, inst.extr))
     }
 
     // group by the arg1 and text
