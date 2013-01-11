@@ -1,18 +1,65 @@
 package edu.washington.cs.knowitall.ollie.output
 
 import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
-import edu.washington.cs.knowitall.openparse.extract.ExtractionPart
+import edu.washington.cs.knowitall.openparse.extract.Extraction
 import edu.washington.cs.knowitall.collection.immutable.Interval
+import edu.washington.cs.knowitall.ollie.ExtractionPart
+import edu.washington.cs.knowitall.tool.segment.Segment
+import java.io.PrintWriter
 
-object BratOutput {
-  def annotations(insts: Iterable[OllieExtractionInstance]) = {
-    def partToAnnotation(inst: OllieExtractionInstance, part: ExtractionPart) = {
-      val tokens = inst.sentence.nodes.toList.slice(part.interval.start, part.interval.end)
-      val charInterval = Interval.open(tokens.head.offset, tokens.last.interval.end)
-      "Argument " + charInterval.start + " " + charInterval.end + "\t" + tokens.mkString(" ")
+class BratOutput(extractor: String => Iterable[OllieExtractionInstance]) {
+  def process(sentences: Iterable[Segment], writer: PrintWriter) = {
+    val document = new Document()
+    for {
+      Segment(text, offset) <- sentences 
+      inst <- extractor(text)
+      entry <- document.annotations(inst, offset)
+    } {
+      writer.println(entry)
     }
-    
-    val arguments = insts.flatMap(extr => List(extr.extr.arg1, extr.extr.arg2))
-    val relations = insts.map(extr => extr.extr.rel)
+  }
+
+  class Document {
+    var entityIndex = 0
+    var relationIndex = 0
+
+    def annotations(inst: OllieExtractionInstance, sentenceCharacterOffset: Int) = {
+      def partToAnnotation(inst: OllieExtractionInstance, part: Extraction.Part, partName: String) = {
+        val tokens = inst.sentence.nodes.toList.slice(part.span.start, part.span.end)
+        val charInterval = Interval.open(tokens.head.offset, tokens.last.interval.end)
+        partName + " " + (sentenceCharacterOffset + charInterval.start) + " " + (sentenceCharacterOffset + charInterval.end) + "\t" + tokens.map(_.text).mkString(" ")
+      }
+
+      case class LabelledEntry(label: String, entry: String)
+      def label(identifier: Char, index: Int, entry: String) = LabelledEntry(identifier.toString + index, entry)
+
+      val entries = {
+        val arguments = List(inst.extr.arg1, inst.extr.arg2) map { arg =>
+          val labelled = label('T', entityIndex, partToAnnotation(inst, arg, "Argument"))
+          entityIndex += 1
+          labelled
+        }
+        val relation = {
+          val labelled = label('T', entityIndex, partToAnnotation(inst, inst.extr.rel, "Relation"))
+          entityIndex += 1
+          labelled
+        }
+
+        val entities = relation :: arguments
+
+        val relations = arguments zip List("Arg1", "Arg2") map {
+          case (entry, edge) =>
+            val labelled = label('R', relationIndex, edge + "-of Arg1:" + entry.label + " Arg2:" + relation.label)
+            relationIndex += 1
+            labelled
+        }
+
+        entities ::: relations
+      }
+
+      entries map {
+        case LabelledEntry(label, entry) => label + "\t" + entry
+      }
+    }
   }
 }
