@@ -27,7 +27,7 @@ class BratOutput(extractor: String => Iterable[OllieExtractionInstance]) {
       def partToAnnotation(inst: OllieExtractionInstance, part: Extraction.Part, partName: String) = {
         val tokens = inst.sentence.nodes.toList.slice(part.span.start, part.span.end)
         val charInterval = Interval.open(tokens.head.offset, tokens.last.interval.end)
-        partName + " " + (sentenceCharacterOffset + charInterval.start) + " " + (sentenceCharacterOffset + charInterval.end) + "\t" + tokens.map(_.text).mkString(" ")
+        partName + " " + (sentenceCharacterOffset + charInterval.start) + " " + (sentenceCharacterOffset + charInterval.end) + "\t" + inst.sentence.text.substring(charInterval.start, charInterval.end)
       }
 
       case class LabelledEntry(label: String, entry: String)
@@ -49,7 +49,7 @@ class BratOutput(extractor: String => Iterable[OllieExtractionInstance]) {
 
         val relations = arguments zip List("Arg1", "Arg2") map {
           case (entry, edge) =>
-            val labelled = label('R', relationIndex, edge + "-of Arg1:" + entry.label + " Arg2:" + relation.label)
+            val labelled = label('R', relationIndex, edge + "-of Arg1:" + relation.label + " Arg2:" + entry.label)
             relationIndex += 1
             labelled
         }
