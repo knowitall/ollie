@@ -20,7 +20,7 @@ object OllieFeatureSet extends FeatureSet[OllieExtractionInstance, Double](Ollie
 /** Features defined for OllieExtractionInstances */
 object OllieFeatures {
   type OllieFeature = Feature[OllieExtractionInstance, Double]
-  
+
   implicit def boolToDouble(bool: Boolean) = if (bool) 1.0 else 0.0
 
   val weirdPunct = Pattern.compile(".*[:!@#$%^&*{};`<>]+.*")
@@ -28,6 +28,7 @@ object OllieFeatures {
   val ingStart = Pattern.compile("^[a-zA-Z]+ing.*")
   val relationVerb = Pattern.compile("VB|VBD|VBZ|VBN|VBP|MD")
 
+  // Whether relation nodes (ignore template modifications) is a subinterval of the sentence.
   object nonContinuousRel extends OllieFeature("non-contiguous rel") {
     val trailingPrep = new Regex(" (?:" + Postagger.prepositions.mkString("|") + ")$")
     val leadingBe = new Regex("^be ")
@@ -37,6 +38,7 @@ object OllieFeatures {
     }
   }
 
+  // Whether two nodes in the relation are `length` tokens apart in the sentence.
   class gapInRel(length: Int) extends OllieFeature("gap of " + length + " in rel") {
     override def apply(inst: OllieExtractionInstance): Double = {
       inst.extr.nodes.toSeq.sliding(2).exists { case Seq(x, y) =>
@@ -94,7 +96,7 @@ object OllieFeatures {
     }
   }
 
-  // is rel a contiguous set of tokens from the sentence?
+  // is rel text a contiguous string from the sentence?
   object relIsContiguous extends OllieFeature("rel is contiguous") {
     override def apply(inst: OllieExtractionInstance): Double = {
       (inst.sent.nodes.iterator.map(_.text).mkString(" ")) contains inst.extr.rel.text
@@ -102,7 +104,7 @@ object OllieFeatures {
   }
 
   // is there a prep right before arg1?
-  object prepRightBeforeArg2 extends OllieFeature("prep right before arg2") {
+  object prepRightBeforeArg1 extends OllieFeature("prep right before arg1") {
     override def apply(inst: OllieExtractionInstance): Double = {
       val arg1Span = inst.extr.arg1.span
       val rightBeforeArg1 = inst.sent.nodes.find(node => node.indices < arg1Span && node.indices.borders(arg1Span))
@@ -340,7 +342,7 @@ object OllieFeatures {
     override def apply(inst: OllieExtractionInstance): Double = {
       val nodes = getPart(inst).nodes
       val neighbors = List(nodes.head, nodes.last).flatMap(inst.sent.graph.edges(_))
-      neighbors exists (_.label == "amod")
+      neighbors exists (_.label == "appos")
     }
   }
 
@@ -371,7 +373,7 @@ object OllieFeatures {
     imperative,
     arg2ContainsInfinitive,
     relIsContiguous,
-    prepRightBeforeArg2,
+    prepRightBeforeArg1,
     relStartsWithBe,
     prepRightAfterArg2,
     new ArgIsProper(_.extr.arg1, "arg1"),
