@@ -36,10 +36,8 @@ class ExtractionPart(val string: String, val interval: Interval) extends Ordered
  */
 class Suffix(
   text: String,
-  nodes: SortedSet[DependencyNode],
-  val confidence: Double)
+  nodes: SortedSet[DependencyNode])
   extends Extraction.Part(nodes, text) {
-  override def toString = ("%1.4f" format confidence) + "/\"" + super.toString + "\""
 
   /** Annote the suffix with a type. */
   def annotate(string: String) =
@@ -61,11 +59,10 @@ class Suffix(
 class AnnotatedSuffix(
   text: String,
   nodes: SortedSet[DependencyNode],
-  confidence: Double,
   val annotation: String)
-  extends Suffix(text, nodes, confidence) {
+  extends Suffix(text, nodes) {
   def this(suffix: Suffix, annotation: String) =
-    this(suffix.text, suffix.nodes, suffix.confidence, annotation)
+    this(suffix.text, suffix.nodes, annotation)
   override def toString = annotation + "/" + super.toString
 }
 
@@ -99,39 +96,39 @@ object NaryExtraction {
    * Create extended extractions from a collection of extractions
    * from the same sentence.
    */
-  def from(extrs: Iterable[(Double, OllieExtractionInstance)]): Iterable[NaryExtraction] = {
+  def from(extrs: Iterable[OllieExtractionInstance]): Iterable[NaryExtraction] = {
     // keep extractions that end with a one-word preposition
     val prepositionEnding = extrs.filter {
-      case (conf, inst) =>
+      inst =>
         Postagger.simplePrepositions(inst.extr.rel.text drop (1 + inst.extr.rel.text lastIndexOf ' '))
     }
 
     // break off the preposition
-    case class BrokenExtraction(rel: String, preposition: String, extr: (Double, OllieExtraction))
+    case class BrokenExtraction(rel: String, preposition: String, extr: OllieExtraction)
     val split: Iterable[BrokenExtraction] = prepositionEnding.map {
-      case (conf, inst) =>
+      inst =>
         val preps = Postagger.prepositions.filter(inst.extr.rel.text endsWith _)
         val longest = preps.maxBy(_.length)
-        BrokenExtraction(inst.extr.rel.text.dropRight(longest.length + 1), longest, (conf, inst.extr))
+        BrokenExtraction(inst.extr.rel.text.dropRight(longest.length + 1), longest, inst.extr)
     }
 
     // group by the arg1 and text
     split groupBy {
-      case BrokenExtraction(rel, preposition, (conf, extr)) =>
+      case BrokenExtraction(rel, preposition, extr) =>
         (extr.arg1.text, rel)
     } filter (_._2.size > 1) map {
       case ((arg1, rel), extrs) =>
         val suffixes: immutable.SortedSet[Suffix] = extrs.map {
-          case BrokenExtraction(rel, prep, (conf, extr)) =>
-            new Suffix(prep + " " + extr.arg2.text, extr.arg2.nodes, conf)
+          case BrokenExtraction(rel, prep, extr) =>
+            new Suffix(prep + " " + extr.arg2.text, extr.arg2.nodes)
         }(scala.collection.breakOut)
 
-        val first = extrs.head.extr._2
+        val first = extrs.head.extr
         val argument1 = new Extraction.Part(first.arg1.nodes, arg1)
         val relation = new Extraction.Part(first.rel.nodes, rel)
 
-        val attributions = extrs.flatMap(_.extr._2.attribution).toSet.toSeq
-        val enablers = extrs.flatMap(_.extr._2.enabler).toSet.toSeq
+        val attributions = extrs.flatMap(_.extr.attribution).toSet.toSeq
+        val enablers = extrs.flatMap(_.extr.enabler).toSet.toSeq
 
         new NaryExtraction(argument1, relation, suffixes.toSeq, enablers = enablers, attributions = attributions)
     }
