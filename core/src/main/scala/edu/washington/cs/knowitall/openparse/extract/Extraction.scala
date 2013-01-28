@@ -271,36 +271,25 @@ object Extraction {
 
     // modifiers on copulars are stored on a different node
     // i.e. in "he *will* be the president"
-    val cops = graph.graph.predecessors(node, (e: Graph.Edge[DependencyNode])=>e.label == "cop").headOption
+    val cops = graph.graph.predecessors(node, (e: Graph.Edge[DependencyNode]) => e.label == "cop").headOption
     val expandCopLabels = cops.map(cop => augment(graph, cop, until, pred)).getOrElse(List.empty)
 
-    def f(s: Set[List[DependencyNode]]): Set[List[DependencyNode]] =
-      if (s.isEmpty) Set(List())
-      else s
-    val dobjs = f(components(graph, node, Set("dobj"), until, true))
-    val iobjs = f(components(graph, node, Set("iobj"), until, true))
+    val expansion = expandCopLabels ++ (expandNounLabels ::
+      // make sure that we don't use a label that was
+      // already captured by expandNounlabels.  This
+      // can happen when a verb edges goes between two
+      // noun labels.
+      (augment(graph, node, until, pred).map(_ -- expandNounLabels)).filterNot { c =>
+        // don't add empty components
+        c.isEmpty ||
+          // don't add components with just "who" or "whom"
+          c.size == 1 && c.headOption.map(_.postag == "WP").getOrElse(false)
+      })
 
-    for (dobj <- dobjs; iobj <- iobjs) yield {
-      val expansion = expandCopLabels ++ (expandNounLabels ::
-        // make sure that we don't use a label that was
-        // already captured by expandNounlabels.  This
-        // can happen when a verb edges goes between two
-        // noun labels.
-        ((augment(graph, node, until, pred).map(_ -- expandNounLabels)) :+
-          // add subcomponents
-          (SortedSet[DependencyNode]() ++ dobj) :+
-          (SortedSet[DependencyNode]() ++ iobj)).filterNot { c =>
-            // don't add empty components
-            c.isEmpty ||
-              // don't add components with just "who" or "whom"
-              c.size == 1 && c.headOption.map(_.postag == "WP").getOrElse(false)
-          })
+    val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
 
-      val sorted = expansion.sortBy(nodes => Interval.span(nodes.map(_.indices)))
-
-      // perform a more complicated node->text transformation
-      val texts = sorted.map(DetailedExtraction.nodesToString(_))
-      Part(expansion.reduce(_ ++ _), texts.mkString(" "))
-    }
+    // perform a more complicated node->text transformation
+    val texts = sorted.map(DetailedExtraction.nodesToString(_))
+    Set(Part(expansion.reduce(_ ++ _), texts.mkString(" ")))
   }
 }
