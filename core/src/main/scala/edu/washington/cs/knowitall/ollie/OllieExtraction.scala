@@ -147,6 +147,10 @@ class OllieExtraction(
     }
     "(%s; %s; %s)".format(arg1.text, rel.text, arg2.text) + extentions
   }
+  
+  def withRelation(rel: Part) = {
+    new OllieExtraction(this.arg1, rel, this.arg2, this.openparseConfidence, this.enabler, this.attribution)
+  }
 }
 
 object OllieExtraction {

@@ -122,15 +122,15 @@ object Extraction {
     def span = Interval.span(nodes.map(_.indices))
   }
   object Part {
-    def connections(m: Match[DependencyNode], node: DependencyNode): Set[Graph.Edge[DependencyNode]] = {
+    def connections(m: Match[DependencyNode], node: DependencyNode): collection.immutable.Set[Graph.Edge[DependencyNode]] = {
       m.edges.filter(edge => edge.source == node || edge.dest == node).toSet
     }
     
-    def connections(m: Match[DependencyNode], nodes: Set[DependencyNode]): Set[Graph.Edge[DependencyNode]] = {
+    def connections(m: Match[DependencyNode], nodes: Set[DependencyNode]): collection.immutable.Set[Graph.Edge[DependencyNode]] = {
       m.edges.filter(edge => nodes.contains(edge.source) || nodes.contains(edge.dest)).toSet
     }
     
-    def connections(m: Match[DependencyNode], nodes: Seq[DependencyNode]): Set[Graph.Edge[DependencyNode]] = {
+    def connections(m: Match[DependencyNode], nodes: Seq[DependencyNode]): collection.immutable.Set[Graph.Edge[DependencyNode]] = {
       m.edges.filter(edge => nodes.contains(edge.source) || nodes.contains(edge.dest)).toSet
     }
   }

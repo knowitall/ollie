@@ -8,6 +8,7 @@ import edu.washington.cs.knowitall.openparse.extract.DetailedExtraction
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
 import edu.washington.cs.knowitall.tool.stem.Stemmer
+import edu.washington.cs.knowitall.openparse.extract.Extraction.Part
 
 /** Ollie is an Open Information Extractor that produces binary extractions
   * with context.  The constructor takes an OpenParse instance.  Ollie extends
@@ -31,12 +32,24 @@ class Ollie(val openparse: OpenParse) {
   def extract(dgraph: DependencyGraph): Iterable[OllieExtractionInstance] = {
     val openparseExtrs = openparse.extract(dgraph)
 
-    for {
+    val baseExtrs = for {
       (conf, extr) <- openparseExtrs
       val enabler = enablingAdverbialClauseHelper(extr)
       val attribution = attribClausalComponentHelper(extr)
     } yield new OllieExtractionInstance(
-        new OllieExtraction(extr.arg1, extr.rel, extr.arg2, conf, enabler, attribution), dgraph, extr.extractor)
+        new OllieExtraction(extr.arg1, extr.rel, extr.arg2, conf, enabler, attribution), dgraph, extr.`match`, extr.extractor)
+    
+    // group extractions with common relations
+    val naryExtrs = NaryExtraction.from(baseExtrs)
+    val combinedExtrs = naryExtrs.flatMap(_._2.values).toSet
+    
+    // seperate those extractions that are ungrouped
+    val simpleExtrs = baseExtrs filterNot (combinedExtrs contains _)
+    
+    // create triples from grouped extractions
+    val complexExtrs = NaryExtraction.triples(naryExtrs)
+
+    simpleExtrs ++ complexExtrs.flatten
   }
 
   /** Identify enabling condition, i.e. "if it's raining..." */

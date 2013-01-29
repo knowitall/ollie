@@ -4,6 +4,8 @@ import edu.washington.cs.knowitall.common.HashCodeHelper
 import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
 import scala.util.matching.Regex
+import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
+import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 
 /** OllieExtractionInstance represents an extraction coupled with
   * its source sentence.
@@ -13,6 +15,8 @@ class OllieExtractionInstance(
     val extr: OllieExtraction,
     /** The associated sentence. */
     val sent: DependencyGraph,
+    /** The match in the dependency graph. */
+    val `match`: Match[DependencyNode],
     /** The extractor used. */
     val pat: PatternExtractor) {
 
@@ -73,7 +77,7 @@ object OllieExtractionInstance {
       val (pat, r1) = PatternExtractor.tabDeserialize(r0)
       val (extr, r2) = OllieExtraction.tabDeserialize(r1)
 
-      (new OllieExtractionInstance(extr, graph, pat), r2)
+      (new OllieExtractionInstance(extr, graph, null, pat), r2)
     } catch {
       case e => throw new IllegalArgumentException("Could not tab deserialize: " + array.mkString("\t"), e)
     }
