@@ -8,9 +8,9 @@ import edu.washington.cs.knowitall.common.Resource.using
 
 import scopt.OptionParser
 
-/** A main method to annotate extractions, 
+/** A main method to annotate extractions,
   * using a gold set for previously scored extractions.
-  * 
+  *
   * @author Michael Schmitz
   */
 object Score {
@@ -53,7 +53,7 @@ object Score {
   def run(settings: Settings) {
     val gold = settings.goldFile match {
       case None => Map[String, Boolean]()
-      case Some(goldFile) => loadGoldSet(goldFile)
+      case Some(goldFile) => GoldSet.load(goldFile)
     }
 
     val (scoreds, golden) = using(Source.fromFile(settings.extractionFile, "UTF8")) { source =>
@@ -85,24 +85,15 @@ object Score {
     }
   }
 
-  def loadGoldSet(file: File) = {
-    using(Source.fromFile(file, "UTF8")) { source =>
-      source.getLines.map { line =>
-        val parts = line.split("\t")
-        parts(1) -> (if (parts(0) == "1") true else false)
-      }.toMap
-    }
-  }
-
   def score(lines: Iterator[String], gold: Map[String, Boolean], confidenceThreshold: Double, prompt: Boolean) = {
     def stringDistance(s1: String, s2: String): Int = {
       def minimum(i1: Int, i2: Int, i3: Int) = math.min(math.min(i1, i2), i3)
-   
+
       val dist = Array.ofDim[Int](s1.length + 1, s2.length + 1)
-   
+
       for (idx <- 0 to s1.length) dist(idx)(0) = idx
       for (jdx <- 0 to s2.length) dist(0)(jdx) = jdx
-   
+
       for (idx <- 1 to s1.length; jdx <- 1 to s2.length)
         dist(idx)(jdx) = minimum (
           dist(idx-1)(jdx  ) + 1,
@@ -181,5 +172,22 @@ object Scored {
     val extra = parts.drop(3)
 
     Scored(Some(score), confidence, extraction, extra)
+  }
+}
+
+object GoldSet {
+  def load(file: File) = {
+    using(Source.fromFile(file, "UTF8")) { source =>
+      source.getLines.map { line =>
+        val parts = line.split("\t")
+        parts(1) -> (if (parts(0) == "1") true else false)
+      }.toMap
+    }
+  }
+
+  def save(gold: Map[String, Boolean], file: File) = {
+    using(new PrintWriter(file, "UTF8")) { writer =>
+      gold.foreach { case (extr, correct) => writer.println((if (correct) 1 else 0) + "\t" + extr) }
+    }
   }
 }
