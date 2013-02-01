@@ -48,7 +48,7 @@ import edu.washington.cs.knowitall.openparse.extract.PatternExtractorType
 import edu.washington.cs.knowitall.openparse.gui.Dot
 import edu.washington.cs.knowitall.openparse.gui.ExtractionEntry
 import edu.washington.cs.knowitall.openparse.gui.Parser
-import edu.washington.cs.knowitall.openparse.gui.Parser.Parser
+import edu.washington.cs.knowitall.openparse.gui.Parser.ParserEnum
 import edu.washington.cs.knowitall.openparse.gui.Sentence
 import edu.washington.cs.knowitall.tool.parse.DependencyParser
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
@@ -57,10 +57,14 @@ import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.deserialize
 import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
 import scopt.OptionParser
 import edu.washington.cs.knowitall.ollie.DependencyGraphExtras
+import scala.swing.event.KeyPressed
+import scala.swing.event.Key
+import scala.swing.event.KeyReleased
+import edu.washington.cs.knowitall.openparse.eval.GoldSet
 
 object OpenParseGui extends SimpleSwingApplication {
   /** Which parser we are using. */
-  var parser: Option[DependencyParser] = None
+  var parser: Option[(Parser.ParserEnum, DependencyParser)] = None
 
   /** Which extractor we are using. */
   var extractor: Option[OpenParse] = None
@@ -130,7 +134,7 @@ object OpenParseGui extends SimpleSwingApplication {
       extractor = Some(OpenParse.fromModelUrl(Settings.modelUrl, Settings.configuration))
 
       Settings.goldFile.foreach { goldFile =>
-        gold = Score.loadGoldSet(goldFile)
+        gold = GoldSet.load(goldFile)
       }
 
       Settings.sentenceFile.foreach { sentenceFile => loadSentences(sentenceFile) }
@@ -152,7 +156,19 @@ object OpenParseGui extends SimpleSwingApplication {
     }
   }
 
-  def loadParser(parserType: Parser): Unit =
+  def chooseSave(default: Option[File] = None): Option[File] = {
+    import FileChooser.Result
+
+    val chooser = new FileChooser
+    default.map(chooser.selectedFile = _)
+
+    chooser.showSaveDialog(null) match {
+      case Result.Approve => Option(chooser.selectedFile)
+      case Result.Cancel | Result.Error => None
+    }
+  }
+
+  def loadParser(parserType: ParserEnum): Unit =
     parser = Some(Parser.load(parserType))
 
   def loadParserIfNone(): Unit = parser match {
@@ -250,7 +266,35 @@ object OpenParseGui extends SimpleSwingApplication {
 
     val field = new TextField
 
-    val extractionList = new ListView[ExtractionEntry]()
+    val extractionList = new ListView[ExtractionEntry]() {
+      listenTo(keys)
+      reactions += {
+        case KeyPressed(_, Key.Equals, _, _) =>
+          val selection = this.selection.items(0)
+          val item = selection.toString.dropWhile(_ != ':').drop(1)
+          gold += item -> true
+          this.listData = this.listData.map {
+            case item if item == selection => item.annotate(true)
+            case other => other
+          }
+        case KeyReleased(_, Key.Minus, _, _) =>
+          val selection = this.selection.items(0)
+          val item = selection.toString.dropWhile(_ != ':').drop(1)
+          gold += item -> false
+          this.listData = this.listData.map {
+            case item if item == selection => item.annotate(false)
+            case other => other
+          }
+        case KeyReleased(_, Key.Space, _, _) =>
+          val selection = this.selection.items(0)
+          val item = selection.toString.dropWhile(_ != ':').drop(1)
+          gold += item -> false
+          this.listData = this.listData.map {
+            case item if item == selection => item.unannotate
+            case other => other
+          }
+      }
+    }
 
     val label = new Label()
 
@@ -292,7 +336,7 @@ object OpenParseGui extends SimpleSwingApplication {
       label.text = sentence match {
         case Sentence.Graph(_) => "Input contains dependency graph.  Sentence will not be reparsed."
         case Sentence.Text(_) =>
-          parser.map("Parsed using '"+_.getClass.getSimpleName+"' in "+Seconds.format(parseTime)+".  ").getOrElse {
+          parser.map("Parsed using '"+_._2.getClass.getSimpleName+"' in "+Seconds.format(parseTime)+".  ").getOrElse {
             "No parsers selected."
           } +
           "Extracted in "+Seconds.format(extractTime)+"."
@@ -304,7 +348,7 @@ object OpenParseGui extends SimpleSwingApplication {
 
     // menu definition
     def menu = {
-      def parserMenuItem(parserType: Parser) = {
+      def parserMenuItem(parserType: ParserEnum) = {
         new RadioMenuItem(parserType.toString) {
           this.selected = Parser.default == parserType
           action = Action(this.text) {
@@ -348,6 +392,25 @@ object OpenParseGui extends SimpleSwingApplication {
         val expandMutex = new ButtonGroup(expandOptions: _*)
 
         contents += new Menu("File") {
+          contents += new MenuItem(Action("Load gold set...") {
+            withWaitCursor {
+              choose(Settings.goldFile) match {
+                case Some(file) =>
+                  gold = GoldSet.load(file)
+                  extractionList.listData = extractionList.listData.map(entry => entry.copy(correct = gold.get(entry.string)))
+                case None =>
+              }
+            }
+          })
+          contents += new MenuItem(Action("Save gold set...") {
+            withWaitCursor {
+              chooseSave(Settings.goldFile) match {
+                case Some(file) => GoldSet.save(gold, file)
+                case None =>
+              }
+            }
+          })
+          contents += new Separator()
           contents += new MenuItem(Action("Search Sentences...") {
             withWaitCursor {
               val query = Dialog.showInput(null, message="Enter the sentence text to search for.", title="Search Sentences", Dialog.Message.Plain, Swing.EmptyIcon, Seq(), "")
@@ -523,7 +586,7 @@ object OpenParseGui extends SimpleSwingApplication {
     sentence match {
       case Sentence.Text(text) =>
         loadParserIfNone()
-        val dgraph = parser.get.dependencyGraph(text).collapse
+        val dgraph = parser.get._2.dependencyGraph(text).collapse
         extractor.map(_.simplifyGraph _) match {
           case Some(f) => f(dgraph)
           case None => dgraph
@@ -539,7 +602,7 @@ object OpenParseGui extends SimpleSwingApplication {
         val extractions = for {
           (conf, extr) <- extractor.extract(dgraph)
         } yield {
-          new ExtractionEntry(conf, extr)
+          new ExtractionEntry(conf, extr, parser.map(_._1).getOrElse(Parser.Deserialize), gold.get(extr.toString))
         }
 
         extractions.sortBy(_.confidence).reverse
@@ -548,7 +611,7 @@ object OpenParseGui extends SimpleSwingApplication {
           ex <- extractor.extractors
           m <- ex.pattern(dgraph.graph)
         } yield {
-          ExtractionEntry(None, m, m.nodes.toSet, ex, m.nodes.iterator.map(_.string).mkString(" "))
+          ExtractionEntry(None, m, m.nodes.toSet, ex, parser.map(_._1).getOrElse(Parser.Deserialize), m.nodes.iterator.map(_.string).mkString(" "), None)
         }
 
         extractions.sortBy(_.confidence).reverse

@@ -16,23 +16,28 @@ case class ExtractionEntry(
   `match`: Match[DependencyNode],
   nodes: Set[DependencyNode],
   extractor: PatternExtractor,
-  string: String = "") {
+  parser: Parser.ParserEnum,
+  string: String = "",
+  correct: Option[Boolean]) {
 
   /**
     * Convenient constructor for instantiating from
     * an OpenParse extraction.
     */
-  def this(confidence: Double, extraction: DetailedExtraction) = this(Some(confidence), extraction.`match`, extraction.nodes.toSet, extraction.extractor, extraction.toString)
+  def this(confidence: Double, extraction: DetailedExtraction, parser: Parser.ParserEnum, correct: Option[Boolean] = None) = this(Some(confidence), extraction.`match`, extraction.nodes.toSet, extraction.extractor, parser, extraction.toString, correct)
 
   def edges = `match`.edges
 
-  private def goldString(gold: Map[String, Boolean]) = {
-    gold.get(string) match {
+  def annotate(correct: Boolean) = this.copy(correct = Some(correct))
+  def unannotate = this.copy(correct = None)
+
+  private def goldString = {
+    correct match {
       case Some(true) => "+ "
       case Some(false) => "- "
       case None => ""
     }
   }
 
-  override def toString = confidence.map("%1.4f:" format _).getOrElse("") + string
+  override def toString = confidence.map("%1.4f:" format _).getOrElse("") + goldString + string
 }
