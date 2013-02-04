@@ -32,7 +32,7 @@ sentence starts with extraction	0.18854224217974247
 arg2 bad characters	-0.009939551407472108
 rel contains verb	0.4757113580400253
 rel starts with be	0.0
-prep right before arg2	-0.2350155331052106
+prep right before arg1	-0.2350155331052106
 sentence has question mark	0.0
 arg2 before arg1	-0.35791735399208685
 arg2 before rel	-0.023882392179128745
