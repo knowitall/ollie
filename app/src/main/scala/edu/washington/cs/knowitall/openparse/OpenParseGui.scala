@@ -188,7 +188,7 @@ object OpenParseGui extends SimpleSwingApplication {
       // check if any part is deserializable
       val graphIndex = parts.iterator.indexWhere { column =>
         catching(classOf[SerializationException]).opt {
-          deserialize(column)
+          deserialize(column).collapse
         }.isDefined
       }
 
@@ -196,7 +196,7 @@ object OpenParseGui extends SimpleSwingApplication {
         val parts = line.split("\t")
 
         if (graphIndex != -1) {
-          Sentence.Graph(deserialize(parts(graphIndex)))
+          Sentence.Graph(deserialize(parts(graphIndex)).collapse)
         }
         else {
           Sentence.Text(parts(0))
