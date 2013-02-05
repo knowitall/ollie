@@ -269,25 +269,25 @@ object OpenParseGui extends SimpleSwingApplication {
     val extractionList = new ListView[ExtractionEntry]() {
       listenTo(keys)
       reactions += {
-        case KeyPressed(_, Key.Equals, _, _) =>
+        case KeyPressed(_, Key.Equals, _, _) if this.selection.items.size > 0 =>
           val selection = this.selection.items(0)
-          val item = selection.toString.dropWhile(_ != ':').drop(1)
+          val item = selection.toString.dropWhile(_ != '(')
           gold += item -> true
           this.listData = this.listData.map {
             case item if item == selection => item.annotate(true)
             case other => other
           }
-        case KeyReleased(_, Key.Minus, _, _) =>
+        case KeyReleased(_, Key.Minus, _, _) if this.selection.items.size > 0  =>
           val selection = this.selection.items(0)
-          val item = selection.toString.dropWhile(_ != ':').drop(1)
+          val item = selection.toString.dropWhile(_ != '(')
           gold += item -> false
           this.listData = this.listData.map {
             case item if item == selection => item.annotate(false)
             case other => other
           }
-        case KeyReleased(_, Key.Space, _, _) =>
+        case KeyReleased(_, Key.Space, _, _) if this.selection.items.size > 0  =>
           val selection = this.selection.items(0)
-          val item = selection.toString.dropWhile(_ != ':').drop(1)
+          val item = selection.toString.dropWhile(_ != '(')
           gold += item -> false
           this.listData = this.listData.map {
             case item if item == selection => item.unannotate
