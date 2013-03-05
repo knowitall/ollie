@@ -50,9 +50,10 @@ class DependencyGraphExtras(dgraph: DependencyGraph) {
 
       // create the new graph
       val newGraph = new DependencyGraph(edges.flatMap(_.vertices), edges)
+      val text = newGraph.nodes.iterator.map(_.text).mkString(" ")
 
       // compute the correct offsets
-      val offsets = Tokenizer.computeOffsets(newGraph.nodes.iterator.map(_.text).toList, newGraph.text)
+      val offsets = Tokenizer.computeOffsets(newGraph.nodes.iterator.map(_.text).toList, text)
       val nodeOffsetTransformation =
         ((newGraph.graph.vertices.iterator zip offsets.iterator) map {case (node, token) => node -> new DependencyNode(node.text, node.postag, node.indices, token.offset)}).toMap
 
@@ -98,9 +99,10 @@ class DependencyGraphExtras(dgraph: DependencyGraph) {
 
       // create the new graph
       val newGraph = new DependencyGraph(edges.flatMap(_.vertices), edges)
+      val text = newGraph.nodes.iterator.map(_.text).mkString(" ")
 
       // compute the correct offsets
-      val offsets = Tokenizer.computeOffsets(newGraph.nodes.iterator.map(_.text).toList, newGraph.text)
+      val offsets = Tokenizer.computeOffsets(newGraph.nodes.iterator.map(_.text).toList, text)
       val nodeOffsetTransformation =
         ((newGraph.graph.vertices.iterator zip offsets.iterator) map {case (node, token) => node -> new DependencyNode(node.text, node.postag, node.indices, token.offset)}).toMap
 
