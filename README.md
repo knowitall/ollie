@@ -131,7 +131,7 @@ example model, look at `openparse.model` in `src/main/resources`. Your model
 may have one or more patterns in it.  If you want to see pattern matches
 (without node expansion) instead of triple extractions, you can choose to show
 the raw match with `Options->Raw Matches`.  This will allow you to use patterns
-that do not capture an arg1, rel, and arg2.  
+that do not capture an arg1, rel, and arg2.
 
 ## Parsers
 
@@ -195,6 +195,12 @@ run the logistic regression trainer.
 When operating at web scale, parallelism is essential.  While the base Ollie
 extractor is immutable and thread safe, the parser may not be thread safe.  I
 do not know whether Malt parser is thread safe.
+
+## FAQ
+
+1.  How fast is Ollie?
+
+    You should really benchmark Ollie yourself, but on my computer (a new computer in 2011), Ollie processed 5000 high-quality web sentences in 56 seconds, or 89 sentences per second, in a single thread.  Ollie is easily parallelizable and the Ollie extractor itself is threadsafe (see Concurrency section).
 
 ## Contact
 
