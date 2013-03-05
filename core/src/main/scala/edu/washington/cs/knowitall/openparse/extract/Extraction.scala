@@ -125,11 +125,11 @@ object Extraction {
     def connections(m: Match[DependencyNode], node: DependencyNode): Set[Graph.Edge[DependencyNode]] = {
       m.edges.filter(edge => edge.source == node || edge.dest == node).toSet
     }
-    
+
     def connections(m: Match[DependencyNode], nodes: Set[DependencyNode]): Set[Graph.Edge[DependencyNode]] = {
       m.edges.filter(edge => nodes.contains(edge.source) || nodes.contains(edge.dest)).toSet
     }
-    
+
     def connections(m: Match[DependencyNode], nodes: Seq[DependencyNode]): Set[Graph.Edge[DependencyNode]] = {
       m.edges.filter(edge => nodes.contains(edge.source) || nodes.contains(edge.dest)).toSet
     }
