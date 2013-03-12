@@ -143,9 +143,12 @@ with the `--malt-model` parameter.  Malt Parser models are available online.
   http://www.maltparser.org/mco/english_parser/engmalt.html
 
 Ollie works with any other parser in the `nlptools` project.  For example, it
-is easy to swap out Malt for Stanford's parser.  Stanford's parser is not an
-option by default because of licensing conflicts, but it was used for some
-of the results in the paper.
+is easy to swap out Malt for Stanford's parser.  Stanford's parser is not a
+part of the Ollie distribution by default because of licensing conflicts, but
+the Stanford parser was used as the execution parser for the results in the
+paper.  Malt Parser was used to bootstrap the patterns.  We are interested
+in Clear parser as an alternative, but it's not a trivial change because Clear
+uses a slightly different dependency representation.
 
 ## Using Eclipse
 
