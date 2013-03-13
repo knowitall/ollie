@@ -26,7 +26,7 @@ class BratOutput(extractor: String => Iterable[OllieExtractionInstance]) {
     def annotations(inst: OllieExtractionInstance, sentenceCharacterOffset: Int) = {
       def partToAnnotation(inst: OllieExtractionInstance, part: Extraction.Part, partName: String) = {
         val tokens = inst.sentence.nodes.toList.slice(part.span.start, part.span.end)
-        val charInterval = Interval.open(tokens.head.offset, tokens.last.interval.end)
+        val charInterval = Interval.open(tokens.head.offset, tokens.last.offsets.end)
         partName + " " + (sentenceCharacterOffset + charInterval.start) + " " + (sentenceCharacterOffset + charInterval.end) + "\t" + inst.sentence.text.substring(charInterval.start, charInterval.end)
       }
 
