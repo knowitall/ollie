@@ -1,9 +1,9 @@
-package edu.washington.cs.knowitall.ollie
+package edu.knowitall.ollie
 
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.tool.parse.graph.DependencyGraph
 
 @RunWith(classOf[JUnitRunner])
 object DependencyGraphExtrasTest extends Specification {

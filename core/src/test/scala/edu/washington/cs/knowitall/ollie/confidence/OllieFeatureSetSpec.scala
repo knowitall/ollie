@@ -1,15 +1,15 @@
-package edu.washington.cs.knowitall.ollie.confidence
+package edu.knowitall.ollie.confidence
 
 import org.junit._
 import org.junit.Assert._
 import org.specs2.mutable.Specification
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.ollie.Ollie
-import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
-import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
-import edu.washington.cs.knowitall.openparse.OpenParse
+import edu.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.ollie.Ollie
+import edu.knowitall.ollie.OllieExtractionInstance
+import edu.knowitall.ollie.ScoredOllieExtractionInstance
+import edu.knowitall.openparse.OpenParse
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 

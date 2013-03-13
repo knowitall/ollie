@@ -1,16 +1,16 @@
-package edu.washington.cs.knowitall.openparse
+package edu.knowitall.openparse
 
 import org.junit._
 import org.junit.Assert._
 import org.specs2.mutable.Specification
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
-import edu.washington.cs.knowitall.ollie.Ollie
-import edu.washington.cs.knowitall.ollie.OllieExtractionInstance
-import edu.washington.cs.knowitall.ollie.ScoredOllieExtractionInstance
-import edu.washington.cs.knowitall.ollie.confidence.OllieConfidenceFunction
+import edu.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.tool.stem.MorphaStemmer
+import edu.knowitall.ollie.Ollie
+import edu.knowitall.ollie.OllieExtractionInstance
+import edu.knowitall.ollie.ScoredOllieExtractionInstance
+import edu.knowitall.ollie.confidence.OllieConfidenceFunction
 
 @RunWith(classOf[JUnitRunner])
 object OllieSpecTest extends Specification {

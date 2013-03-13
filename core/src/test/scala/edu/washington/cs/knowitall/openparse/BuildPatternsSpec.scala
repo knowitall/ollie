@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.openparse
+package edu.knowitall.openparse
 
 import org.junit._
 import org.junit.Assert._
@@ -6,8 +6,8 @@ import org.specs2.mutable.Specification
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.stem.MorphaStemmer
+import edu.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.tool.stem.MorphaStemmer
 
 @RunWith(classOf[JUnitRunner])
 object BuildPatternsSpecTest extends Specification {
