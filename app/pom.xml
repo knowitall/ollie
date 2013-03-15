@@ -12,16 +12,12 @@
   </parent>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <nlptools.version>2.3.0</nlptools.version>
+    <nlptools.version>2.4.0</nlptools.version>
   </properties>
   <repositories>
     <repository>
-      <id>knowitall-public</id>
-      <url>http://knowitall.cs.washington.edu/maven2</url>
-    </repository>
-    <repository>
-      <id>knowitall-snapshot</id>
-      <url>http://knowitall.cs.washington.edu/maven2-snapshot</url>
+      <id>ollie 461</id>
+      <url>https://oss.sonatype.org/content/repositories/eduwashingtoncsknowitall-461/</url>
     </repository>
   </repositories>
   <dependencies>
@@ -33,7 +29,7 @@
     <dependency>
       <groupId>edu.washington.cs.knowitall.ollie</groupId>
       <artifactId>ollie-core_2.9.2</artifactId>
-      <version>1.0.2-SNAPSHOT</version>
+      <version>1.0.2</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>

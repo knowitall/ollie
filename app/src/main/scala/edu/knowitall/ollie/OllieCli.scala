@@ -1,20 +1,20 @@
-package edu.washington.cs.knowitall.ollie;
+package edu.knowitall.ollie;
 
 import java.io.File
 import java.io.PrintWriter
 import scala.io.Source
-import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.ollie.confidence.OllieConfidenceFunction
-import edu.washington.cs.knowitall.openparse.OpenParse
-import edu.washington.cs.knowitall.tool.parse.MaltParser
+import edu.knowitall.common.Resource.using
+import edu.knowitall.ollie.confidence.OllieConfidenceFunction
+import edu.knowitall.openparse.OpenParse
+import edu.knowitall.tool.parse.MaltParser
 import scopt.OptionParser
-import edu.washington.cs.knowitall.tool.segment.Segmenter
-import edu.washington.cs.knowitall.common.Timing
-import edu.washington.cs.knowitall.tool.sentence.OpenNlpSentencer
+import edu.knowitall.tool.segment.Segmenter
+import edu.knowitall.common.Timing
+import edu.knowitall.tool.sentence.OpenNlpSentencer
 import java.text.DecimalFormat
 import java.net.URL
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.ollie.confidence.OllieFeatureSet
+import edu.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.ollie.confidence.OllieFeatureSet
 
 /**
   * An entry point to use Ollie on the command line.

@@ -1,9 +1,9 @@
-package edu.washington.cs.knowitall.openparse.gui
+package edu.knowitall.openparse.gui
 
-import edu.washington.cs.knowitall.openparse.extract.TemplateExtractor
-import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
+import edu.knowitall.openparse.extract.TemplateExtractor
+import edu.knowitall.common.Resource.using
+import edu.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.tool.parse.graph.DependencyNode
 import java.io.IOException
 import scala.swing.Dialog
 import scala.io.Source

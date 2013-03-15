@@ -1,4 +1,4 @@
-package edu.washington.cs.knowitall.openparse
+package edu.knowitall.openparse
 
 import java.awt.Cursor
 import java.awt.Dimension
@@ -39,28 +39,28 @@ import scala.swing.event.ValueChanged
 import scala.util.control.Exception.catching
 import org.apache.batik.swing.JSVGCanvas
 import org.apache.batik.swing.svg.JSVGComponent
-import edu.washington.cs.knowitall.common.Resource.using
-import edu.washington.cs.knowitall.common.Timing.Seconds
-import edu.washington.cs.knowitall.common.Timing.time
-import edu.washington.cs.knowitall.openparse.eval.Score
-import edu.washington.cs.knowitall.openparse.extract.Extraction
-import edu.washington.cs.knowitall.openparse.extract.PatternExtractorType
-import edu.washington.cs.knowitall.openparse.gui.Dot
-import edu.washington.cs.knowitall.openparse.gui.ExtractionEntry
-import edu.washington.cs.knowitall.openparse.gui.Parser
-import edu.washington.cs.knowitall.openparse.gui.Parser.ParserEnum
-import edu.washington.cs.knowitall.openparse.gui.Sentence
-import edu.washington.cs.knowitall.tool.parse.DependencyParser
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.SerializationException
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.deserialize
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
+import edu.knowitall.common.Resource.using
+import edu.knowitall.common.Timing.Seconds
+import edu.knowitall.common.Timing.time
+import edu.knowitall.openparse.eval.Score
+import edu.knowitall.openparse.extract.Extraction
+import edu.knowitall.openparse.extract.PatternExtractorType
+import edu.knowitall.openparse.gui.Dot
+import edu.knowitall.openparse.gui.ExtractionEntry
+import edu.knowitall.openparse.gui.Parser
+import edu.knowitall.openparse.gui.Parser.ParserEnum
+import edu.knowitall.openparse.gui.Sentence
+import edu.knowitall.tool.parse.DependencyParser
+import edu.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.tool.parse.graph.DependencyGraph.SerializationException
+import edu.knowitall.tool.parse.graph.DependencyGraph.deserialize
+import edu.knowitall.tool.parse.graph.DependencyNode
 import scopt.OptionParser
-import edu.washington.cs.knowitall.ollie.DependencyGraphExtras
+import edu.knowitall.ollie.DependencyGraphExtras
 import scala.swing.event.KeyPressed
 import scala.swing.event.Key
 import scala.swing.event.KeyReleased
-import edu.washington.cs.knowitall.openparse.eval.GoldSet
+import edu.knowitall.openparse.eval.GoldSet
 
 object OpenParseGui extends SimpleSwingApplication {
   /** Which parser we are using. */

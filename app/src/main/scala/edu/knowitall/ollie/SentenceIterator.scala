@@ -1,6 +1,6 @@
-package edu.washington.cs.knowitall.ollie
+package edu.knowitall.ollie
 
-import edu.washington.cs.knowitall.tool.segment.Segmenter
+import edu.knowitall.tool.segment.Segmenter
 
 class SentenceIterator(sentencer: Segmenter, private var lines: BufferedIterator[String]) extends Iterator[String] {
   var sentences: Iterator[String] = Iterator.empty

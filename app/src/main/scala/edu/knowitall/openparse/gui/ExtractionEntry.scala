@@ -1,9 +1,9 @@
-package edu.washington.cs.knowitall.openparse.gui
+package edu.knowitall.openparse.gui
 
-import edu.washington.cs.knowitall.collection.immutable.graph.pattern.Match
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyNode
-import edu.washington.cs.knowitall.openparse.extract.PatternExtractor
-import edu.washington.cs.knowitall.openparse.extract.DetailedExtraction
+import edu.knowitall.collection.immutable.graph.pattern.Match
+import edu.knowitall.tool.parse.graph.DependencyNode
+import edu.knowitall.openparse.extract.PatternExtractor
+import edu.knowitall.openparse.extract.DetailedExtraction
 
 /**
   * A more generic representation of an extraction.

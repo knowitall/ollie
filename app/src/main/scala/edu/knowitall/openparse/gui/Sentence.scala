@@ -1,10 +1,10 @@
-package edu.washington.cs.knowitall.openparse.gui
+package edu.knowitall.openparse.gui
 
 import scala.util.control.Exception.catching
 
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.SerializationException
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph.deserialize
+import edu.knowitall.tool.parse.graph.DependencyGraph
+import edu.knowitall.tool.parse.graph.DependencyGraph.SerializationException
+import edu.knowitall.tool.parse.graph.DependencyGraph.deserialize
 
 /** A representation of the input sentence. */
 sealed abstract class Sentence
