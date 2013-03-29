@@ -106,7 +106,7 @@
           <appendAssemblyId>false</appendAssemblyId>
           <archive>
             <manifest>
-              <mainClass>edu.washington.cs.knowitall.ollie.OllieCli</mainClass>
+              <mainClass>edu.knowitall.ollie.OllieCli</mainClass>
             </manifest>
           </archive>
         </configuration>
