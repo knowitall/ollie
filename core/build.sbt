@@ -28,6 +28,8 @@ homepage := Some(url("http://ollie.cs.washington.edu"))
 
 publishMavenStyle := true
 
+resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+
 publishTo <<= version { (v: String) =>
   val nexus = "https://oss.sonatype.org/"
   if (v.trim.endsWith("SNAPSHOT"))
