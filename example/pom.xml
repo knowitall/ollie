@@ -12,13 +12,13 @@
   </parent>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <nlptools.version>2.2.6-SNAPSHOT</nlptools.version>
+    <nlptools.version>2.4.0</nlptools.version>
   </properties>
   <dependencies>
     <dependency>
       <groupId>edu.washington.cs.knowitall.ollie</groupId>
       <artifactId>ollie-core_2.9.2</artifactId>
-      <version>1.0.1-SNAPSHOT</version>
+      <version>1.0.2</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>

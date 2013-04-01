@@ -1,9 +1,9 @@
 package ollie
 
-import edu.washington.cs.knowitall.ollie.Ollie
-import edu.washington.cs.knowitall.tool.parse.MaltParser
+import edu.knowitall.ollie.Ollie
+import edu.knowitall.tool.parse.MaltParser
 import scala.io.Source
-import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
+import edu.knowitall.ollie.confidence.OllieConfidenceFunction
 
 /** This is an example project that takes lines as input from stdin,
   * parses them, runs the Ollie extractor on them, scores the
@@ -21,7 +21,7 @@ import edu.washington.cs.knowitall.ollie.confidence.OllieIndependentConfFunction
 object Example extends App {
   val parser = new MaltParser
   val ollie = new Ollie
-  val confidence = OllieIndependentConfFunction.loadDefaultClassifier()
+  val confidence = OllieConfidenceFunction.loadDefaultClassifier()
   for (line <- Source.stdin.getLines; if !line.trim.isEmpty) {
     val parsed = parser.dependencyGraph(line)
     val extractionInstances = ollie.extract(parsed)
