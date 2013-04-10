@@ -8,7 +8,7 @@
   </parent>
   <groupId>edu.washington.cs.knowitall.ollie</groupId>
   <artifactId>ollie-core_2.9.2</artifactId>
-  <version>1.0.3-SNAPSHOT</version>
+  <version>1.0.3</version>
   <name>ollie-core</name>
   <description>Ollie is an open information extractor for binary relations.</description>
   <scm>

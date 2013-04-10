@@ -4,16 +4,16 @@ name := "ollie-core"
 
 description := "Wrapper and implementation for extractors of chunked sentences."
 
-version := "1.0.3-SNAPSHOT"
+version := "1.0.3"
 
 crossScalaVersions := Seq("2.9.2", "2.10.1")
 
 scalaVersion <<= crossScalaVersions { (vs: Seq[String]) => vs.head }
 
 libraryDependencies ++= Seq(
-    "edu.washington.cs.knowitall.nlptools" %% "nlptools-core" % "2.4.1-SNAPSHOT",
-    "edu.washington.cs.knowitall.nlptools" %% "nlptools-conf-breeze" % "2.4.1-SNAPSHOT",
-    "edu.washington.cs.knowitall.nlptools" %% "nlptools-stem-morpha" % "2.4.1-SNAPSHOT",
+    "edu.washington.cs.knowitall.nlptools" %% "nlptools-core" % "2.4.1",
+    "edu.washington.cs.knowitall.nlptools" %% "nlptools-conf-breeze" % "2.4.1",
+    "edu.washington.cs.knowitall.nlptools" %% "nlptools-stem-morpha" % "2.4.1",
     "org.slf4j" % "slf4j-api" % "1.7.2",
     "org.scalaz" %% "scalaz-core" % "6.0.4",
     "ch.qos.logback" % "logback-classic" % "1.0.9" % "test",
