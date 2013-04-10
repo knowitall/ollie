@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
     "edu.washington.cs.knowitall.nlptools" %% "nlptools-conf-breeze" % "2.4.1-SNAPSHOT",
     "edu.washington.cs.knowitall.nlptools" %% "nlptools-stem-morpha" % "2.4.1-SNAPSHOT",
     "org.slf4j" % "slf4j-api" % "1.7.2",
+    "org.scalaz" %% "scalaz-core" % "6.0.4",
     "ch.qos.logback" % "logback-classic" % "1.0.9" % "test",
     "ch.qos.logback" % "logback-core" % "1.0.9" % "test",
     "junit" % "junit" % "4.11" % "test",

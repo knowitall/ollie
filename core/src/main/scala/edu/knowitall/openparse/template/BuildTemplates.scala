@@ -25,11 +25,18 @@ import scopt.OptionParser
 
 /** A main method for building template extractors from
   * a bootstrapping set of relations, patterns, and their count.
-  * 
+  *
   * @author Michael Schmitz
   */
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
+
+  implicit def BagSemigroup[T]: Semigroup[Bag[T]] = semigroup(_ ++ _)
+  implicit def BagZero[T]: Zero[Bag[T]] = zero(Bag.empty[T])
+  implicit def BagPure: Pure[Bag] = new Pure[Bag] {
+    def pure[T](x: => T) = Bag[T](x)
+  }
+
 
   abstract class Settings {
     def sourceFile: File

@@ -57,6 +57,11 @@
       <artifactId>nlptools-conf-breeze_2.9.2</artifactId>
       <version>${nlptools.version}</version>
     </dependency>
+    <dependency>
+      <groupId>org.scalaz</groupId>
+      <artifactId>scalaz-core_2.9.2</artifactId>
+      <version>6.0.4</version>
+    </dependency>
     <!-- Logging -->
     <dependency>
       <groupId>org.slf4j</groupId>
