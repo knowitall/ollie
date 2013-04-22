@@ -190,7 +190,7 @@ object Extraction {
         import scalaz._
         import Scalaz._
 
-        val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2)).sequence
+        val expansions = rels.map(rel => expandRelation(graph, rel, expandedArg1 ++ expandedArg2).toList).toList.sequence
 
         expansions.map(expansion => Part(expansion.map(_.nodes).reduce(_ ++ _), expansion.map(_.text).mkString(" ")))
       } else {

@@ -6,6 +6,7 @@ import edu.knowitall.collection.immutable.Bag
 
 import scalaz._
 import Scalaz._
+import Monoid._
 
 /**
  * Enrichments for traversables.
@@ -13,20 +14,14 @@ import Scalaz._
  * @author  Michael Schmitz
  */
 object Traversables {
-  implicit def traversableOnceTo[T](as: TraversableOnce[T]): SuperTraversableOnce[T] = new SuperTraversableOnce[T] {
-    val value = as
-  }
+  implicit def traversableOnceTo[T](as: TraversableOnce[T]): SuperTraversableOnce[T] = new SuperTraversableOnce[T](as)
 
-  implicit def traversableOncePairIntTo[T](as: TraversableOnce[(T, Int)]): SuperTraversableOncePairInt[T] = new SuperTraversableOncePairInt[T] {
-    val value = as
-  }
+  implicit def traversableOncePairIntTo[T](as: TraversableOnce[(T, Int)]): SuperTraversableOncePairInt[T] = new SuperTraversableOncePairInt[T](as)
 
-  implicit def traversableOncePairTo[T, U](as: TraversableOnce[(T, U)]): SuperTraversableOncePair[T, U] = new SuperTraversableOncePair[T, U] {
-    val value = as
-  }
+  implicit def traversableOncePairTo[T, U](as: TraversableOnce[(T, U)]): SuperTraversableOncePair[T, U] = new SuperTraversableOncePair[T, U](as)
 }
 
-sealed trait SuperTraversableOnce[T] extends scalaz.PimpedType[TraversableOnce[T]] {
+sealed class SuperTraversableOnce[T](value: TraversableOnce[T]) {
   def histogram: Map[T, Int] = {
     value.foldLeft(Map[T, Int]()) { (m, c) =>
       m.updated(c, m.getOrElse(c, 0) + 1)
@@ -34,12 +29,12 @@ sealed trait SuperTraversableOnce[T] extends scalaz.PimpedType[TraversableOnce[T
   }
 }
 
-sealed trait SuperTraversableOncePairInt[T] extends scalaz.PimpedType[TraversableOnce[(T, Int)]] {
+sealed class SuperTraversableOncePairInt[T](value: TraversableOnce[(T, Int)]) {
   import Traversables._
   def mergeHistograms: Map[T, Int] = value.mergeKeys(_ + _)
 }
 
-sealed trait SuperTraversableOncePair[T, U] extends scalaz.PimpedType[TraversableOnce[(T, U)]] {
+sealed class SuperTraversableOncePair[T, U](value: TraversableOnce[(T, U)]) {
   def mergeKeys(implicit mon: Semigroup[U]): Map[T, U] = {
     value.foldLeft(Map[T, U]()) {
       case (map, (k, v)) =>
@@ -47,10 +42,10 @@ sealed trait SuperTraversableOncePair[T, U] extends scalaz.PimpedType[Traversabl
     }
   }
 
-  def mergeKeys[F[_]](implicit point: Pointed[F], sem: Semigroup[F[U]]): Map[T, F[U]] = {
+  def mergeKeys[F[_]](implicit monoid: Monoid[F[U]]): Map[T, F[U]] = {
     value.foldLeft(Map[T, F[U]]()) {
       case (map, (k, v)) =>
-        val pure = v.pure[F]
+        val pure = monoid.zero
         map + (k -> (map.get(k).map(_ |+| pure).getOrElse(pure)))
     }
   }

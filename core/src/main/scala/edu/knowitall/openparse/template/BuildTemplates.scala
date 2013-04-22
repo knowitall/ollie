@@ -21,6 +21,7 @@ import edu.knowitall.ollie.Ollie.stemmer
 
 import scalaz.Scalaz._
 import scalaz._
+import Semigroup._
 import scopt.OptionParser
 
 /** A main method for building template extractors from
@@ -31,11 +32,17 @@ import scopt.OptionParser
 object BuildTemplates {
   val logger = LoggerFactory.getLogger(this.getClass)
 
+  implicit def BagMonoid[T]: Monoid[Bag[T]] = new Monoid[Bag[T]] {
+    def append(f1: Bag[T], f2: => Bag[T]) = f1 ++ f2
+    def zero: Bag[T] = Bag.empty[T]
+  }
+  /*
   implicit def BagSemigroup[T]: Semigroup[Bag[T]] = semigroup(_ ++ _)
   implicit def BagZero[T]: Zero[Bag[T]] = zero(Bag.empty[T])
   implicit def BagPure: Pure[Bag] = new Pure[Bag] {
     def pure[T](x: => T) = Bag[T](x)
   }
+  */
 
 
   abstract class Settings {
@@ -139,8 +146,10 @@ object BuildTemplates {
   case class Attrib(count: Int, slots: Bag[String] = Bag.empty, rels: immutable.SortedSet[String] = immutable.SortedSet.empty, mismatch: Boolean = false) {
     def plus(that: Attrib) = Attrib(this.count + that.count, this.slots merge that.slots, this.rels ++ that.rels, this.mismatch | that.mismatch)
   }
-  implicit def AttribSemigroup[T]: Semigroup[Attrib] = semigroup(_ plus _)
-  implicit def AttribZero[T]: Zero[Attrib] = zero(Attrib(0, Bag.empty[String], immutable.SortedSet.empty[String]))
+  implicit def AttribMonoid: Monoid[Attrib] = new Monoid[Attrib] {
+    def append(f1: Attrib, f2: => Attrib) = f1 plus f2
+    def zero: Attrib = Attrib(0, Bag.empty[String], immutable.SortedSet.empty[String])
+  }
 
 
   def run(settings: Settings) {

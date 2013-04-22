@@ -13,13 +13,13 @@ import edu.knowitall.common.Timing.{time, Seconds}
 import edu.knowitall.tool.parse.graph.{PostagNodeMatcher, DependencyPattern, DependencyNodeMatcher, DependencyNode, DependencyGraph}
 import edu.knowitall.tool.stem.MorphaStemmer
 
-import scalaz.Scalaz._
 import scalaz._
+import Zipper._
 import scopt.OptionParser
 
 /** A main method for creating patterns from a lemma grep.  A lemma grep is
   * a file that has an extraction and a sentence that contains the lemmas
-  * in the extraction. 
+  * in the extraction.
   *
   * @author Michael Schmitz
   */
@@ -270,7 +270,7 @@ object BuildPatterns {
           def replaceSlot(zipper: Zipper[Matcher[DependencyNode]]) = {
             val node = zipper.focus.asInstanceOf[DependencyNodeMatcher]
             val postag = node.postag
-            (Scalaz.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index, new PostagNodeMatcher(postag)), zipper.rights),
+            (Zipper.zipper[Matcher[DependencyNode]](zipper.lefts, new CaptureNodeMatcher("slot"+index, new PostagNodeMatcher(postag)), zipper.rights),
                 node.text)
           }
 
