@@ -2,6 +2,8 @@ package edu.knowitall.ollie;
 
 import java.io.File
 import java.io.PrintWriter
+import java.io.OutputStreamWriter
+import java.nio.charset.MalformedInputException
 import scala.io.Source
 import edu.knowitall.common.Resource.using
 import edu.knowitall.ollie.confidence.OllieConfidenceFunction
@@ -24,6 +26,9 @@ object OllieCli {
   abstract class Settings {
     def inputFiles: Option[Seq[File]]
     def outputFile: Option[File]
+
+    def encoding: String
+
     def modelUrl: URL
     def confidenceModelUrl: Option[URL]
     def confidenceThreshold: Double
@@ -97,6 +102,9 @@ object OllieCli {
     object settings extends Settings {
       var inputFiles: Option[Seq[File]] = None
       var outputFile: Option[File] = None
+
+      var encoding: String = "UTF-8"
+
       var modelUrl: URL = OpenParse.defaultModelUrl
       var confidenceModelUrl: Option[URL] = Some(OllieConfidenceFunction.defaultModelUrl)
       var confidenceThreshold: Double = 0.0
@@ -123,6 +131,10 @@ object OllieCli {
 
       opt(Some("o"), "output", "<file>", "output file (otherwise stdout)", { path: String =>
         settings.outputFile = Some(new File(path))
+      })
+
+      opt(Some("e"), "encoding", "<encoding>", "character encoding (UTF8 by default)", { encoding: String =>
+        settings.encoding = encoding
       })
 
       opt(Some("m"), "model", "<file>", "model file", { path: String =>
@@ -171,7 +183,14 @@ object OllieCli {
         println("The response is \"confidence: extraction\", one extraction per line.")
         println(argumentParser.usage)
       } else {
-        run(settings)
+        try {
+          run(settings)
+        }
+        catch {
+          case e: MalformedInputException =>
+            System.err.println("\nError: a MalformedInputException was thrown.\nThis usually means there is a mismatch between what Ollie expects and the input file.  Try changing the input file's character encoding to UTF-8 or specifying the correct character encoding for the input file with '--encoding'.\n")
+            e.printStackTrace()
+        }
       }
     }
   }
@@ -211,8 +230,8 @@ object OllieCli {
     val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
 
     using(settings.outputFile match {
-      case Some(output) => new PrintWriter(output, "UTF-8")
-      case None => new PrintWriter(System.out)
+      case Some(output) => new PrintWriter(output, settings.encoding)
+      case None => new PrintWriter(new OutputStreamWriter(System.out, settings.encoding))
     }) { writer =>
 
       // print headers for output
@@ -286,7 +305,7 @@ object OllieCli {
         // single file
         case Some(Seq(file)) =>
           System.err.println("\nRunning extractor on " + file + "...")
-          using (Source.fromFile(file)) { source =>
+          using (Source.fromFile(file, settings.encoding)) { source =>
             processSource(source)
           }
 
@@ -297,7 +316,7 @@ object OllieCli {
             for ((file, i) <- files.iterator.zipWithIndex) {
               System.err.println("Processing file " + file + " (" + (i+1) + "/" + files.size + ")...")
               System.err.println()
-              using(Source.fromFile(file)) { source =>
+              using(Source.fromFile(file, settings.encoding)) { source =>
                 processSource(source)
               }
             }
@@ -307,7 +326,7 @@ object OllieCli {
         // standard input
         case None =>
           System.err.println("\nRunning extractor on standard input...")
-          processSource(Source.stdin)
+          processSource(Source.fromInputStream(System.in, settings.encoding))
       }
     }
   }
