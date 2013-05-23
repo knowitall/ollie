@@ -33,8 +33,8 @@ class Ollie(val openparse: OpenParse) {
 
     for {
       (conf, extr) <- openparseExtrs
-      val enabler = enablingAdverbialClauseHelper(extr)
-      val attribution = attribClausalComponentHelper(extr)
+      enabler = enablingAdverbialClauseHelper(extr)
+      attribution = attribClausalComponentHelper(extr)
     } yield new OllieExtractionInstance(
         new OllieExtraction(extr.arg1, extr.rel, extr.arg2, conf, enabler, attribution), dgraph, extr.extractor)
   }
@@ -71,7 +71,7 @@ class Ollie(val openparse: OpenParse) {
 
 object Ollie {
   implicit def stemmer: Stemmer = MorphaStemmer
- 
+
   /** A collection of verbs used for communication, i.e. "said" */
   val communicationWords = using(Source.fromInputStream(classOf[Ollie].getResource("communicationWords.txt").openStream())) { source =>
     source.getLines.toSet
