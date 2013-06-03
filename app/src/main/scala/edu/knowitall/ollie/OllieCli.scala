@@ -227,7 +227,17 @@ object OllieCli {
       System.err.println(Timing.Seconds.format(ns))
     }
 
-    val sentencer = if (settings.splitInput) Some(new OpenNlpSentencer()) else None
+    val sentencer = if (settings.splitInput) {
+      System.err.println("Prose input split by OpenNlpSentencer.");
+      Some(new OpenNlpSentencer()) 
+    } else {
+      if (settings.inputFiles.isDefined) {
+        System.err.println()
+        System.err.println("WARNING: Each line is expected to be a unique sentence.")
+        System.err.println("If you want prose to be split into sentences, restart Ollie with --prose.")
+      }
+      None
+    }
 
     using(settings.outputFile match {
       case Some(output) => new PrintWriter(output, settings.encoding)
