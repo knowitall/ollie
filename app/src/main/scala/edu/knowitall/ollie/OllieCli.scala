@@ -260,14 +260,14 @@ object OllieCli {
           }
 
           val lines = parseLines(source.getLines, sentencer) filter (!_.isEmpty)
-          try {
-            // group the lines so we can parallelize
-            val grouped = if (settings.parallel) lines.grouped(CHUNK_SIZE) else lines.map(Seq(_))
-            for (group <- grouped) {
+          // group the lines so we can parallelize
+          val grouped = if (settings.parallel) lines.grouped(CHUNK_SIZE) else lines.map(Seq(_))
+          for (group <- grouped) {
 
-              // potentially transform to a parallel collection
-              val sentences = if (settings.parallel) group.par else group
-              for (sentence <- sentences) {
+            // potentially transform to a parallel collection
+            val sentences = if (settings.parallel) group.par else group
+            for (sentence <- sentences) {
+              try {
                 if (settings.outputFormat == InteractiveFormat) {
                   writer.println(sentence)
                   writer.flush()
@@ -294,16 +294,16 @@ object OllieCli {
                   writer.println()
                   writer.flush()
                 }
-              }
-
-              // print prompt if standard input
-              if (!settings.inputFiles.isDefined) {
-                System.out.print("> ")
-                System.out.flush()
+              } catch {
+                case e: Exception if settings.invincible => e.printStackTrace
               }
             }
-          } catch {
-            case e: Exception if settings.invincible => e.printStackTrace
+
+            // print prompt if standard input
+            if (!settings.inputFiles.isDefined) {
+              System.out.print("> ")
+              System.out.flush()
+            }
           }
         }
 
