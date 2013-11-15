@@ -7,7 +7,7 @@
     <version>1.0.2</version>
   </parent>
   <groupId>edu.washington.cs.knowitall.ollie</groupId>
-  <artifactId>ollie-core_2.9.2</artifactId>
+  <artifactId>ollie-core_2.10</artifactId>
   <version>1.0.4-SNAPSHOT</version>
   <name>ollie-core</name>
   <description>Ollie is an open information extractor for binary relations.</description>
@@ -44,22 +44,22 @@
   <dependencies>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
-      <artifactId>nlptools-core_2.9.2</artifactId>
+      <artifactId>nlptools-core_2.10</artifactId>
       <version>${nlptools.version}</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
-      <artifactId>nlptools-stem-morpha_2.9.2</artifactId>
+      <artifactId>nlptools-stem-morpha_2.10</artifactId>
       <version>${nlptools.version}</version>
     </dependency>
     <dependency>
       <groupId>edu.washington.cs.knowitall.nlptools</groupId>
-      <artifactId>nlptools-conf-breeze_2.9.2</artifactId>
+      <artifactId>nlptools-conf-breeze_2.10</artifactId>
       <version>${nlptools.version}</version>
     </dependency>
     <dependency>
       <groupId>org.scalaz</groupId>
-      <artifactId>scalaz-core_2.9.2</artifactId>
+      <artifactId>scalaz-core_2.10</artifactId>
       <version>7.0.0</version>
     </dependency>
     <!-- Logging -->
@@ -89,7 +89,7 @@
     </dependency>
     <dependency>
       <groupId>org.specs2</groupId>
-      <artifactId>specs2_2.9.2</artifactId>
+      <artifactId>specs2_2.10</artifactId>
       <version>1.12.3</version>
       <scope>test</scope>
     </dependency>
