@@ -3,11 +3,11 @@ package example;
 import java.io.File;
 import java.net.MalformedURLException;
 
-import edu.washington.cs.knowitall.ollie.Ollie;
-import edu.washington.cs.knowitall.ollie.OllieExtraction;
-import edu.washington.cs.knowitall.ollie.OllieExtractionInstance;
-import edu.washington.cs.knowitall.tool.parse.MaltParser;
-import edu.washington.cs.knowitall.tool.parse.graph.DependencyGraph;
+import edu.knowitall.ollie.Ollie;
+import edu.knowitall.ollie.OllieExtraction;
+import edu.knowitall.ollie.OllieExtractionInstance;
+import edu.knowitall.tool.parse.MaltParser;
+import edu.knowitall.tool.parse.graph.DependencyGraph;
 
 /** This is an example class that shows one way of using Ollie from Java. */
 public class JavaOllieWrapper {
