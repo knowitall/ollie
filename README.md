@@ -121,7 +121,7 @@ visualize the OpenParse extractions in a parse tree.  To use it, you will need
 to have [graphviz](http://www.graphviz.org/) installed.  You can run the GUI
 with:
 
-    java -Xms512M -Xmx1g -cp ollie-app-VERSION.jar edu.washington.cs.knowitall.openparse.OpenParseGui
+    java -Xms512M -Xmx1g -cp ollie-app-VERSION.jar edu.knowitall.openparse.OpenParseGui
 
 By default, this application will look for graphviz's `dot` program at
 `/usr/bin/dot`.  You can specify a location with the `--graphviz` parameter.
