@@ -97,9 +97,7 @@ Once you have built Ollie, you can run it from the command line.
 Omit the input file for an interactive console.
 
 Ollie takes sentences, one-per-line as input or splits text into sentences if
-`--split` is specified.  Run Ollie with `--usage` to see full usage.  There are
-many useful options; for example you can run Ollie in parallel using
-`--parallel`.
+`--split` is specified.  Run Ollie with `--usage` to see full usage.
 
 The Ollie command line tool has a few output formats.  The output format is
 specified by `--output-format` and a valid format:
