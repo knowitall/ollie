@@ -14,6 +14,23 @@ Ollie also captures context that modifies a binary relation.  Presently Ollie
 handles attribution (He said/she believes) and enabling conditions (if X
 then).
 
+## Quick Start
+
+If you want to run Ollie on a small amount of text without modifying the source
+code, you can use an executable file that can be run from the command line.
+Follow these steps to get started:
+
+1.  Download the latest Ollie binary from
+    http://knowitall.cs.washington.edu/ollie/ollie-app-latest.jar.
+
+2.  Download the linear English MaltParser model (engmalt.linear-1.7.mco) from
+    http://www.maltparser.org/mco/english_parser/engmalt.html
+    and place it in the same directory as Ollie.
+
+3.  Run `java -Xmx512m -jar ollie-app-latest.jar yourfile.txt`.  The input file
+    should contain one sentence per line unless `--split` is specified.  Omit
+    the input file for an interactive console.
+
 ## Examples
 
 ### Enabling Condition
@@ -57,23 +74,6 @@ preposition.
     extraction: (the 2012 Sasquatch music festival; is scheduled for; May 25th)
     extraction: (the 2012 Sasquatch music festival; is scheduled until; May 28th)
     nary: (the 2012 Sasquatch music festival; is scheduled; [for May 25th; to May 28th])
-
-## Quick Start
-
-If you want to run Ollie on a small amount of text without modifying the source
-code, you can use an executable file that can be run from the command line.
-Follow these steps to get started:
-
-1.  Download the latest Ollie binary from
-    http://knowitall.cs.washington.edu/ollie/ollie-app-latest.jar.
-
-2.  Download the linear English MaltParser model (engmalt.linear-1.7.mco) from
-    http://www.maltparser.org/mco/english_parser/engmalt.html
-    and place it in the same directory as Ollie.
-
-3.  Run `java -Xmx512m -jar ollie-app-latest.jar yourfile.txt`.  The input file
-    should contain one sentence per line unless `--split` is specified.  Omit
-    the input file for an interactive console.
 
 ## Building
 
