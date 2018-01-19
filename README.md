@@ -25,7 +25,7 @@ docker run -it schmmd/ollie:latest
 ```
 
 To configure Ollie, you can drop into a bash shell with `docker run -it schmmd/ollie:latest /bin/bash` 
-and run Ollie from there.
+and run Ollie from the command line.
 
 ### Local Machine
 
