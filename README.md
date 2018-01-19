@@ -16,6 +16,19 @@ then).
 
 ## Quick Start
 
+### Docker
+
+You can now run Ollie with a single Docker command.
+
+```
+docker run -it schmmd/ollie:latest
+```
+
+To configure Ollie, you can drop into a bash shell with `docker run -it schmmd/ollie:latest /bin/bash` 
+and run Ollie from there.
+
+### Local Machine
+
 If you want to run Ollie on a small amount of text without modifying the source
 code, you can use an executable file that can be run from the command line.
 Please note that Ollie was built using Scala 2.9 and so it requires Java 7.
