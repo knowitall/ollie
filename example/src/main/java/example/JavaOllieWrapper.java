@@ -23,7 +23,7 @@ public class JavaOllieWrapper {
     public JavaOllieWrapper() throws MalformedURLException {
         // initialize MaltParser
         scala.Option<File> nullOption = scala.Option.apply(null);
-        maltParser = new MaltParser(new File(MALT_PARSER_FILENAME).toURI().toURL(), nullOption);
+        maltParser = new MaltParser(new File(MALT_PARSER_FILENAME));
 
         // initialize Ollie
         ollie = new Ollie();
